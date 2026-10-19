@@ -1,0 +1,8 @@
+.dart_tool/
+build/
+pubspec_overrides.yaml
+*.iml
+.idea/
+.vscode/
+# Dati locali del programma del coach durante lo sviluppo
+dati_dev/

@@ -1,0 +1,161 @@
+import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:coach_nucleo/coach_nucleo.dart';
+import 'package:path/path.dart' as p;
+import 'package:protocollo/protocollo.dart';
+
+const _uso = '''
+Programma del coach senza interfaccia, per lo sviluppo.
+
+  dart run coach_nucleo:coach_dev --dati <cartella> [--tor <eseguibile tor>]
+                                  [--nome <nome del coach>] [--verboso]
+
+Comandi:
+  atleta <nome>    crea l'atleta e mostra il suo invito
+  invito <nome>    nuovo invito per un atleta esistente
+  scheda <nome>    pubblica una scheda di prova per l'atleta
+  elenco           atleti, telefoni e inviti
+  log <nome>       allenamenti ricevuti dall'atleta
+  esci''';
+
+Future<void> main(List<String> argomenti) async {
+  final opzioni = _leggiOpzioni(argomenti);
+  if (opzioni.containsKey('aiuto')) {
+    stdout.writeln(_uso);
+    return;
+  }
+  final dati = opzioni['dati'] ?? 'dati_dev';
+  // Solo per lo sviluppo: le chiavi stanno in un file, non nel portachiavi.
+  final programma = await ProgrammaCoach.avvia(
+    cartellaDati: dati,
+    portachiavi: PortachiaviFile(p.join(dati, 'portachiavi')),
+    eseguibileTor: opzioni['tor'],
+    registra: opzioni.containsKey('verboso') ? stdout.writeln : null,
+  );
+  final nucleo = programma.nucleo;
+  if (opzioni['nome'] case final nome?) nucleo.nomeCoach = nome;
+  if (nucleo.nomeCoach.isEmpty) nucleo.nomeCoach = 'Coach di prova';
+
+  stdout
+    ..writeln('Coach:      ${nucleo.nomeCoach}')
+    ..writeln('Indirizzo:  ${programma.indirizzo}.onion')
+    ..writeln('Porta HTTP: 127.0.0.1:${programma.portaLocale}')
+    ..writeln(opzioni['tor'] == null ? 'Tor:        non avviato (manca --tor)' : '')
+    ..writeln('Scrivi "aiuto" per i comandi.');
+  programma.cambiamentiStatoTor.listen((s) => stdout.writeln('[tor] $s'));
+  nucleo.eventi.listen((e) => stdout.writeln('[evento] ${_descrivi(nucleo, e)}'));
+
+  unawaited(
+    ProcessSignal.sigint.watch().first.then((_) async {
+      await programma.chiudi();
+      exit(0);
+    }),
+  );
+  final righe = stdin.transform(utf8.decoder).transform(const LineSplitter());
+  await for (final riga in righe) {
+    final parole = riga.trim().split(RegExp(r'\s+'));
+    final comando = parole.first;
+    final nome = parole.skip(1).join(' ');
+    if (comando == 'esci') break;
+    try {
+      switch (comando) {
+        case '':
+          break;
+        case 'atleta':
+          final atleta = nucleo.atleti.crea(nome);
+          await _mostraInvito(nucleo, atleta.id);
+        case 'invito':
+          await _mostraInvito(nucleo, _atleta(nucleo, nome).id);
+        case 'scheda':
+          final atleta = _atleta(nucleo, nome);
+          final id = nucleo.schede.crea(atleta.id, contenuto: _schedaDiProva());
+          stdout.writeln('Pubblicata la revisione ${nucleo.schede.pubblica(id)}');
+        case 'elenco':
+          for (final r in nucleo.atleti.elenco()) {
+            final d = r.dispositivo;
+            stdout.writeln(
+              '- ${r.atleta.nome}: '
+              '${d == null ? 'nessun telefono' : '${d.nome} (app ${d.versioneApp}, '
+                        'ultimo contatto ${d.ultimoContatto?.toLocal() ?? 'mai'})'}'
+              '${r.invito == null ? '' : ', invito ${r.invito!.stato.nome}'}',
+            );
+          }
+        case 'log':
+          final atleta = _atleta(nucleo, nome);
+          for (final a in nucleo.allenamenti.elenco(atleta.id)) {
+            stdout.writeln('- ${a.eseguitoIl.toLocal()} rev ${a.rev}: ${jsonEncode(a.contenuto)}');
+          }
+        default:
+          stdout.writeln(_uso);
+      }
+    } on OperazioneNonValida catch (e) {
+      stdout.writeln('Errore: ${e.messaggio}');
+    }
+  }
+
+  await programma.chiudi();
+  exit(0);
+}
+
+Future<void> _mostraInvito(NucleoCoach nucleo, String atletaId) async {
+  final invito = await nucleo.inviti.crea(atletaId);
+  stdout
+    ..writeln('Invito valido fino a ${invito.scadeIl.toLocal()}:')
+    ..writeln(invito.uri);
+}
+
+Atleta _atleta(NucleoCoach nucleo, String nome) {
+  for (final r in [...nucleo.atleti.elenco(), ...nucleo.atleti.elenco(archiviati: true)]) {
+    if (r.atleta.nome.toLowerCase() == nome.toLowerCase()) return r.atleta;
+  }
+  throw OperazioneNonValida('Nessun atleta di nome "$nome"');
+}
+
+String _descrivi(NucleoCoach nucleo, EventoCoach e) {
+  final atleta = nucleo.atleti.cerca(e.atletaId)?.nome ?? e.atletaId;
+  return switch (e) {
+    DispositivoAbbinato(:final nomeDispositivo) => '$atleta ha abbinato $nomeDispositivo',
+    AbbinamentoConfermato() => '$atleta ha confermato l\'abbinamento',
+    InvitoContestato() => 'ATTENZIONE: un secondo telefono ha usato l\'invito di $atleta',
+    LogRicevuto(:final logId, :final eliminato) =>
+      '$atleta ha ${eliminato ? 'eliminato' : 'inviato'} il log $logId',
+    RevisioneRicevuta(:final revisione) => '$atleta ha ricevuto la revisione $revisione',
+    DispositivoSincronizzato() => '$atleta ha sincronizzato',
+  };
+}
+
+Map<String, Object?> _schedaDiProva() => {
+  'titolo': 'Scheda di prova',
+  'note': 'Creata da coach_dev',
+  'valida_dal': formattaData(DateTime.now()),
+  'sedute': [
+    {
+      'id': nuovoUuid(),
+      'nome': 'Giorno A',
+      'esercizi': [
+        {
+          'id': nuovoUuid(),
+          'nome': 'Squat',
+          'prescrizione': [
+            {'serie': 4, 'ripetizioni': '6-8', 'carico': '75% 1RM', 'recupero_s': 150},
+          ],
+        },
+      ],
+    },
+  ],
+};
+
+Map<String, String> _leggiOpzioni(List<String> argomenti) {
+  final opzioni = <String, String>{};
+  for (var i = 0; i < argomenti.length; i++) {
+    final a = argomenti[i];
+    if (a == '--verboso' || a == '--aiuto' || a == '-h') {
+      opzioni[a == '-h' ? 'aiuto' : a.substring(2)] = '';
+    } else if (a.startsWith('--') && i + 1 < argomenti.length) {
+      opzioni[a.substring(2)] = argomenti[++i];
+    }
+  }
+  return opzioni;
+}

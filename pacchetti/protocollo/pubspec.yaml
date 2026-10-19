@@ -1,0 +1,17 @@
+name: protocollo
+description: Protocollo di Open Coach, condiviso tra il programma del coach e l'app dell'atleta.
+publish_to: none
+version: 1.0.0
+resolution: workspace
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  crypto: ^3.0.6
+  cryptography: ^2.7.0
+  pointycastle: ^4.0.0
+
+dev_dependencies:
+  lints: ^6.0.0
+  test: ^1.30.0

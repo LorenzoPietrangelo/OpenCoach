@@ -7,7 +7,9 @@ plugins {
 
 android {
     namespace = "org.opencoach.atleta_app"
-    compileSdk = flutter.compileSdkVersion
+    // tor-android 0.4.9 chiede di compilare con le API 37; il comportamento
+    // dell'app lo decide targetSdk, che resta quello di Flutter.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -42,4 +44,10 @@ android {
 
 flutter {
     source = "../.."
+}
+
+dependencies {
+    // Tor incorporato (§10.1): TorService di tor-android, comandato dal
+    // trasporto in Dart attraverso la porta di controllo.
+    implementation("info.guardianproject:tor-android:0.4.9.14")
 }

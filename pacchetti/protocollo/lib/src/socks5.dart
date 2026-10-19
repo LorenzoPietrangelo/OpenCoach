@@ -55,11 +55,15 @@ class ErroreProtocolloSocks implements Exception {
 /// [proxyHost]:[proxyPorta]. Il nome viene risolto dal proxy, come serve per
 /// gli indirizzi `.onion`.
 ///
+/// [proxyHost] è un nome o un [InternetAddress]; con un socket Unix
+/// (`InternetAddressType.unix`) [proxyPorta] non conta. Così il proxy di Tor
+/// può essere un socket accessibile solo all'app.
+///
 /// La socket restituita si può usare con `HttpClient.connectionFactory`.
 Future<Socket> connettiTramiteSocks5({
   required String host,
   required int porta,
-  required String proxyHost,
+  required Object proxyHost,
   required int proxyPorta,
   Duration timeout = const Duration(seconds: 90),
 }) async {

@@ -6,6 +6,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:protocollo/protocollo.dart';
 
 import 'app.dart';
+import 'piattaforma/avviatore_android.dart';
 import 'piattaforma/cassaforte_sicura.dart';
 import 'piattaforma/tor_non_integrato.dart';
 
@@ -22,7 +23,14 @@ Future<void> main() async {
       '${cartella.path}${Platform.pathSeparator}atleta.db',
     ),
     cassaforte: CassaforteSicura(),
-    tor: const TorNonIntegrato(),
+    // Su iOS Tor.framework non è ancora integrato.
+    tor: Platform.isAndroid
+        ? TrasportoTorControllato(
+            const AvviatoreTorAndroid(),
+            registra: debugPrint,
+          )
+        : const TorNonIntegrato(),
+    registra: debugPrint,
     dispositivo: DatiDispositivo(
       nome: Platform.isIOS ? 'iPhone' : 'Telefono Android',
       piattaforma: Platform.isIOS ? 'ios' : 'android',

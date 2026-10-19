@@ -23,9 +23,10 @@ class ErroreApi implements Exception {
 }
 
 /// [HttpClient] che raggiunge gli indirizzi `.onion` attraverso il proxy
-/// SOCKS5 di Tor in [socksHost]:[socksPorta].
+/// SOCKS5 di Tor in [socksHost]:[socksPorta]; [socksHost] può essere anche un
+/// socket Unix (vedi [connettiTramiteSocks5]).
 HttpClient clienteHttpTramiteTor({
-  required String socksHost,
+  required Object socksHost,
   required int socksPorta,
   Duration timeoutConnessione = const Duration(seconds: 90),
 }) {

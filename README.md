@@ -27,11 +27,12 @@ Dalla cartella principale:
 dart pub get
 ```
 
-Test del protocollo e del nucleo:
+Test del protocollo e dei due nuclei:
 
 ```
 cd pacchetti/protocollo && dart test
 cd coach/nucleo && dart test
+cd atleta/nucleo && dart test
 ```
 
 Prova sulla rete Tor vera, che dura qualche minuto. Serve l'eseguibile `tor` del Tor Expert Bundle:

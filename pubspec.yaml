@@ -8,3 +8,4 @@ environment:
 workspace:
   - pacchetti/protocollo
   - coach/nucleo
+  - atleta/nucleo

@@ -1,0 +1,19 @@
+name: atleta_nucleo
+description: Nucleo dell'app dell'atleta di Open Coach. Archivio locale, abbinamento, coda dei log e sincronizzazione, senza interfaccia e senza Flutter.
+publish_to: none
+version: 1.0.0
+resolution: workspace
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  protocollo:
+    path: ../../pacchetti/protocollo
+  sqlite3: ^3.3.1
+
+dev_dependencies:
+  coach_nucleo:
+    path: ../../coach/nucleo
+  lints: ^6.0.0
+  test: ^1.30.0

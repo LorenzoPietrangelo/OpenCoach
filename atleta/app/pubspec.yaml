@@ -1,0 +1,31 @@
+name: atleta_app
+description: "App dell'atleta di Open Coach."
+publish_to: 'none'
+# La versione che l'app dichiara al coach (§6.3): sotto `versione_app_minima`
+# il coach risponde 426.
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.5
+
+dependencies:
+  atleta_nucleo:
+    path: ../nucleo
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  flutter_secure_storage: ^11.2.0
+  intl: any
+  path_provider: ^2.1.6
+  protocollo:
+    path: ../../pacchetti/protocollo
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  generate: true
+  uses-material-design: true

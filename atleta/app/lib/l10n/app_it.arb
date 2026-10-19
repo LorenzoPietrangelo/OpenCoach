@@ -1,0 +1,38 @@
+{
+  "@@locale": "it",
+  "nomeApp": "Open Coach",
+  "nessunCoach": "Nessun coach collegato. Aggiungi il tuo coach con il link d'invito che ti ha dato.",
+  "aggiungiCoach": "Aggiungi coach",
+  "titoloInvito": "Collegati al tuo coach",
+  "spiegazioneInvito": "Incolla il link d'invito che ti ha dato il coach. Va trattato come una password.",
+  "etichettaInvito": "Link d'invito",
+  "continua": "Continua",
+  "collegartiA": "Collegarti a {nome}?",
+  "@collegartiA": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
+  "annulla": "Annulla",
+  "collega": "Collega",
+  "collegamentoInCorso": "Collegamento in corso…",
+  "ultimaSync": "Ultima sync: {quando}",
+  "@ultimaSync": {
+    "placeholders": {
+      "quando": {
+        "type": "String"
+      }
+    }
+  },
+  "maiSincronizzato": "Non ancora sincronizzato",
+  "logInAttesa": "{numero, plural, =0{Nessun allenamento in attesa} =1{1 allenamento in attesa di invio} other{{numero} allenamenti in attesa di invio}}",
+  "@logInAttesa": {
+    "placeholders": {
+      "numero": {
+        "type": "int"
+      }
+    }
+  }
+}

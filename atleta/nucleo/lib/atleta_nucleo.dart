@@ -9,6 +9,7 @@ export 'src/cassaforte.dart';
 export 'src/collegamenti.dart';
 export 'src/diario.dart';
 export 'src/errori.dart';
+export 'src/esecuzione.dart';
 export 'src/modelli.dart'
     show
         CoachCollegato,

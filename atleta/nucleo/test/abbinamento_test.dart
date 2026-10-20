@@ -47,8 +47,7 @@ void main() {
     final dispositivo = pc.nucleo.dispositivi.attivo(atletaId)!;
     expect(dispositivo.nome, 'Pixel 8');
     expect(coach.dispositivoId, dispositivo.id);
-    // Dopo la conferma il servizio autorizza solo la chiave del telefono, e
-    // Tor è stato riavviato per scartare il descrittore in cache.
+    // Dopo la conferma il servizio autorizza solo la chiave del telefono.
     final chiave = await CoppiaX25519.daPrivata(
       telefono.tor.chiavi[pc.indirizzo]!,
     );
@@ -62,7 +61,6 @@ void main() {
     ]);
     expect(pc.eventi.whereType<AbbinamentoConfermato>(), hasLength(1));
     expect(pc.nucleo.inviti.inCorso(atletaId), isNull);
-    expect(telefono.tor.riavvii, 1);
     // Chiave e token stanno solo nella cassaforte.
     expect(telefono.cassaforte.nomi, ['coach.${coach.id}']);
 
@@ -87,14 +85,19 @@ void main() {
 
   test('invito annullato o scaduto: non più valido', () async {
     // Annullato: il coach toglie la chiave d'invito dal servizio e Tor dà
-    // F5 anche dopo aver scartato la cache.
+    // F5 da tutte le directory, anche dopo quasi un minuto.
     final annullato = await pc.nucleo.inviti.crea(atletaId);
     pc.nucleo.inviti.annulla(annullato.id);
     await expectLater(
       telefono.nucleo.leggiInvito(annullato.uri!.toString()),
       throwsA(erroreAbbinamento(ProblemaAbbinamento.invitoNonValido)),
     );
-    expect(telefono.tor.riavvii, 1);
+    expect(ambiente.orologio.attese, const [
+      Duration(seconds: 5),
+      Duration(seconds: 15),
+      Duration(seconds: 30),
+    ]);
+    expect(telefono.tor.connessioni, 4);
     expect(telefono.tor.chiavi, isEmpty);
 
     // Scaduto mentre l'atleta decide: il servizio non è ancora stato
@@ -109,6 +112,27 @@ void main() {
     expect(telefono.nucleo.collegamenti.elenco(), isEmpty);
     expect(telefono.tor.chiavi, isEmpty);
   });
+
+  test(
+    "directory con il descrittore di prima dell'invito: si ritenta",
+    () async {
+      final testo = await pc.invito(atletaId);
+      // Le prime due directory interrogate non hanno ancora il descrittore
+      // con la chiave d'invito.
+      telefono.tor.guasti.addAll(const [
+        ErroreSocks(ErroreSocks.autorizzazioneErrata),
+        ErroreSocks(ErroreSocks.autorizzazioneErrata),
+      ]);
+      final invito = await telefono.nucleo.leggiInvito(testo);
+      expect(invito.nomeCoach, 'Marco Bianchi');
+      expect(ambiente.orologio.attese, const [
+        Duration(seconds: 5),
+        Duration(seconds: 15),
+      ]);
+      expect(telefono.tor.connessioni, 3);
+      expect((await invito.collega()).problema, isNull);
+    },
+  );
 
   test('invito già usato da un altro telefono: 409', () async {
     final testo = await pc.invito(atletaId);
@@ -205,8 +229,6 @@ void main() {
         Duration(minutes: 1),
         Duration(minutes: 2),
       ]);
-      // Dopo ogni F5 Tor si riavvia, per non restare con il descrittore vecchio.
-      expect(telefono.tor.riavvii, 5);
       expect(pc.eventi.whereType<AbbinamentoConfermato>(), hasLength(1));
     },
   );

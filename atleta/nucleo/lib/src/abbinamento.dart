@@ -15,6 +15,15 @@ import 'trasporto.dart';
 /// usato e non ancora concluso.
 const _voceAbbinamento = 'abbinamento_in_corso';
 
+/// Pause tra i tentativi quando Tor non decifra il descrittore con la chiave
+/// d'invito: in tutto quasi un minuto, quanto basta al programma del coach
+/// per pubblicare un invito appena creato.
+const _atteseDopoRifiuto = [
+  Duration(seconds: 5),
+  Duration(seconds: 15),
+  Duration(seconds: 30),
+];
+
 /// Punti 1–3 del §5.3: legge l'invito, prepara la chiave del dispositivo e,
 /// con la chiave d'invito in Tor, chiede al coach il suo nome.
 Future<InvitoLetto> leggiInvito(
@@ -86,7 +95,7 @@ Future<T> _conInvito<T>(
   }
   await c.usaChiaveInvito(invito.indirizzo, decodificaChiave32(invito.chiave)!);
   try {
-    var riavviato = false;
+    var rifiuti = 0;
     var attese = 0;
     while (true) {
       final http = c.tor.creaHttpClient();
@@ -100,17 +109,21 @@ Future<T> _conInvito<T>(
           case null:
             rethrow;
           case TipoGuasto.chiaveRifiutata:
-            // Tor può avere in cache un descrittore precedente all'invito: un
-            // riavvio lo scarta. Se la chiave continua a non valere, il coach
-            // ha chiuso l'invito.
-            if (riavviato) {
+            // Appena creato l'invito, qualche directory può avere ancora il
+            // descrittore di prima, senza la chiave d'invito: al tentativo
+            // successivo Tor lo chiede a un'altra. Se la chiave continua a
+            // non valere, il coach ha chiuso l'invito.
+            c.registra(
+              "Tor non decifra il descrittore con la chiave d'invito: $e",
+            );
+            if (rifiuti == _atteseDopoRifiuto.length) {
               throw const ErroreAbbinamento(
                 ProblemaAbbinamento.invitoNonValido,
               );
             }
-            riavviato = true;
-            await c.tor.riavvia();
+            await c.orologio.attendi(_atteseDopoRifiuto[rifiuti++]);
           case TipoGuasto.irraggiungibile:
+            c.registra('Coach non raggiungibile: $e');
             throw const ErroreAbbinamento(
               ProblemaAbbinamento.coachIrraggiungibile,
             );
@@ -222,8 +235,11 @@ class InvitoLetto {
     }
   }
 
-  /// Punto 6: salva token e chiave, poi passa Tor alla chiave del dispositivo
-  /// e lo riavvia, così scarta il descrittore in cache.
+  /// Punto 6: salva token e chiave, poi passa Tor alla chiave del dispositivo.
+  /// Il descrittore in cache Tor l'ha già scartato quando [_conInvito] ha
+  /// tolto la chiave d'invito: riavviarlo, come dice il punto 6, servirebbe
+  /// solo a fargli dimenticare le directory già interrogate, che per 15
+  /// minuti evita. Così i tentativi della conferma vanno ad altre directory.
   ///
   /// Se lo stesso atleta era già collegato a questo coach, per esempio prima
   /// di una revoca, il collegamento si riprende: la prima sync, completa,
@@ -290,7 +306,6 @@ class InvitoLetto {
         await _c.eliminaCredenziali(altro);
       }
       await _c.impostaChiave(indirizzo, _chiave.privata);
-      await _c.tor.riavvia();
     });
     _c.segnala(id);
     return id;

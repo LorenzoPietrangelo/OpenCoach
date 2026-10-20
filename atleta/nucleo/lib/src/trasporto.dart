@@ -17,17 +17,16 @@ abstract interface class TrasportoTor {
   /// (§7.4). Il suo stato (consenso, guardie) resta salvato.
   Future<void> ferma();
 
-  /// Riavvia il client, che così scarta i descrittori in cache (§5.3,
-  /// punto 6).
-  Future<void> riavvia();
-
   /// Imposta la chiave privata X25519 di client authorization per
   /// [indirizzo] (senza ".onion"), al posto di quella eventualmente presente.
   ///
-  /// Le chiavi restano valide dopo [riavvia] e [ferma] ma solo in memoria,
-  /// mai nei file di Tor: l'app le imposta di nuovo a ogni esecuzione.
+  /// Le chiavi restano valide dopo [ferma] ma solo in memoria, mai nei file
+  /// di Tor: l'app le imposta di nuovo a ogni esecuzione.
   Future<void> impostaChiave(String indirizzo, Uint8List chiavePrivata);
 
+  /// Toglie la chiave per [indirizzo]. Tor scarta anche il descrittore di
+  /// quell'indirizzo che ha in cache: è così che l'app lo scarta dopo
+  /// l'abbinamento (§5.3, punto 6).
   Future<void> rimuoviChiave(String indirizzo);
 
   /// [HttpClient] che raggiunge gli indirizzi `.onion` attraverso il proxy

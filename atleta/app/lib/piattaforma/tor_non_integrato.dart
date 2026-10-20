@@ -16,9 +16,6 @@ class TorNonIntegrato implements TrasportoTor {
   Future<void> ferma() async {}
 
   @override
-  Future<void> riavvia() async {}
-
-  @override
   Future<void> impostaChiave(String indirizzo, Uint8List chiavePrivata) async {}
 
   @override

@@ -286,7 +286,6 @@ class TorFinto implements TrasportoTor {
   /// Il bootstrap non si completa: [avvia] lancia [TorNonParte].
   var nonParte = false;
   var avvii = 0;
-  var riavvii = 0;
   var arresti = 0;
 
   /// Tentativi di connessione, riusciti o no.
@@ -313,12 +312,6 @@ class TorFinto implements TrasportoTor {
   Future<void> ferma() async {
     attivo = false;
     arresti++;
-  }
-
-  @override
-  Future<void> riavvia() async {
-    attivo = true;
-    riavvii++;
   }
 
   @override

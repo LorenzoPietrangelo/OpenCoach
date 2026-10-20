@@ -202,22 +202,20 @@ class MotoreSync {
         ]);
         return;
       } catch (e) {
+        // Tor dà F5 finché le directory hanno il descrittore pubblicato
+        // prima della chiave del dispositivo: a ogni tentativo ne interroga
+        // un'altra.
         final tipo = classifica(e)?.tipo;
         final diRete =
             tipo == TipoGuasto.irraggiungibile ||
             tipo == TipoGuasto.chiaveRifiutata;
+        if (diRete) _c.registra('Conferma non riuscita: $e');
         final trascorso = _c.orologio.adesso().difference(inizio);
         if (!prolungata || !diRete || trascorso >= durataConferma) rethrow;
         await _c.orologio.attendi(attesa);
         attesa = attesa * 2 > _attesaConfermaMassima
             ? _attesaConfermaMassima
             : attesa * 2;
-        if (tipo == TipoGuasto.chiaveRifiutata) {
-          // Tor può avere in cache il descrittore pubblicato prima della
-          // chiave del dispositivo: il riavvio lo scarta.
-          await _c.tor.riavvia();
-          canale.rinnova();
-        }
       }
     }
   }
@@ -588,8 +586,10 @@ class MotoreSync {
         _c.registra('Errore imprevisto nella sync: $errore\n$traccia');
         return const _Fallimento(ProblemaSync.erroreImprevisto);
       case TipoGuasto.irraggiungibile:
+        _c.registra('Coach non raggiungibile: $errore');
         return const _Fallimento(ProblemaSync.coachIrraggiungibile);
       case TipoGuasto.chiaveRifiutata:
+        _c.registra('Tor non decifra il descrittore del coach: $errore');
         return const _Fallimento(
           ProblemaSync.coachIrraggiungibile,
           chiaveRifiutata: true,
@@ -676,26 +676,17 @@ class _Fallimento implements Exception {
   final bool rispostaRicevuta;
 }
 
-/// Client HTTP verso un coach attraverso Tor. Dopo un riavvio di Tor va
-/// rinnovato: le connessioni aperte non valgono più.
+/// Client HTTP verso un coach attraverso Tor, per una sync.
 class _Canale {
-  _Canale(this._c, this._indirizzo, this._token) {
-    rinnova();
+  _Canale(ContestoAtleta c, String indirizzo, String token)
+    : _http = c.tor.creaHttpClient() {
+    api = ClienteApi(indirizzo: indirizzo, http: _http, token: token);
   }
 
-  final ContestoAtleta _c;
-  final String _indirizzo;
-  final String _token;
-  HttpClient? _http;
-  late ClienteApi api;
+  final HttpClient _http;
+  late final ClienteApi api;
 
-  void rinnova() {
-    _http?.close(force: true);
-    final http = _http = _c.tor.creaHttpClient();
-    api = ClienteApi(indirizzo: _indirizzo, http: http, token: _token);
-  }
-
-  void chiudi() => _http?.close(force: true);
+  void chiudi() => _http.close(force: true);
 }
 
 /// Pagine di uno stato completo, da applicare insieme dopo l'ultima.

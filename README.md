@@ -9,7 +9,7 @@ Programma per coach e app per atleti, senza server: il PC del coach fa da server
 | Protocollo condiviso | `pacchetti/protocollo` | Fatto: codifiche, inviti, validazione di schede e log, messaggi dell'API, client HTTP via SOCKS5 |
 | Nucleo del programma del coach | `coach/nucleo` | Fatto: archivio SQLite, atleti, inviti, abbinamento, schede, sync, server HTTP, gestione di Tor |
 | Interfaccia del programma del coach (Flutter desktop) | `coach/app` | Da fare |
-| Nucleo dell'app dell'atleta | `atleta/nucleo` | Fatto: archivio SQLite, abbinamento, coda dei log, sync, stati e ritentativi per l'interfaccia, esecuzione degli allenamenti, trasporto Tor sulla porta di controllo |
+| Nucleo dell'app dell'atleta | `atleta/nucleo` | Fatto: archivio SQLite, abbinamento, coda dei log, sync, stati e ritentativi per l'interfaccia, esecuzione degli allenamenti, trasporto Tor sulla porta di controllo, provato sulla rete Tor vera con `atleta_dev` |
 | App dell'atleta (Flutter) | `atleta/app` | Iniziata: elenco dei coach, abbinamento con il link incollato, cassaforte su Keystore e Keychain, Tor su Android con tor-android (da provare su un telefono). Tor su iOS da fare |
 | Backup cifrato, esportazioni, «Reimposta identità» | `coach/nucleo` | Da fare |
 
@@ -19,7 +19,7 @@ Dart 3.11, quello incluso in Flutter 3.41.
 
 Gli hook di build di Dart, usati da `sqlite3`, non funzionano se l'SDK sta in un percorso con spazi. Su questo PC i comandi vanno lanciati con la copia senza spazi in `D:\opencoach-strumenti\dart-sdk\bin\dart.exe`, oppure con Flutter spostato in un percorso senza spazi, come consiglia la sua documentazione.
 
-Per l'app dell'atleta c'è una copia di Flutter senza spazi in `D:\opencoach-strumenti\flutter`. Per Android servono anche Java 17 e l'Android SDK con la piattaforma 36; Android Studio non è necessario.
+Per l'app dell'atleta c'è una copia di Flutter senza spazi in `D:\opencoach-strumenti\flutter`. Per Android servono anche Java 17 e l'Android SDK con le piattaforme 36 e 37 (tor-android chiede di compilare con la 37); Android Studio non è necessario.
 
 ## Comandi
 
@@ -61,3 +61,13 @@ dart run coach_nucleo:coach_dev --dati dati_dev --tor <percorso di tor.exe>
 ```
 
 Senza `--tor` il server resta raggiungibile solo in locale.
+
+Telefono dell'atleta da riga di comando, per provare l'app contro `coach_dev` sulla rete Tor vera. Ogni comando avvia tor, fa il suo lavoro e lo chiude; la cartella dati conserva archivio, chiavi e stato di tor, così gli avvii successivi sono rapidi:
+
+```
+cd atleta/nucleo
+dart run atleta_nucleo:atleta_dev --dati dati_dev --tor <percorso di tor.exe> invito "<link dell'invito>"
+dart run atleta_nucleo:atleta_dev --dati dati_dev --tor <percorso di tor.exe> allenamento
+```
+
+Gli altri comandi sono `sync`, `stato` e `schede`. `--verboso` mostra il registro del nucleo e quello di tor; con `--log-tor "[rend]info notice"` tor registra anche i passi dei servizi onion. Il link va tra virgolette, perché contiene `&`. Nella cartella dati chiavi e token stanno in chiaro: serve solo per le prove.

@@ -23,5 +23,6 @@ export 'src/pianificatore.dart';
 export 'src/problemi.dart';
 export 'src/schede.dart';
 export 'src/sincronizzazione.dart';
+export 'src/tor/avviatore_processo.dart';
 export 'src/tor/trasporto_controllato.dart';
 export 'src/trasporto.dart';

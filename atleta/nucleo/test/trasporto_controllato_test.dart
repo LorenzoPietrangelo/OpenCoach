@@ -33,6 +33,10 @@ class ControlloFinto {
   /// Rifiuta il proxy SOCKS su socket Unix, come un tor che non lo permette.
   var rifiutaUnix = false;
 
+  /// Indirizzi per cui Tor ha una chiave. Come tor 0.4.9 senza
+  /// `ClientOnionAuthDir`, ogni `SETCONF` riuscito le scarta tutte.
+  final chiavi = <String>{};
+
   int get porta => _server.port;
 
   void _accetta(Socket socket) {
@@ -63,10 +67,19 @@ class ControlloFinto {
       return '553 Unable to set option: Failed to bind one of the listener '
           'ports.\r\n';
     }
+    final parole = riga.split(' ');
+    switch (parole.first) {
+      case 'SETCONF':
+        chiavi.clear();
+      case 'ONION_CLIENT_AUTH_ADD':
+        chiavi.add(parole[1]);
+      case 'ONION_CLIENT_AUTH_REMOVE':
+        chiavi.remove(parole[1]);
+    }
+    // Niente `SIGNAL NEWNYM`: scarterebbe le chiavi del trasporto.
     const noti = [
       'AUTHENTICATE',
       'SETCONF ',
-      'SIGNAL NEWNYM',
       'ONION_CLIENT_AUTH_ADD ',
       'ONION_CLIENT_AUTH_REMOVE ',
     ];
@@ -232,16 +245,38 @@ void main() {
     },
   );
 
-  test('riavvia scarta la cache con NEWNYM, ferma toglie la rete', () async {
-    await tor.riavvia();
+  test('Tor scarta le chiavi a ogni SETCONF: avvia le ripassa', () async {
+    final indirizzo = 'e' * 56;
+    await tor.avvia();
+    await tor.impostaChiave(indirizzo, Uint8List(32));
+    expect(controllo.chiavi, {indirizzo});
+
+    // Come per una sync in background: la rete si spegne e si riaccende.
+    await tor.ferma();
+    expect(controllo.chiavi, isEmpty);
+    await tor.avvia();
+    expect(controllo.chiavi, {indirizzo});
+
+    // Anche con una connessione nuova, dopo la configurazione del proxy.
+    controllo.interrompi();
+    await tor.avvia();
+    expect(controllo.connessioni, 2);
+    expect(controllo.chiavi, {indirizzo});
+  });
+
+  test('ferma toglie la rete senza chiudere Tor', () async {
     await tor.ferma();
     expect(controllo.connessioni, 0, reason: 'senza Tor avviato non fa nulla');
 
     await tor.avvia();
     controllo.comandi.clear();
-    await tor.riavvia();
     await tor.ferma();
-    expect(controllo.comandi, ['SIGNAL NEWNYM', 'SETCONF DisableNetwork=1']);
+    expect(controllo.comandi, ['SETCONF DisableNetwork=1']);
+
+    // Riaccesa la rete, Tor è lo stesso, con la stessa connessione.
+    await tor.avvia();
+    expect(controllo.connessioni, 1);
+    expect(avviatore.avvii, 1);
   });
 
   test('le connessioni passano dal proxy SOCKS che indica Tor', () async {

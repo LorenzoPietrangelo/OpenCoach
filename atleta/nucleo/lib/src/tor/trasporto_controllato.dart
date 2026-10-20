@@ -44,12 +44,13 @@ class AccessoControllo {
 ///   socket Unix: così Tor lo usa solo l'app (§10.1). La porta HTTP di
 ///   tunnel resta chiusa.
 /// - Le chiavi di client authorization passano con `ONION_CLIENT_AUTH_ADD`
-///   senza `Permanent`: restano in memoria, mai nei file di Tor, e si
-///   reimpostano a ogni nuova connessione.
+///   senza `Permanent`: restano in memoria, mai nei file di Tor. Tor però le
+///   scarta tutte a ogni `SETCONF`, perché ricarica la client authorization
+///   da `ClientOnionAuthDir`, e con `SIGNAL NEWNYM`: per questo [avvia] le
+///   ripassa dopo i suoi `SETCONF`, e il trasporto non manda mai NEWNYM.
 /// - [ferma] toglie la rete a Tor (`DisableNetwork`) invece di chiuderlo:
-///   l'API di tor sconsiglia di riavviarlo nello stesso processo.
-/// - [riavvia] usa `SIGNAL NEWNYM`, che scarta i descrittori dei servizi onion
-///   in cache e i circuiti.
+///   l'API di tor sconsiglia di riavviarlo nello stesso processo. Anche questo
+///   `SETCONF` scarta le chiavi, che tornano al prossimo [avvia].
 class TrasportoTorControllato implements TrasportoTor {
   TrasportoTorControllato(
     this._avviatore, {
@@ -101,6 +102,9 @@ class TrasportoTorControllato implements TrasportoTor {
         await _configuraProxy(controllo);
         _configurato = controllo;
       }
+      for (final indirizzo in List.of(_chiavi.keys)) {
+        await _aggiungiChiave(controllo, indirizzo);
+      }
     } on TorNonParte {
       rethrow;
     } on Object catch (e) {
@@ -120,19 +124,8 @@ class TrasportoTorControllato implements TrasportoTor {
     }
   }
 
-  @override
-  Future<void> riavvia() async {
-    final controllo = _attivo;
-    if (controllo == null) return;
-    try {
-      await controllo.invia('SIGNAL NEWNYM');
-    } on Object catch (e) {
-      _registra('Tor non ha scartato la cache: $e');
-    }
-  }
-
   // Le chiavi restano comunque nella mappa: se Tor non le riceve ora, le
-  // riceve alla prossima connessione alla porta di controllo.
+  // riceve al prossimo avvio.
 
   @override
   Future<void> impostaChiave(String indirizzo, Uint8List chiavePrivata) async {
@@ -168,8 +161,7 @@ class TrasportoTorControllato implements TrasportoTor {
     return controllo == null || controllo.chiusa ? null : controllo;
   }
 
-  /// La connessione alla porta di controllo, aperta e autenticata se serve,
-  /// con le chiavi di client authorization.
+  /// La connessione alla porta di controllo, aperta e autenticata se serve.
   Future<ConnessioneControllo> _collega(DateTime scadenza) async {
     final esistente = _attivo;
     if (esistente != null) return esistente;
@@ -184,9 +176,6 @@ class TrasportoTorControllato implements TrasportoTor {
       );
       _controllo = controllo;
       _accesso = accesso;
-      for (final indirizzo in List.of(_chiavi.keys)) {
-        await _aggiungiChiave(controllo, indirizzo);
-      }
       return controllo;
     } on Object {
       await controllo.chiudi();

@@ -8,6 +8,7 @@ import 'package:protocollo/protocollo.dart';
 import 'app.dart';
 import 'piattaforma/avviatore_android.dart';
 import 'piattaforma/cassaforte_sicura.dart';
+import 'piattaforma/inviti_in_arrivo.dart';
 import 'piattaforma/sync_in_background.dart';
 import 'piattaforma/tor_non_integrato.dart';
 
@@ -16,11 +17,13 @@ const versioneApp = '1.0.0';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Prima di ogni await: il link che apre l'app arriva subito.
+  final inviti = InvitiInArrivo();
   final nucleo = await creaNucleo();
   // Su iOS la sync in background (BGAppRefreshTask) non è ancora integrata.
   final background = Platform.isAndroid ? SyncInBackground(nucleo) : null;
   await background?.collega();
-  runApp(AppAtleta(nucleo: nucleo, background: background));
+  runApp(AppAtleta(nucleo: nucleo, background: background, inviti: inviti));
 }
 
 /// Avvio senza interfaccia, per una sync in background con l'app chiusa: lo
@@ -29,13 +32,15 @@ Future<void> main() async {
 @pragma('vm:entry-point')
 Future<void> avvioInBackground() async {
   WidgetsFlutterBinding.ensureInitialized();
+  // Se l'app si apre con un link, il link arriva a questo motore.
+  final inviti = InvitiInArrivo();
   final nucleo = await creaNucleo();
   var mostrata = false;
   late final SyncInBackground background;
   void mostra() {
     if (mostrata) return;
     mostrata = true;
-    runApp(AppAtleta(nucleo: nucleo, background: background));
+    runApp(AppAtleta(nucleo: nucleo, background: background, inviti: inviti));
   }
 
   background = SyncInBackground(nucleo, mostraInterfaccia: mostra);

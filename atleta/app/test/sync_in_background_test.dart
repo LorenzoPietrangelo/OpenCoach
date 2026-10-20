@@ -142,7 +142,10 @@ void main() {
       MaterialApp(
         localizationsDelegates: Testi.localizationsDelegates,
         supportedLocales: Testi.supportedLocales,
-        home: Impostazioni(background: SyncInBackground(nucleo)),
+        home: Impostazioni(
+          nucleo: nucleo,
+          background: SyncInBackground(nucleo),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -169,7 +172,10 @@ void main() {
       MaterialApp(
         localizationsDelegates: Testi.localizationsDelegates,
         supportedLocales: Testi.supportedLocales,
-        home: Impostazioni(background: SyncInBackground(nucleo)),
+        home: Impostazioni(
+          nucleo: nucleo,
+          background: SyncInBackground(nucleo),
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -189,7 +195,7 @@ void main() {
       MaterialApp(
         localizationsDelegates: Testi.localizationsDelegates,
         supportedLocales: Testi.supportedLocales,
-        home: const Impostazioni(),
+        home: Impostazioni(nucleo: nucleo),
       ),
     );
     await tester.pumpAndSettle();

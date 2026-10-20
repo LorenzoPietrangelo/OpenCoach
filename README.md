@@ -10,7 +10,7 @@ Programma per coach e app per atleti, senza server: il PC del coach fa da server
 | Nucleo del programma del coach | `coach/nucleo` | Fatto: archivio SQLite, atleti, inviti, abbinamento, schede, sync, server HTTP, gestione di Tor |
 | Interfaccia del programma del coach (Flutter desktop) | `coach/app` | Da fare |
 | Nucleo dell'app dell'atleta | `atleta/nucleo` | Fatto: archivio SQLite, abbinamento, coda dei log, sync, stati e ritentativi per l'interfaccia, esecuzione degli allenamenti, trasporto Tor sulla porta di controllo, provato sulla rete Tor vera con `atleta_dev` |
-| App dell'atleta (Flutter) | `atleta/app` | Iniziata: elenco dei coach, abbinamento con il link incollato, cassaforte su Keystore e Keychain, Tor su Android con tor-android, provato su un telefono (abbinamento e sync sulla rete Tor vera), sync in background con WorkManager e notifiche delle schede nuove su Android, impostazioni con la frequenza della sync. Tor e sync in background su iOS da fare |
+| App dell'atleta (Flutter) | `atleta/app` | Fatta su Android: elenco dei coach, abbinamento con il QR o con il link (incollato o aperto da un'altra app), schede con l'archivio, esecuzione degli allenamenti con il timer di recupero, storico con modifica, eliminazione e rinvio dei rifiutati, impostazioni con i coach collegati, lo scollegamento, la frequenza della sync e l'esportazione JSON. Cassaforte su Keystore e Keychain, Tor su Android con tor-android, provato su un telefono (abbinamento e sync sulla rete Tor vera), sync in background con WorkManager e notifiche delle schede nuove. Le schermate nuove e l'apertura dei link non sono ancora state provate su un telefono. Tor e sync in background su iOS da fare |
 | Backup cifrato, esportazioni, «Reimposta identità» | `coach/nucleo` | Da fare |
 
 ## Requisiti
@@ -20,6 +20,14 @@ Dart 3.11, quello incluso in Flutter 3.41.
 Gli hook di build di Dart, usati da `sqlite3`, non funzionano se l'SDK sta in un percorso con spazi. Su questo PC i comandi vanno lanciati con la copia senza spazi in `D:\opencoach-strumenti\dart-sdk\bin\dart.exe`, oppure con Flutter spostato in un percorso senza spazi, come consiglia la sua documentazione.
 
 Per l'app dell'atleta c'è una copia di Flutter senza spazi in `D:\opencoach-strumenti\flutter`. Per Android servono anche Java 17 e l'Android SDK con le piattaforme 36 e 37 (tor-android chiede di compilare con la 37); Android Studio non è necessario.
+
+Anche l'Android SDK va raggiunto da un percorso senza spazi, perché la scansione dei QR (flutter_zxing) compila zxing-cpp con il NDK. Con gli spazi CMake passa il nome breve di `clang++.exe` (`CLANG_~1.EXE`), clang non si accorge che è C++ e il collegamento fallisce con simboli `std::__ndk1` mancanti. Su questo PC `D:\opencoach-strumenti\android-sdk` è un collegamento (junction) all'SDK in `%LOCALAPPDATA%\Android\Sdk`, indicato a Flutter con:
+
+```
+flutter config --android-sdk D:\opencoach-strumenti\android-sdk
+```
+
+La prima compilazione scarica anche il NDK 27.0.12077973, quello predefinito di AGP che usa il modulo di flutter_zxing.
 
 ## Comandi
 
@@ -53,6 +61,12 @@ adb shell am broadcast -n org.opencoach.atleta_app/.SyncDiProva
 ```
 
 Le sync in background partono solo se nelle impostazioni del telefono la batteria dell'app non è «Limitata»; le impostazioni dell'app lo segnalano.
+
+Un link d'invito si apre sul telefono come se arrivasse da un'altra app. Le virgolette doppie sono per la shell del PC, le singole per quella del telefono, perché il link contiene `&`:
+
+```
+adb shell "am start -a android.intent.action.VIEW -d '<link>'"
+```
 
 Prova sulla rete Tor vera, che dura qualche minuto. Serve l'eseguibile `tor` del Tor Expert Bundle:
 

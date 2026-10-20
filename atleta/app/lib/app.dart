@@ -4,18 +4,27 @@ import 'package:atleta_nucleo/atleta_nucleo.dart';
 import 'package:flutter/material.dart';
 
 import 'l10n/testi.dart';
+import 'piattaforma/inviti_in_arrivo.dart';
 import 'piattaforma/sync_in_background.dart';
 import 'schermate/elenco_coach.dart';
 
 /// L'app dell'atleta sopra il nucleo: le sync automatiche seguono il primo
 /// piano e il background (§7.4).
 class AppAtleta extends StatefulWidget {
-  const AppAtleta({super.key, required this.nucleo, this.background});
+  const AppAtleta({
+    super.key,
+    required this.nucleo,
+    this.background,
+    this.inviti,
+  });
 
   final NucleoAtleta nucleo;
 
   /// La sync in background con WorkManager; null dove non c'è (iOS, test).
   final SyncInBackground? background;
+
+  /// I link d'invito aperti da un'altra app; null nei test che non li usano.
+  final InvitiInArrivo? inviti;
 
   @override
   State<AppAtleta> createState() => _AppAtletaState();
@@ -60,6 +69,10 @@ class _AppAtletaState extends State<AppAtleta> {
     localizationsDelegates: Testi.localizationsDelegates,
     supportedLocales: Testi.supportedLocales,
     theme: ThemeData(colorSchemeSeed: Colors.teal),
-    home: ElencoCoach(nucleo: widget.nucleo, background: widget.background),
+    home: ElencoCoach(
+      nucleo: widget.nucleo,
+      background: widget.background,
+      inviti: widget.inviti,
+    ),
   );
 }

@@ -16,10 +16,12 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   flutter_secure_storage: ^11.2.0
+  flutter_zxing: ^3.1.0
   intl: any
   path_provider: ^2.1.6
   protocollo:
     path: ../../pacchetti/protocollo
+  share_plus: ^13.3.1
 
 dev_dependencies:
   flutter_lints: ^6.0.0

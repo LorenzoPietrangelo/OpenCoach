@@ -8,6 +8,22 @@
          in un servizio in primo piano. -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
+    <!-- Scansione del QR d'invito (§5.2). Senza fotocamera il link si incolla
+         a mano, quindi l'app si installa anche sui telefoni che non ce
+         l'hanno. -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-feature
+        android:name="android.hardware.camera.any"
+        android:required="false"
+        tools:replace="android:required"/>
+    <!-- Senza questa riga Google Play, vedendo il permesso CAMERA, darebbe per
+         obbligatoria la fotocamera posteriore. -->
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
+    <!-- Il plugin della fotocamera dichiara anche microfono e memoria esterna,
+         e quest'ultima implica la lettura: per leggere un QR non servono. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" tools:node="remove"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" tools:node="remove"/>
     <!-- Chiavi e token non devono finire nei backup né passare a un nuovo
          telefono (§4): dopo un ripristino il Keystore non li decifrerebbe.
          Fuori dai backup resta tutto, anche l'archivio. -->
@@ -18,10 +34,14 @@
         android:allowBackup="false"
         android:fullBackupContent="false"
         android:dataExtractionRules="@xml/data_extraction_rules">
+        <!-- singleTask: un link aperto da un'altra app non crea una seconda
+             MainActivity nel compito di quell'app. Due attività sullo stesso
+             motore del processo non possono convivere: la seconda staccherebbe
+             la prima, che resterebbe vuota. -->
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:launchMode="singleTop"
+            android:launchMode="singleTask"
             android:taskAffinity=""
             android:theme="@style/LaunchTheme"
             android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
@@ -39,11 +59,30 @@
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
+            <!-- Il link d'invito aperto da un'altra app (§5.2, §5.3). -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:scheme="opencoach" android:host="invito"/>
+            </intent-filter>
+            <!-- Il link lo passa MainActivity al codice Dart: con il motore
+                 del processo già avviato, Flutter da solo perderebbe quello
+                 che apre l'app. -->
+            <meta-data
+                android:name="flutter_deeplinking_enabled"
+                android:value="false"/>
         </activity>
         <service
             android:name="androidx.work.impl.foreground.SystemForegroundService"
             android:foregroundServiceType="dataSync"
             tools:node="merge" />
+        <!-- flutter_zxing porta con sé image_picker, che chiede a Google Play
+             services di installare il selettore di foto. L'app non sceglie
+             foto: la richiesta si toglie. -->
+        <service
+            android:name="com.google.android.gms.metadata.ModuleDependencies"
+            tools:node="remove" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

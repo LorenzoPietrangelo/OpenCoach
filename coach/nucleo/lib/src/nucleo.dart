@@ -7,10 +7,13 @@ import 'atleti.dart';
 import 'contesto.dart';
 import 'dispositivi.dart';
 import 'errori.dart';
+import 'esportazioni.dart';
 import 'eventi.dart';
+import 'identita.dart';
 import 'inviti.dart';
 import 'schede.dart';
 import 'sincronizzazione.dart';
+import 'tempo.dart';
 
 /// Il programma del coach senza rete: archivio e regole di abbinamento e
 /// sincronizzazione. Il server HTTP e Tor gli stanno attorno.
@@ -41,6 +44,35 @@ class NucleoCoach {
   late final sincronizzazione = _budgetPagina == null
       ? ServizioSincronizzazione(contesto, schede)
       : ServizioSincronizzazione(contesto, schede, budgetPagina: _budgetPagina);
+  late final esportazioni = GestioneEsportazioni(
+    contesto,
+    atleti,
+    schede,
+    allenamenti,
+  );
+
+  /// Passa a una nuova identità (§4): salva il seme già cifrato, revoca
+  /// tutti i telefoni, annulla gli inviti e cambia epoca. Gli atleti vanno
+  /// reinvitati. Ripubblicare l'onion service spetta a chi gestisce Tor.
+  void reimpostaIdentita(String nuovoIndirizzo, List<int> semeCifrato) {
+    final archivio = contesto.archivio;
+    final ora = contesto.adesso();
+    archivio.transazione(() {
+      scriviIdentita(archivio, nuovoIndirizzo, semeCifrato, ora);
+      archivio.db.execute(
+        "UPDATE dispositivi SET stato = 'revocato', revocato_il = ? "
+        "WHERE stato = 'attivo'",
+        [istante(ora)],
+      );
+      archivio.db.execute(
+        "UPDATE inviti SET stato = 'annullato', segreto = NULL, "
+        "chiave_privata = NULL WHERE stato IN ('aperto', 'in_abbinamento')",
+      );
+      archivio.rigeneraEpoca();
+    });
+    contesto.indirizzo = nuovoIndirizzo;
+    contesto.segnalaChiaviCambiate();
+  }
 
   /// Indirizzo onion del coach, senza ".onion".
   String get indirizzo => contesto.indirizzo;

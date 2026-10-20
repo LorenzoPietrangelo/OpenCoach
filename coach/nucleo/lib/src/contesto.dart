@@ -14,8 +14,9 @@ class ContestoCoach {
 
   final Archivio archivio;
 
-  /// Indirizzo onion del coach, senza ".onion".
-  final String indirizzo;
+  /// Indirizzo onion del coach, senza ".onion". Cambia solo quando il coach
+  /// reimposta l'identità.
+  String indirizzo;
   final String versioneProgramma;
   final DateTime Function() adesso;
 

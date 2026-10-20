@@ -55,7 +55,7 @@ Future<Identita> caricaOCreaIdentita(
   Portachiavi portachiavi, {
   DateTime Function() adesso = DateTime.now,
 }) async {
-  var chiaveLocale = await portachiavi.leggi(_voceChiaveLocale);
+  final chiaveLocale = await portachiavi.leggi(_voceChiaveLocale);
   final riga = archivio.db
       .select('SELECT seme_cifrato, indirizzo FROM identita WHERE id = 1')
       .firstOrNull;
@@ -75,16 +75,36 @@ Future<Identita> caricaOCreaIdentita(
     return identita;
   }
 
+  final identita = await Identita.genera();
+  scriviIdentita(
+    archivio,
+    identita.indirizzo,
+    await cifraSeme(portachiavi, identita),
+    adesso(),
+  );
+  return identita;
+}
+
+/// Seme di [identita] cifrato con la chiave locale del [portachiavi], che
+/// viene creata se manca.
+Future<Uint8List> cifraSeme(Portachiavi portachiavi, Identita identita) async {
+  var chiaveLocale = await portachiavi.leggi(_voceChiaveLocale);
   if (chiaveLocale == null) {
     chiaveLocale = byteCasuali(32);
     await portachiavi.scrivi(_voceChiaveLocale, chiaveLocale);
   }
-  final identita = await Identita.genera();
-  final cifrato = await cifra(chiaveLocale, identita.seme);
-  archivio.db.execute(
-    'INSERT INTO identita (id, seme_cifrato, indirizzo, creata_il) '
-    'VALUES (1, ?, ?, ?)',
-    [cifrato, identita.indirizzo, istante(adesso())],
-  );
-  return identita;
+  return cifra(chiaveLocale, identita.seme);
 }
+
+/// Salva nell'archivio l'identità con il seme già cifrato da [cifraSeme],
+/// sostituendo quella che c'era.
+void scriviIdentita(
+  Archivio archivio,
+  String indirizzo,
+  List<int> semeCifrato,
+  DateTime ora,
+) => archivio.db.execute(
+  'INSERT OR REPLACE INTO identita (id, seme_cifrato, indirizzo, creata_il) '
+  'VALUES (1, ?, ?, ?)',
+  [semeCifrato, indirizzo, istante(ora)],
+);

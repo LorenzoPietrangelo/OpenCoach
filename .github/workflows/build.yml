@@ -1,0 +1,109 @@
+# Test di tutti i pacchetti e build del programma del coach per Windows,
+# con Tor incluso e installer. Gira sui server di GitHub, che hanno Visual
+# Studio: in locale non serve.
+name: Build e test
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  FLUTTER_VERSION: 3.41.9
+  # Versione del Tor Browser da cui prendere il Tor Expert Bundle (§9.2).
+  TOR_BROWSER_VERSION: 15.0.25
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Dipendenze del workspace
+        run: dart pub get
+
+      - name: Analisi dei pacchetti Dart
+        run: dart analyze pacchetti/protocollo coach/nucleo atleta/nucleo
+
+      - name: Test del protocollo
+        working-directory: pacchetti/protocollo
+        run: dart test
+
+      - name: Test del nucleo del coach
+        working-directory: coach/nucleo
+        run: dart test
+
+      - name: Test del nucleo dell'atleta
+        working-directory: atleta/nucleo
+        run: dart test
+
+      - name: Programma del coach
+        working-directory: coach/app
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test
+
+      - name: App dell'atleta
+        working-directory: atleta/app
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test
+
+  windows:
+    name: Programma del coach per Windows
+    runs-on: windows-latest
+    needs: test
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Tor Expert Bundle, verificato con le somme ufficiali
+        shell: bash
+        run: |
+          base="https://dist.torproject.org/torbrowser/${TOR_BROWSER_VERSION}"
+          file="tor-expert-bundle-windows-x86_64-${TOR_BROWSER_VERSION}.tar.gz"
+          curl -sSfLO "$base/$file"
+          curl -sSfLO "$base/sha256sums-signed-build.txt"
+          grep " $file\$" sha256sums-signed-build.txt | sha256sum -c -
+          mkdir -p tor-bundle
+          tar -xzf "$file" -C tor-bundle
+          mkdir -p coach/app/windows/tor
+          cp -r tor-bundle/tor/. coach/app/windows/tor/
+
+      - name: Build
+        working-directory: coach/app
+        run: |
+          flutter pub get
+          flutter build windows --release
+
+      - name: Installer
+        working-directory: coach/app
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup --no-progress -y
+          }
+          & $iscc /DVersione=1.0.0 installer\opencoach.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: OpenCoach-windows
+          path: coach/app/build/installer/*.exe
+          if-no-files-found: error

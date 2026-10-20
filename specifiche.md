@@ -437,7 +437,7 @@ Atleti:
 - generare, mostrare di nuovo e annullare un invito;
 - vedere per ogni atleta stato, dispositivo, versione dell'app e ultimo contatto;
 - revocare il dispositivo: il token smette di valere subito e il servizio viene ripubblicato senza la sua chiave;
-- esportare i dati di un atleta in JSON e CSV.
+- esportare i dati di un atleta in JSON (anagrafica, schede con le revisioni, allenamenti) e in CSV (una riga per serie, nel formato che Excel in italiano apre direttamente). Le note private entrano nell'esportazione solo se il coach lo chiede, perché il file può finire all'atleta.
 
 Schede:
 

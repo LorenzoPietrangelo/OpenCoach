@@ -1,0 +1,41 @@
+name: coach_app
+description: "Programma del coach di Open Coach."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.5
+
+dependencies:
+  coach_nucleo:
+    path: ../nucleo
+  file_selector: ^1.1.0
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  flutter_secure_storage: ^10.3.4
+  intl: any
+  launch_at_startup: ^0.5.1
+  local_notifier: ^0.1.6
+  path: ^1.9.0
+  path_provider: ^2.1.6
+  protocollo:
+    path: ../../pacchetti/protocollo
+  qr_flutter: ^4.1.0
+  tray_manager: ^0.5.3
+  wakelock_plus: ^1.5.2
+  window_manager: ^0.5.2
+
+dev_dependencies:
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  generate: true
+  uses-material-design: true
+  # Icona dell'area di notifica (tool/genera_icone.dart).
+  assets:
+    - assets/icona.png
+    - assets/icona.ico

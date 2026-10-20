@@ -98,6 +98,9 @@ abstract final class Impostazioni {
   static const sequenza = 'sequenza';
   static const nomeCoach = 'nome_coach';
   static const versioneAppMinima = 'versione_app_minima';
+  static const cartellaBackup = 'cartella_backup';
+  static const giorniTraBackup = 'giorni_tra_backup';
+  static const ultimoBackup = 'ultimo_backup';
 }
 
 const _migrazioni = [

@@ -1,10 +1,10 @@
 {
   "@@locale": "it",
   "nomeApp": "Open Coach",
-  "nessunCoach": "Nessun coach collegato. Aggiungi il tuo coach con il link d'invito che ti ha dato.",
+  "nessunCoach": "Nessun coach collegato. Aggiungi il tuo coach con il QR o con il link d'invito che ti ha dato.",
   "aggiungiCoach": "Aggiungi coach",
   "titoloInvito": "Collegati al tuo coach",
-  "spiegazioneInvito": "Incolla il link d'invito che ti ha dato il coach. Va trattato come una password.",
+  "spiegazioneInvito": "Scansiona il QR che il coach ti mostra sul suo PC. Se invece ti ha dato un link d'invito, aprilo o incollalo qui sotto: va trattato come una password.",
   "etichettaInvito": "Link d'invito",
   "continua": "Continua",
   "collegartiA": "Collegarti a {nome}?",
@@ -56,5 +56,295 @@
         "type": "String"
       }
     }
-  }
+  },
+  "coachNonPiuPresente": "Questo coach non è più sul telefono.",
+  "schede": "Schede",
+  "storico": "Storico",
+  "sincronizzaOra": "Sincronizza ora",
+  "allenamentoLibero": "Allenamento libero",
+  "allenamento": "Allenamento",
+  "allenamentoSalvato": "Allenamento salvato",
+  "nessunaScheda": "Il coach non ti ha ancora mandato schede: arriveranno con la prossima sync.",
+  "archivio": "Archivio",
+  "daVedere": "Da vedere",
+  "validaDal": "Dal {inizio}",
+  "@validaDal": {
+    "placeholders": {
+      "inizio": {
+        "type": "String"
+      }
+    }
+  },
+  "validaDalAl": "Dal {inizio} al {fine}",
+  "@validaDalAl": {
+    "placeholders": {
+      "inizio": {
+        "type": "String"
+      },
+      "fine": {
+        "type": "String"
+      }
+    }
+  },
+  "numeroSedute": "{numero, plural, =0{Nessuna seduta} =1{1 seduta} other{{numero} sedute}}",
+  "@numeroSedute": {
+    "placeholders": {
+      "numero": {
+        "type": "int"
+      }
+    }
+  },
+  "schedeDaVedere": "{numero, plural, =1{1 scheda da vedere} other{{numero} schede da vedere}}",
+  "@schedeDaVedere": {
+    "placeholders": {
+      "numero": {
+        "type": "int"
+      }
+    }
+  },
+  "nessunAllenamento": "Nessun allenamento con questo coach. Inizia una seduta da una scheda, oppure registra un allenamento libero.",
+  "minuti": "{numero} min",
+  "@minuti": {
+    "placeholders": {
+      "numero": {
+        "type": "int"
+      }
+    }
+  },
+  "logRifiutati": "{numero, plural, =1{1 allenamento rifiutato dal coach} other{{numero} allenamenti rifiutati dal coach}}",
+  "@logRifiutati": {
+    "placeholders": {
+      "numero": {
+        "type": "int"
+      }
+    }
+  },
+  "logRifiutato": "Rifiutato dal coach: {motivo}",
+  "@logRifiutato": {
+    "placeholders": {
+      "motivo": {
+        "type": "String"
+      }
+    }
+  },
+  "inAttesaDiInvio": "In attesa di invio",
+  "inviatoAlCoach": "Inviato al coach",
+  "rifiutoNonValido": "non rispetta il formato di Open Coach",
+  "rifiutoTroppoGrande": "è troppo grande",
+  "rifiutoAltroAtleta": "risulta di un altro atleta",
+  "rifiutoAltro": "motivo «{codice}»",
+  "@rifiutoAltro": {
+    "placeholders": {
+      "codice": {
+        "type": "String"
+      }
+    }
+  },
+  "schedaNonPiuPresente": "Questa scheda non è più sul telefono.",
+  "revisioneRicevuta": "Revisione {revisione}, ricevuta il {data}",
+  "@revisioneRicevuta": {
+    "placeholders": {
+      "revisione": {
+        "type": "int"
+      },
+      "data": {
+        "type": "String"
+      }
+    }
+  },
+  "revisioneNuova": "Revisione nuova",
+  "schedaArchiviata": "Scheda archiviata: puoi consultarla ma non eseguirla.",
+  "collegamentoChiuso": "Il collegamento con questo coach è chiuso: schede e allenamenti sono in sola lettura.",
+  "inizia": "Inizia",
+  "serieRipetizioni": "{serie} × {ripetizioni}",
+  "@serieRipetizioni": {
+    "placeholders": {
+      "serie": {
+        "type": "int"
+      },
+      "ripetizioni": {
+        "type": "String"
+      }
+    }
+  },
+  "numeroSerie": "{numero, plural, =1{1 serie} other{{numero} serie}}",
+  "@numeroSerie": {
+    "placeholders": {
+      "numero": {
+        "type": "int"
+      }
+    }
+  },
+  "recuperoDi": "recupero {durata}",
+  "@recuperoDi": {
+    "placeholders": {
+      "durata": {
+        "type": "String"
+      }
+    }
+  },
+  "timerRecupero": "Timer di recupero",
+  "recupero": "Recupero",
+  "recuperoFinito": "Recupero finito",
+  "menoQuindiciSecondi": "−15 s",
+  "piuQuindiciSecondi": "+15 s",
+  "salta": "Salta",
+  "chiudi": "Chiudi",
+  "salva": "Salva",
+  "salvaAllenamento": "Salva l'allenamento",
+  "aggiungiEsercizio": "Aggiungi esercizio",
+  "nomeEsercizio": "Nome dell'esercizio",
+  "aggiungi": "Aggiungi",
+  "rinomina": "Rinomina",
+  "leTueNote": "Le tue note",
+  "tueNote": "Le tue note: {note}",
+  "@tueNote": {
+    "placeholders": {
+      "note": {
+        "type": "String"
+      }
+    }
+  },
+  "misuraATempo": "Misura a tempo",
+  "misuraARipetizioni": "Misura a ripetizioni",
+  "togliUltimaSerie": "Togli l'ultima serie",
+  "togliEsercizio": "Togli l'esercizio",
+  "aggiungiSerie": "Aggiungi serie",
+  "serie": "Serie",
+  "ripetizioniBreve": "Rip.",
+  "secondiBreve": "Sec",
+  "kg": "Kg",
+  "rpe": "RPE",
+  "fatta": "Fatta",
+  "nonFatta": "Non fatta",
+  "nessunEsercizio": "Aggiungi gli esercizi che fai.",
+  "rpeSeduta": "Sforzo percepito della seduta (RPE)",
+  "noteAllenamento": "Note sull'allenamento",
+  "inizioAllenamento": "Inizio",
+  "durataMinuti": "Durata in minuti",
+  "durataAutomatica": "Se la lasci vuota, va dall'inizio al salvataggio.",
+  "valoreNonValido": "Valore non valido",
+  "correggiValori": "Correggi i valori segnati in rosso.",
+  "allenamentoNonValido": "Non riesco a salvare l'allenamento: {dettagli}",
+  "@allenamentoNonValido": {
+    "placeholders": {
+      "dettagli": {
+        "type": "String"
+      }
+    }
+  },
+  "uscireSenzaSalvare": "Uscire senza salvare?",
+  "allenamentoPerso": "L'allenamento non salvato andrà perso.",
+  "modifichePerse": "Le modifiche non salvate andranno perse.",
+  "resta": "Resta",
+  "esci": "Esci",
+  "coachDellAllenamento": "Coach",
+  "modifica": "Modifica",
+  "elimina": "Elimina",
+  "modificheSalvate": "Modifiche salvate",
+  "eliminareAllenamento": "Eliminare l'allenamento?",
+  "spiegazioneElimina": "Sparirà anche dal PC del coach alla prossima sync.",
+  "allenamentoInCoda": "L'allenamento partirà con la prossima sync.",
+  "rimettiInCoda": "Invia di nuovo",
+  "allenamentoEliminato": "Questo allenamento è stato eliminato.",
+  "durataDi": "Durata: {minuti} min",
+  "@durataDi": {
+    "placeholders": {
+      "minuti": {
+        "type": "int"
+      }
+    }
+  },
+  "rpeDellaSeduta": "RPE della seduta: {valore}",
+  "@rpeDellaSeduta": {
+    "placeholders": {
+      "valore": {
+        "type": "String"
+      }
+    }
+  },
+  "ripetizioniN": "{numero} rip.",
+  "@ripetizioniN": {
+    "placeholders": {
+      "numero": {
+        "type": "int"
+      }
+    }
+  },
+  "secondiN": "{numero} s",
+  "@secondiN": {
+    "placeholders": {
+      "numero": {
+        "type": "int"
+      }
+    }
+  },
+  "chiliN": "{valore} kg",
+  "@chiliN": {
+    "placeholders": {
+      "valore": {
+        "type": "String"
+      }
+    }
+  },
+  "rpeN": "RPE {valore}",
+  "@rpeN": {
+    "placeholders": {
+      "valore": {
+        "type": "String"
+      }
+    }
+  },
+  "nessunValore": "nessun valore",
+  "coachCollegati": "Coach collegati",
+  "nessunCoachAncora": "Non hai ancora collegato nessun coach.",
+  "scollega": "Scollegati",
+  "cancella": "Cancella",
+  "conserva": "Conserva",
+  "scollegartiDa": "Scollegarti da {nome}?",
+  "@scollegartiDa": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
+  "spiegazioneScollega": "Il telefono lo dice al coach, se il suo PC è raggiungibile, e smette di sincronizzare. Schede e allenamenti restano sul telefono finché non li cancelli.",
+  "logNonInviati": "{numero, plural, =1{1 allenamento in attesa di invio non arriverà al coach.} other{{numero} allenamenti in attesa di invio non arriveranno al coach.}}",
+  "@logNonInviati": {
+    "placeholders": {
+      "numero": {
+        "type": "int"
+      }
+    }
+  },
+  "scollegamentoInCorso": "Scollegamento in corso…",
+  "scollegamentoNonRiuscito": "Scollegamento non riuscito. Riprova.",
+  "coachAvvisato": "Il coach ha ricevuto lo scollegamento.",
+  "coachNonAvvisato": "Il PC del coach non era raggiungibile: il collegamento resta attivo sul suo PC finché non lo chiude lui.",
+  "cancellareDatiDi": "Cancellare i dati di {nome}?",
+  "@cancellareDatiDi": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
+  "spiegazioneCancellaDati": "Schede e allenamenti di questo coach spariranno dal telefono e non si potranno recuperare. Se vuoi conservarli, prima esportali.",
+  "tuoiDati": "I tuoi dati",
+  "esportaDati": "Esporta i tuoi dati",
+  "spiegazioneEsporta": "Coach, schede e allenamenti in un file JSON, senza chiavi né token.",
+  "esportazioneNonRiuscita": "Esportazione non riuscita.",
+  "serieFatta": "Serie {numero} fatta",
+  "@serieFatta": {
+    "placeholders": {
+      "numero": {
+        "type": "int"
+      }
+    }
+  },
+  "scansionaQr": "Scansiona il QR",
+  "inquadraQr": "Inquadra il QR d'invito che il coach ti mostra sul suo PC.",
+  "oppureIncolla": "Oppure incolla il link d'invito",
+  "fotocameraNonDisponibile": "Non riesco ad aprire la fotocamera. Controlla che Open Coach abbia il permesso nelle impostazioni del telefono, oppure torna indietro e incolla il link d'invito."
 }

@@ -25,12 +25,18 @@ class ErroreApi implements Exception {
 /// [HttpClient] che raggiunge gli indirizzi `.onion` attraverso il proxy
 /// SOCKS5 di Tor in [socksHost]:[socksPorta]; [socksHost] può essere anche un
 /// socket Unix (vedi [connettiTramiteSocks5]).
+///
+/// Se Tor non completa la connessione entro [timeoutConnessione] la richiesta
+/// fallisce con una [SocketException], come una connessione diretta.
 HttpClient clienteHttpTramiteTor({
   required Object socksHost,
   required int socksPorta,
   Duration timeoutConnessione = const Duration(seconds: 90),
 }) {
   return HttpClient()
+    // HttpClient accetta un TimeoutException dalla connectionFactory solo con
+    // connectionTimeout impostato: allora lo trasforma in SocketException.
+    ..connectionTimeout = timeoutConnessione
     ..connectionFactory = (uri, proxyHost, proxyPort) async {
       return ConnectionTask.fromSocket(
         connettiTramiteSocks5(

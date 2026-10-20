@@ -418,6 +418,28 @@ void main() {
       );
       await proxy.close();
     });
+
+    test('un proxy che non risponde dà SocketException, come una connessione diretta', () async {
+      // Accetta la connessione e poi tace, come Tor quando il rendezvous non
+      // si completa.
+      final muto = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+      final aperte = <Socket>[];
+      muto.listen(aperte.add);
+      final http = clienteHttpTramiteTor(
+        socksHost: '127.0.0.1',
+        socksPorta: muto.port,
+        timeoutConnessione: const Duration(milliseconds: 200),
+      );
+      await expectLater(
+        http.getUrl(Uri.parse('http://esempio.onion/prova')),
+        throwsA(isA<SocketException>()),
+      );
+      http.close(force: true);
+      for (final socket in aperte) {
+        socket.destroy();
+      }
+      await muto.close();
+    });
   });
 }
 

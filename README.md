@@ -10,7 +10,7 @@ Programma per coach e app per atleti, senza server: il PC del coach fa da server
 | Nucleo del programma del coach | `coach/nucleo` | Fatto: archivio SQLite, atleti, inviti, abbinamento, schede, sync, server HTTP, gestione di Tor |
 | Interfaccia del programma del coach (Flutter desktop) | `coach/app` | Da fare |
 | Nucleo dell'app dell'atleta | `atleta/nucleo` | Fatto: archivio SQLite, abbinamento, coda dei log, sync, stati e ritentativi per l'interfaccia, esecuzione degli allenamenti, trasporto Tor sulla porta di controllo, provato sulla rete Tor vera con `atleta_dev` |
-| App dell'atleta (Flutter) | `atleta/app` | Iniziata: elenco dei coach, abbinamento con il link incollato, cassaforte su Keystore e Keychain, Tor su Android con tor-android, provato su un telefono (abbinamento e sync sulla rete Tor vera). Tor su iOS da fare |
+| App dell'atleta (Flutter) | `atleta/app` | Iniziata: elenco dei coach, abbinamento con il link incollato, cassaforte su Keystore e Keychain, Tor su Android con tor-android, provato su un telefono (abbinamento e sync sulla rete Tor vera), sync in background con WorkManager e notifiche delle schede nuove su Android, impostazioni con la frequenza della sync. Tor e sync in background su iOS da fare |
 | Backup cifrato, esportazioni, «Reimposta identità» | `coach/nucleo` | Da fare |
 
 ## Requisiti
@@ -45,6 +45,14 @@ flutter pub get
 flutter test
 flutter build apk --debug
 ```
+
+Su un telefono collegato con il debug USB, nelle build di debug una sync in background parte subito, senza aspettare il lavoro periodico di WorkManager:
+
+```
+adb shell am broadcast -n org.opencoach.atleta_app/.SyncDiProva
+```
+
+Le sync in background partono solo se nelle impostazioni del telefono la batteria dell'app non è «Limitata»; le impostazioni dell'app lo segnalano.
 
 Prova sulla rete Tor vera, che dura qualche minuto. Serve l'eseguibile `tor` del Tor Expert Bundle:
 

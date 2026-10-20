@@ -4,14 +4,18 @@ import 'package:atleta_nucleo/atleta_nucleo.dart';
 import 'package:flutter/material.dart';
 
 import 'l10n/testi.dart';
+import 'piattaforma/sync_in_background.dart';
 import 'schermate/elenco_coach.dart';
 
 /// L'app dell'atleta sopra il nucleo: le sync automatiche seguono il primo
 /// piano e il background (§7.4).
 class AppAtleta extends StatefulWidget {
-  const AppAtleta({super.key, required this.nucleo});
+  const AppAtleta({super.key, required this.nucleo, this.background});
 
   final NucleoAtleta nucleo;
+
+  /// La sync in background con WorkManager; null dove non c'è (iOS, test).
+  final SyncInBackground? background;
 
   @override
   State<AppAtleta> createState() => _AppAtletaState();
@@ -26,12 +30,21 @@ class _AppAtletaState extends State<AppAtleta> {
   void initState() {
     super.initState();
     // All'apertura e al ritorno in primo piano parte una sync; in background
-    // si fermano le sync automatiche e poi Tor.
-    _pianificatore.entraInPrimoPiano();
+    // si fermano le sync automatiche e poi Tor. Una sync in corso prosegue
+    // come lavoro accelerato.
+    _inPrimoPiano();
     _ciclo = AppLifecycleListener(
-      onShow: _pianificatore.entraInPrimoPiano,
-      onHide: () => unawaited(_pianificatore.vaiInBackground()),
+      onShow: _inPrimoPiano,
+      onHide: () {
+        unawaited(widget.background?.proseguiSeInCorso());
+        unawaited(_pianificatore.vaiInBackground());
+      },
     );
+  }
+
+  void _inPrimoPiano() {
+    _pianificatore.entraInPrimoPiano();
+    unawaited(widget.background?.chiediPermessoNotifiche());
   }
 
   @override
@@ -47,6 +60,6 @@ class _AppAtletaState extends State<AppAtleta> {
     localizationsDelegates: Testi.localizationsDelegates,
     supportedLocales: Testi.supportedLocales,
     theme: ThemeData(colorSchemeSeed: Colors.teal),
-    home: ElencoCoach(nucleo: widget.nucleo),
+    home: ElencoCoach(nucleo: widget.nucleo, background: widget.background),
   );
 }

@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Canali delle notifiche (§7.4). -->
+    <string name="canale_schede">Schede nuove</string>
+    <string name="canale_sync">Sincronizzazione</string>
+    <string name="sync_in_corso">Sincronizzazione con il coach…</string>
+</resources>

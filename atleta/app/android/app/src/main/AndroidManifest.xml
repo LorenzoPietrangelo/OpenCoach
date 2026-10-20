@@ -1,6 +1,13 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
     <!-- Tor incorporato (§10.1). -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Notifiche delle schede nuove ricevute in background (§7.4). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Fino ad Android 11 una sync che prosegue come lavoro accelerato gira
+         in un servizio in primo piano. -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC"/>
     <!-- Chiavi e token non devono finire nei backup né passare a un nuovo
          telefono (§4): dopo un ripristino il Keystore non li decifrerebbe.
          Fuori dai backup resta tutto, anche l'archivio. -->
@@ -33,6 +40,10 @@
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
         </activity>
+        <service
+            android:name="androidx.work.impl.foreground.SystemForegroundService"
+            android:foregroundServiceType="dataSync"
+            tools:node="merge" />
         <!-- Don't delete the meta-data below.
              This is used by the Flutter tool to generate GeneratedPluginRegistrant.java -->
         <meta-data

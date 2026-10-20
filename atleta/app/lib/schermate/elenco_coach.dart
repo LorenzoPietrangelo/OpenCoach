@@ -4,14 +4,17 @@ import 'package:atleta_nucleo/atleta_nucleo.dart';
 import 'package:flutter/material.dart';
 
 import '../l10n/testi.dart';
+import '../piattaforma/sync_in_background.dart';
 import 'aggiungi_coach.dart';
+import 'impostazioni.dart';
 
 /// Coach collegati, ciascuno con l'ultima sync riuscita, i log in attesa e
 /// l'eventuale problema (§7.5). Trascinando si sincronizza subito (§7.4).
 class ElencoCoach extends StatefulWidget {
-  const ElencoCoach({super.key, required this.nucleo});
+  const ElencoCoach({super.key, required this.nucleo, this.background});
 
   final NucleoAtleta nucleo;
+  final SyncInBackground? background;
 
   @override
   State<ElencoCoach> createState() => _ElencoCoachState();
@@ -47,7 +50,20 @@ class _ElencoCoachState extends State<ElencoCoach> {
   Widget build(BuildContext context) {
     final testi = Testi.of(context);
     return Scaffold(
-      appBar: AppBar(title: Text(testi.nomeApp)),
+      appBar: AppBar(
+        title: Text(testi.nomeApp),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: testi.impostazioni,
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => Impostazioni(background: widget.background),
+              ),
+            ),
+          ),
+        ],
+      ),
       body: RefreshIndicator(
         onRefresh: _sincronizza,
         child: ListView(

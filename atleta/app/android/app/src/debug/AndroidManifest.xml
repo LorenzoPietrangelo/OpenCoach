@@ -4,4 +4,10 @@
          to allow setting breakpoints, to provide hot reload, etc.
     -->
     <uses-permission android:name="android.permission.INTERNET"/>
+    <application>
+        <!-- Solo per le prove: una sync in background subito (SyncDiProva). -->
+        <receiver
+            android:name=".SyncDiProva"
+            android:exported="true" />
+    </application>
 </manifest>

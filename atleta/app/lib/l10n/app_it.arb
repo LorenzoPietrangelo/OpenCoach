@@ -34,5 +34,27 @@
         "type": "int"
       }
     }
+  },
+  "impostazioni": "Impostazioni",
+  "syncInBackground": "Sync in background",
+  "spiegazioneSyncInBackground": "Con l'app chiusa il telefono controlla se ci sono schede nuove e invia gli allenamenti in attesa, quando c'è la rete e la batteria non è scarica.",
+  "syncDisattivata": "Disattivata",
+  "ogni30Minuti": "Ogni 30 minuti",
+  "ogniOra": "Ogni ora",
+  "ogni3Ore": "Ogni 3 ore",
+  "ogni6Ore": "Ogni 6 ore",
+  "syncLimitata": "Le impostazioni della batteria non lasciano lavorare Open Coach in background, quindi la sync in background non parte. Nelle informazioni sull'app, alla voce Batteria, scegli «Ottimizzata» o «Senza restrizioni».",
+  "apriImpostazioniApp": "Apri le impostazioni dell'app",
+  "syncSoloAdAppAperta": "Su questo telefono le schede nuove arrivano quando apri l'app: il sistema non garantisce la sync in background.",
+  "notificaSchede": "{numero, plural, =1{Nuova scheda da {coach}} other{{numero} schede nuove da {coach}}}",
+  "@notificaSchede": {
+    "placeholders": {
+      "numero": {
+        "type": "int"
+      },
+      "coach": {
+        "type": "String"
+      }
+    }
   }
 }

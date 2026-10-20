@@ -50,4 +50,6 @@ dependencies {
     // Tor incorporato (§10.1): TorService di tor-android, comandato dal
     // trasporto in Dart attraverso la porta di controllo.
     implementation("info.guardianproject:tor-android:0.4.9.14")
+    // Sync in background (§7.4).
+    implementation("androidx.work:work-runtime-ktx:2.11.2")
 }

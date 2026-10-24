@@ -1,0 +1,478 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="description" content="Open Coach: schede e allenamenti tra coach e atleti, senza server e senza account.">
+<title>Open Coach – Costruita dalla community, pensata per i coach</title>
+<!-- Pagina dei download: generata da strumenti/rilascio.ps1 nella repo del codice.
+     Non modificarla qui: le modifiche si perdono al rilascio successivo. -->
+<style>
+  :root {
+    --sfondo: #f5f8f7;
+    --carta: #ffffff;
+    --testo: #14201d;
+    --tenue: #50605c;
+    --bordo: #dbe5e2;
+    --primario: #00695c;
+    --primario-scuro: #004d43;
+    --su-primario: #ffffff;
+    --accento: #e6f2ef;
+    --avviso: #fff5dc;
+    --bordo-avviso: #e3bd57;
+    --codice: #eef3f2;
+    --ombra: 0 10px 30px rgba(10, 40, 35, 0.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --sfondo: #0d1312;
+      --carta: #151d1c;
+      --testo: #e6eeec;
+      --tenue: #a4b4b0;
+      --bordo: #273432;
+      --primario: #4db6a6;
+      --primario-scuro: #7fd3c6;
+      --su-primario: #052a25;
+      --accento: #17302c;
+      --avviso: #2c2513;
+      --bordo-avviso: #8c6f22;
+      --codice: #1f2a28;
+      --ombra: 0 10px 30px rgba(0, 0, 0, 0.35);
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--sfondo);
+    color: var(--testo);
+    font: 17px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  img { max-width: 100%; display: block; }
+  a { color: var(--primario); }
+  .contenitore { max-width: 1120px; margin: 0 auto; padding: 0 20px; }
+
+  /* Barra in alto */
+  .barra {
+    position: absolute; top: 0; left: 0; right: 0; z-index: 2;
+    display: flex; align-items: center; justify-content: space-between;
+    max-width: 1120px; margin: 0 auto; padding: 20px;
+  }
+  .logo {
+    color: #fff; font-weight: 800; font-size: 1.35rem; letter-spacing: -0.01em;
+    text-decoration: none; display: flex; align-items: center; gap: 10px;
+  }
+  .logo svg { width: 30px; height: 30px; }
+  /* Sopra la parte luminosa della foto il menu ha un fondo suo, per restare leggibile. */
+  .barra nav {
+    display: flex; gap: 22px; padding: 9px 20px; border-radius: 999px;
+    background: rgba(11, 31, 27, 0.62); backdrop-filter: blur(6px);
+  }
+  .barra nav a { color: rgba(255, 255, 255, 0.9); text-decoration: none; font-weight: 600; }
+  .barra nav a:hover { color: #fff; }
+
+  /* Apertura */
+  .apertura {
+    position: relative; min-height: 640px; display: flex; align-items: flex-end;
+    color: #fff; background: #0b1f1b;
+  }
+  /* Da computer la foto occupa la destra e il testo sta sul fondo scuro a sinistra, senza
+     coprire le persone. */
+  .apertura img {
+    position: absolute; top: 0; bottom: 0; left: 44%; width: 56%; height: 100%; object-fit: cover;
+    object-position: 42% 40%;
+  }
+  .apertura::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(90deg, #0b1f1b 0%, #0b1f1b 44%, rgba(11, 31, 27, 0.55) 52%,
+      rgba(11, 31, 27, 0) 70%);
+  }
+  .apertura .contenitore { position: relative; z-index: 1; width: 100%; padding-top: 140px; padding-bottom: 88px; }
+  .testo-apertura { max-width: 520px; }
+  .apertura h1 {
+    font-size: clamp(2.3rem, 4.4vw, 3.4rem); line-height: 1.08; letter-spacing: -0.02em;
+    margin: 0 0 20px;
+  }
+  .apertura p.intro { font-size: 1.15rem; margin: 0 0 32px; color: rgba(255, 255, 255, 0.86); }
+  .azioni { display: flex; flex-wrap: wrap; gap: 14px; }
+  .pulsante {
+    display: inline-flex; align-items: center; gap: 10px; padding: 15px 24px;
+    border-radius: 999px; font-weight: 700; text-decoration: none; font-size: 1.02rem;
+  }
+  .pulsante svg { width: 20px; height: 20px; flex: none; }
+  .pulsante.pieno { background: var(--primario); color: var(--su-primario); }
+  .pulsante.pieno:hover { background: var(--primario-scuro); }
+  .apertura .pulsante.pieno { background: #2bb59f; color: #04231e; }
+  .apertura .pulsante.pieno:hover { background: #4cc9b4; }
+  .pulsante.vuoto { border: 2px solid rgba(255, 255, 255, 0.75); color: #fff; }
+  .pulsante.vuoto:hover { background: rgba(255, 255, 255, 0.12); }
+  .nota-versione { margin-top: 18px; font-size: 0.92rem; color: rgba(255, 255, 255, 0.7); }
+
+  /* Sezioni */
+  section.blocco { padding: 96px 0; }
+  .etichetta {
+    display: inline-block; font-size: 0.8rem; font-weight: 800; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--primario); margin-bottom: 12px;
+  }
+  h2 { font-size: clamp(1.8rem, 3.4vw, 2.5rem); line-height: 1.15; letter-spacing: -0.015em; margin: 0 0 16px; }
+  .sottotitolo { color: var(--tenue); font-size: 1.12rem; max-width: 40em; margin: 0 0 48px; }
+
+  .punti { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .punto {
+    background: var(--carta); border: 1px solid var(--bordo); border-radius: 20px;
+    padding: 30px 28px; box-shadow: var(--ombra);
+  }
+  .icona {
+    width: 50px; height: 50px; border-radius: 14px; background: var(--accento);
+    color: var(--primario); display: grid; place-items: center; margin-bottom: 18px;
+  }
+  .icona svg { width: 26px; height: 26px; }
+  .punto h3 { margin: 0 0 8px; font-size: 1.2rem; }
+  .punto p { margin: 0; color: var(--tenue); }
+
+  .affiancato {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 64px; align-items: center;
+  }
+  .affiancato + .affiancato { margin-top: 96px; }
+  .affiancato.invertito .foto { order: 2; }
+  .foto img { border-radius: 24px; box-shadow: var(--ombra); width: 100%; height: auto; }
+  .elenco { list-style: none; padding: 0; margin: 24px 0 0; }
+  .elenco li { position: relative; padding-left: 34px; margin: 12px 0; }
+  .elenco li::before {
+    content: ""; position: absolute; left: 0; top: 4px; width: 22px; height: 22px; border-radius: 50%;
+    background: var(--accento) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2300695c' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5 9-10'/%3E%3C/svg%3E") center / 14px no-repeat;
+  }
+
+  .fondo-tenue { background: var(--carta); border-top: 1px solid var(--bordo); border-bottom: 1px solid var(--bordo); }
+  .passi { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px; counter-reset: passo; }
+  .passo { position: relative; padding-top: 64px; }
+  .passo::before {
+    counter-increment: passo; content: counter(passo);
+    position: absolute; top: 0; left: 0; width: 48px; height: 48px; border-radius: 50%;
+    background: var(--primario); color: var(--su-primario); font-weight: 800; font-size: 1.3rem;
+    display: grid; place-items: center;
+  }
+  .passo h3 { margin: 0 0 8px; font-size: 1.2rem; }
+  .passo p { margin: 0; color: var(--tenue); }
+
+  .comunita {
+    position: relative; color: #fff; background: #0b1f1b; overflow: hidden;
+  }
+  .comunita img {
+    position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0.35;
+  }
+  .comunita .contenitore { position: relative; padding-top: 110px; padding-bottom: 110px; text-align: center; }
+  .comunita h2 { max-width: 18em; margin: 0 auto 18px; }
+  .comunita p { max-width: 38em; margin: 0 auto; font-size: 1.15rem; color: rgba(255, 255, 255, 0.88); }
+
+  /* Download */
+  .download { display: grid; grid-template-columns: 1fr 1fr; gap: 28px; }
+  .scheda {
+    background: var(--carta); border: 1px solid var(--bordo); border-radius: 24px;
+    padding: 34px 30px; box-shadow: var(--ombra); display: flex; flex-direction: column;
+  }
+  .scheda h3 { margin: 0 0 6px; font-size: 1.45rem; }
+  /* Due righe anche quando ne basta una: i pulsanti delle due schede restano allineati. */
+  .scheda .requisiti { color: var(--tenue); margin: 0 0 24px; min-height: 3.2em; }
+  .scheda .pulsante { justify-content: center; }
+  .scheda .file { margin: 10px 0 0; text-align: center; color: var(--tenue); font-size: 0.88rem; }
+  details {
+    margin-top: 18px; border: 1px solid var(--bordo); border-radius: 14px; padding: 4px 18px;
+    background: var(--sfondo);
+  }
+  details[open] { padding-bottom: 14px; }
+  summary { cursor: pointer; font-weight: 700; padding: 12px 0; }
+  details ol, details ul { padding-left: 1.25em; margin: 6px 0; }
+  details li { margin: 8px 0; }
+  details p { margin: 8px 0; }
+  .avviso {
+    background: var(--avviso); border: 1px solid var(--bordo-avviso); border-radius: 12px;
+    padding: 12px 16px; margin: 14px 0 4px; font-size: 0.95rem;
+  }
+  code {
+    background: var(--codice); border-radius: 6px; padding: 1px 6px;
+    font: 0.88em ui-monospace, "Cascadia Mono", Consolas, monospace;
+  }
+  .impronta { display: block; padding: 10px 12px; margin: 6px 0 12px; word-break: break-all; user-select: all; }
+
+  .accetta { margin: 22px 0 0; color: var(--tenue); font-size: 0.95rem; text-align: center; }
+
+  footer { padding: 48px 0 56px; color: var(--tenue); font-size: 0.92rem; text-align: center; }
+  footer p { margin: 4px 0; }
+
+  @media (max-width: 860px) {
+    .barra nav { display: none; }
+    .apertura { min-height: 0; }
+    .apertura img { left: 0; width: 100%; height: 340px; object-position: 45% 30%; }
+    .apertura::after {
+      background: linear-gradient(180deg, rgba(11, 31, 27, 0.35) 0px, rgba(11, 31, 27, 0) 90px,
+        rgba(11, 31, 27, 0) 200px, #0b1f1b 340px, #0b1f1b 100%);
+    }
+    .apertura .contenitore { padding-top: 300px; padding-bottom: 56px; }
+    .scheda .requisiti { min-height: 0; }
+    section.blocco { padding: 64px 0; }
+    .punti, .passi, .download { grid-template-columns: 1fr; }
+    .affiancato { grid-template-columns: 1fr; gap: 28px; }
+    .affiancato.invertito .foto { order: 0; }
+    .affiancato + .affiancato { margin-top: 64px; }
+    .pulsante { width: 100%; justify-content: center; }
+  }
+</style>
+</head>
+<body>
+
+<header class="apertura">
+  <img src="immagini/apertura.jpg" width="1600" height="900"
+    alt="Un coach segue un'atleta durante uno stacco in palestra">
+  <div class="barra">
+    <a class="logo" href="#">
+      <!-- Il logo di Open Coach, con le proporzioni di strumenti/genera_icone.dart. -->
+      <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="15.04" fill="#00897b"/>
+        <circle cx="16" cy="16" r="7.84" fill="none" stroke="#fff" stroke-width="3.52"/></svg>
+      Open Coach
+    </a>
+    <nav aria-label="Sezioni">
+      <a href="#funzioni">Funzioni</a>
+      <a href="#come-funziona">Come funziona</a>
+      <a href="#download">Download</a>
+    </nav>
+  </div>
+  <div class="contenitore"><div class="testo-apertura">
+    <h1>Costruita dalla community, pensata per i coach.</h1>
+    <p class="intro">Scrivi le schede sul tuo PC, i tuoi atleti le ricevono sul telefono e ti
+      rimandano ogni allenamento. Senza server, senza account: i dati restano tra te e loro.</p>
+    <div class="azioni">
+      <a class="pulsante pieno" href="#coach">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+          <rect x="3" y="4" width="18" height="12" rx="2"/><path d="M8 20h8M12 16v4"/></svg>
+        Sono un coach</a>
+      <a class="pulsante vuoto" href="#atleta">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true">
+          <rect x="7" y="2" width="10" height="20" rx="2"/><path d="M11 18h2"/></svg>
+        Sono un atleta</a>
+    </div>
+    <p class="nota-versione">Versione {{VERSIONE}} · Windows e Android</p>
+  </div></div>
+</header>
+
+<main>
+  <section class="blocco" id="funzioni" aria-labelledby="titolo-funzioni">
+    <div class="contenitore">
+      <span class="etichetta">Perché Open Coach</span>
+      <h2 id="titolo-funzioni">Tutto quello che serve tra coach e atleta. Niente di più.</h2>
+      <p class="sottotitolo">Niente piattaforme in mezzo, niente pubblicità, niente dati raccolti:
+        il PC del coach fa da punto d'incontro per i suoi atleti.</p>
+      <div class="punti">
+        <article class="punto">
+          <div class="icona"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12"/>
+            <circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg></div>
+          <h3>Schede in un attimo</h3>
+          <p>Ogni esercizio su una riga: serie, ripetizioni, recupero e RIR. Pubblichi e la scheda
+            arriva all'atleta alla prima sincronizzazione.</p>
+        </article>
+        <article class="punto">
+          <div class="icona"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" aria-hidden="true"><path d="M3 12h4l3-8 4 16 3-8h4"/></svg></div>
+          <h3>Ogni allenamento ti arriva</h3>
+          <p>L'atleta registra ripetizioni, carichi e sforzo di ogni serie, con il timer di recupero.
+            Tu li vedi accanto a quello che avevi prescritto.</p>
+        </article>
+        <article class="punto">
+          <div class="icona"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg></div>
+          <h3>I dati restano vostri</h3>
+          <p>Nessun account e nessun cloud: tutto passa cifrato attraverso la rete Tor, e solo i
+            telefoni dei tuoi atleti possono raggiungere il tuo PC.</p>
+        </article>
+      </div>
+    </div>
+  </section>
+
+  <section class="blocco fondo-tenue" aria-label="Per il coach e per l'atleta">
+    <div class="contenitore">
+      <div class="affiancato">
+        <div class="foto"><img src="immagini/coach.jpg" width="1000" height="563" loading="lazy"
+          alt="Un coach scrive la scheda di allenamento insieme a un'atleta"></div>
+        <div>
+          <span class="etichetta">Per il coach</span>
+          <h2>Il tuo PC diventa il tuo studio.</h2>
+          <ul class="elenco">
+            <li>Atleti, schede e storico degli allenamenti, tutto in un unico programma.</li>
+            <li>Revisioni delle schede: vedi quando ogni atleta ha ricevuto l'ultima.</li>
+            <li>Backup cifrato ed esportazione dei dati in JSON e CSV.</li>
+            <li>Resta nell'area di notifica e parte da solo con Windows.</li>
+          </ul>
+        </div>
+      </div>
+      <div class="affiancato invertito">
+        <div class="foto"><img src="immagini/atleta.jpg" width="1000" height="642" loading="lazy"
+          alt="Due atlete si allenano con i salti sui box"></div>
+        <div>
+          <span class="etichetta">Per l'atleta</span>
+          <h2>La scheda in tasca, anche offline.</h2>
+          <ul class="elenco">
+            <li>Le schede del coach sempre sul telefono, anche senza connessione.</li>
+            <li>Serie precompilate dalla prescrizione e timer di recupero.</li>
+            <li>Lo storico dei tuoi allenamenti, modificabile ed esportabile.</li>
+            <li>Si sincronizza da solo, all'apertura e in background.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="blocco" id="come-funziona" aria-labelledby="titolo-come">
+    <div class="contenitore">
+      <span class="etichetta">Come funziona</span>
+      <h2 id="titolo-come">Collegati in tre passi.</h2>
+      <p class="sottotitolo">Nessuna registrazione: il collegamento tra coach e atleta nasce da un
+        QR.</p>
+      <div class="passi">
+        <div class="passo">
+          <h3>Il coach installa il programma</h3>
+          <p>Su un PC Windows che resta acceso: è lui il punto d'incontro con i suoi atleti.</p>
+        </div>
+        <div class="passo">
+          <h3>L'atleta inquadra il QR</h3>
+          <p>Il coach crea un invito, l'atleta lo inquadra con l'app e il telefono si collega.</p>
+        </div>
+        <div class="passo">
+          <h3>Schede e allenamenti viaggiano da soli</h3>
+          <p>Il coach pubblica, l'atleta si allena, i dati si sincronizzano in automatico.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="comunita" aria-labelledby="titolo-comunita">
+    <img src="immagini/community.jpg" width="1000" height="667" loading="lazy" alt="">
+    <div class="contenitore">
+      <span class="etichetta" style="color:#7fd3c6">La community</span>
+      <h2 id="titolo-comunita">Fatta da chi allena, per chi allena.</h2>
+      <p>Open Coach nasce dalla community e funziona senza dipendere da nessuno: niente server da
+        mantenere, niente pubblicità, nessun dato raccolto. Il tuo lavoro e i dati dei tuoi atleti
+        restano dove devono stare.</p>
+    </div>
+  </section>
+
+  <section class="blocco" id="download" aria-labelledby="titolo-download">
+    <div class="contenitore">
+      <span class="etichetta">Download</span>
+      <h2 id="titolo-download">Scarica Open Coach.</h2>
+      <p class="sottotitolo">Versione {{VERSIONE}} del {{DATA}}. Il coach installa il programma,
+        l'atleta l'app.</p>
+
+      <div class="download">
+        <article class="scheda" id="coach" aria-labelledby="titolo-coach">
+          <h3 id="titolo-coach">Programma del coach</h3>
+          <p class="requisiti">Windows 10 e 11 a 64 bit</p>
+          <a class="pulsante pieno" href="file/{{NOME_EXE}}" download>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+              stroke-linecap="round" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>
+            Scarica per Windows</a>
+          <p class="file">{{NOME_EXE}} · {{DIMENSIONE_EXE}}</p>
+
+          <details>
+            <summary>Come si installa</summary>
+            <ol>
+              <li>Apri il file scaricato.</li>
+              <li>Se compare «Windows ha protetto il PC», scegli <strong>Ulteriori informazioni</strong>
+                e poi <strong>Esegui comunque</strong>: il programma non è ancora firmato
+                digitalmente.</li>
+              <li>Segui l'installazione: non servono i permessi di amministratore.</li>
+              <li>Al primo avvio scegli il nome che vedranno i tuoi atleti, lascia attivo l'avvio
+                automatico e imposta il backup.</li>
+            </ol>
+            <div class="avviso" role="note"><strong>Se Windows dice che Smart App Control ha
+              bloccato il programma</strong>, su quel PC non può partire finché Smart App Control è
+              attivo, perché il programma non è firmato. Si può disattivare in Sicurezza di Windows →
+              Controllo app e browser, ma su alcune versioni di Windows non si riattiva senza
+              reinstallare il sistema: valuta tu se farlo.</div>
+          </details>
+          <details>
+            <summary>Perché gli atleti possano sincronizzare</summary>
+            <ul>
+              <li>Il PC deve essere acceso con il programma aperto, anche solo ridotto nell'area di
+                notifica. Con il PC spento gli atleti si allenano lo stesso e i loro allenamenti
+                arrivano dopo.</li>
+              <li>Se il PC va spesso in sospensione, attiva nelle impostazioni del programma
+                «Impedisci la sospensione del PC».</li>
+              <li>Per collegare un atleta crea un invito e fagli inquadrare il QR. Mandagli il link di
+                questa pagina per scaricare l'app: il link dell'invito invece è personale e vale come
+                una password.</li>
+            </ul>
+          </details>
+          <details>
+            <summary>Aggiornare e disinstallare</summary>
+            <p>Per aggiornare, esci dal programma (area di notifica → Esci) e installa la nuova
+              versione sopra quella vecchia. Disinstallando, i tuoi dati restano in
+              <code>%APPDATA%\OpenCoach</code>: si cancellano solo a mano.</p>
+          </details>
+        </article>
+
+        <article class="scheda" id="atleta" aria-labelledby="titolo-atleta">
+          <h3 id="titolo-atleta">App dell'atleta</h3>
+          <p class="requisiti">Android 8.0 o successivo · per iPhone non è ancora disponibile</p>
+          <a class="pulsante pieno" href="file/{{NOME_APK}}" download>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+              stroke-linecap="round" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>
+            Scarica per Android</a>
+          <p class="file">{{NOME_APK}} · {{DIMENSIONE_APK}}</p>
+
+          <details>
+            <summary>Come si installa</summary>
+            <ol>
+              <li>Scarica il file dal telefono e aprilo, dal browser o dall'app File.</li>
+              <li>Se il telefono lo chiede, consenti l'installazione di app da questa origine.</li>
+              <li>Se Play Protect avvisa che l'app è sconosciuta, scegli <strong>Altri dettagli</strong>
+                e poi <strong>Installa comunque</strong>: l'app non viene dal Play Store.</li>
+              <li>Apri Open Coach, tocca <strong>Aggiungi coach</strong> e inquadra il QR che ti mostra
+                il tuo coach sul suo PC.</li>
+            </ol>
+            <div class="avviso" role="note"><strong>Il QR o il link d'invito del tuo coach valgono
+              come una password</strong>: non girarli a nessuno. Il link di questa pagina invece puoi
+              condividerlo.</div>
+          </details>
+          <details>
+            <summary>Aggiornare</summary>
+            <p>Scarica la nuova versione da questa pagina e installala sopra quella vecchia: schede,
+              allenamenti e collegamenti con il coach restano.</p>
+          </details>
+        </article>
+      </div>
+
+      <details id="verifica">
+        <summary>Controllare che i file siano integri</summary>
+        <p>Facoltativo: serve a essere sicuri che il file scaricato sia esattamente questo.</p>
+        <p>Impronta SHA-256 di <code>{{NOME_EXE}}</code>:</p>
+        <code class="impronta">{{SHA256_EXE}}</code>
+        <p>Impronta SHA-256 di <code>{{NOME_APK}}</code>:</p>
+        <code class="impronta">{{SHA256_APK}}</code>
+        <p>Su Windows apri PowerShell nella cartella dei download e scrivi
+          <code>Get-FileHash .\{{NOME_EXE}}</code>, oppure lo stesso comando con il nome dell'APK:
+          il risultato deve essere uguale a quello qui sopra.</p>
+      </details>
+      <p class="accetta">Scaricando e usando Open Coach accetti le
+        <a href="condizioni.html">condizioni d'uso</a>.</p>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  <div class="contenitore">
+    <p>Open Coach non raccoglie dati: niente account, niente statistiche. Questa pagina non usa
+      cookie né script.</p>
+    <p>Versione {{VERSIONE}} · {{DATA}} · <a href="condizioni.html">Condizioni d'uso</a> · Foto da
+      Unsplash</p>
+  </div>
+</footer>
+</body>
+</html>

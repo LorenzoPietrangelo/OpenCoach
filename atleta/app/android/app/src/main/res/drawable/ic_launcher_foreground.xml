@@ -1,0 +1,13 @@
+<!-- L'anello bianco del logo di Open Coach, primo piano dell'icona adattiva. Su 108 dp ne restano
+     visibili circa 72: l'anello ha le proporzioni di strumenti/genera_icone.dart rispetto a un
+     cerchio di 72 dp (bordo esterno 23 dp di raggio, interno 14,5). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="8.43"
+        android:pathData="M54,35.23a18.77,18.77 0,1 1,0 37.54a18.77,18.77 0,1 1,0 -37.54" />
+</vector>

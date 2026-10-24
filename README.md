@@ -64,9 +64,17 @@ flutter test
 flutter build windows
 ```
 
-Per `flutter build windows` servono Visual Studio Build Tools con il carico di lavoro «Sviluppo di applicazioni desktop con C++» e la Modalità sviluppatore di Windows, che i plugin chiedono per i collegamenti simbolici. Per includere Tor nel programma (§9.2), copia il contenuto della cartella `tor` del Tor Expert Bundle in `coach/app/windows/tor`: la build lo mette accanto a `OpenCoach.exe`, dove il programma lo cerca. In sviluppo basta la variabile `OPENCOACH_TOR`. Le icone si rigenerano con `dart run tool/genera_icone.dart`.
+Per `flutter build windows` servono Visual Studio Build Tools con il carico di lavoro «Sviluppo di applicazioni desktop con C++» e la Modalità sviluppatore di Windows, che i plugin chiedono per i collegamenti simbolici. Per includere Tor nel programma (§9.2), copia il contenuto della cartella `tor` del Tor Expert Bundle in `coach/app/windows/tor`: la build lo mette accanto a `OpenCoach.exe`, dove il programma lo cerca. In sviluppo basta la variabile `OPENCOACH_TOR`. Le icone del programma, dell'app e della pagina dei download nascono dallo stesso logo e si rigenerano tutte con `dart run strumenti/genera_icone.dart` dalla cartella principale.
 
 L'installer si crea con Inno Setup 6 dopo la build: `iscc /DVersione=1.0.0 installer\opencoach.iss` dalla cartella `coach/app`. Installa per il solo utente, senza privilegi di amministratore, e alla disinstallazione lascia i dati in `%APPDATA%\OpenCoach`.
+
+Un rilascio porta installer e APK, sempre insieme e con lo stesso numero, sulla pagina dei download (vedi [CONTEXT.md](CONTEXT.md) e le decisioni in `docs/wizspec/decisions`). Prima si aggiorna la versione nei due `pubspec.yaml` e nelle costanti `versioneProgramma` e `versioneApp`, poi:
+
+```
+powershell -ExecutionPolicy Bypass -File strumenti\rilascio.ps1 -Versione 1.1.0
+```
+
+Lo script controlla le versioni, compila tutto, verifica che l'APK sia release e firmato con la chiave di debug già usata per i rilasci precedenti, conserva una copia in `C:\dev\opencoach-rilasci\<versione>` e prepara la pagina in `C:\dev\opencoach-download`, con le impronte SHA-256. Quella cartella si carica sulla sua repo GitHub, collegata a Vercel. Il modello della pagina sta in `strumenti/download`. Con `-SenzaCompilare` rigenera la pagina dai file già compilati.
 
 Senza Visual Studio in locale, la build la fa GitHub: il flusso `.github/workflows/build.yml` esegue tutti i test su Linux, poi su Windows scarica il Tor Expert Bundle, ne verifica la somma SHA-256 con l'elenco ufficiale, compila il programma e crea l'installer, che si scarica dagli artifact dell'esecuzione. Parte a ogni push su `master` e si può avviare a mano.
 

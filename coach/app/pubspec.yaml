@@ -35,7 +35,7 @@ dev_dependencies:
 flutter:
   generate: true
   uses-material-design: true
-  # Icona dell'area di notifica (tool/genera_icone.dart).
+  # Icona dell'area di notifica (strumenti/genera_icone.dart nella cartella principale).
   assets:
     - assets/icona.png
     - assets/icona.ico

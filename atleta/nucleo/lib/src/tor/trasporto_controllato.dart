@@ -81,8 +81,19 @@ class TrasportoTorControllato implements TrasportoTor {
   var _portaProxy = 0;
   Future<void>? _avvio;
 
+  /// Chi aspetta l'avvio in corso e ne vuole l'avanzamento.
+  final _osservatori = <void Function(int)>{};
+
   @override
-  Future<void> avvia() => _avvio ??= _avvia().whenComplete(() => _avvio = null);
+  Future<void> avvia({void Function(int percento)? avanzamento}) async {
+    if (avanzamento != null) _osservatori.add(avanzamento);
+    try {
+      await (_avvio ??= _avvia().whenComplete(() => _avvio = null));
+      avanzamento?.call(100);
+    } finally {
+      if (avanzamento != null) _osservatori.remove(avanzamento);
+    }
+  }
 
   Future<void> _avvia() async {
     final scadenza = _orologio.adesso().add(limiteBootstrap);
@@ -231,12 +242,21 @@ class TrasportoTorControllato implements TrasportoTor {
     ConnessioneControllo controllo,
     DateTime scadenza,
   ) async {
+    var ultimo = -1;
     while (true) {
       final fase = await controllo.getInfo(['status/bootstrap-phase']);
-      if (RegExp(
-        r'\bPROGRESS=100\b',
-      ).hasMatch(fase['status/bootstrap-phase'] ?? '')) {
-        return;
+      final percento = int.tryParse(
+        RegExp(r'\bPROGRESS=(\d+)\b')
+                .firstMatch(fase['status/bootstrap-phase'] ?? '')
+                ?.group(1) ??
+            '',
+      );
+      if (percento == 100) return;
+      if (percento != null && percento != ultimo) {
+        ultimo = percento;
+        for (final osservatore in List.of(_osservatori)) {
+          osservatore(percento);
+        }
       }
       if (!_orologio.adesso().isBefore(scadenza)) throw const TorNonParte();
       await _orologio.attendi(intervallo);

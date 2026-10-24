@@ -46,9 +46,22 @@ void main() {
     final coach = telefono.aggiungiCoach('Marco Bianchi');
     final scheda = await iniziaGiornoA(tester, coach);
 
-    // «6-8» e «75% 1RM» non sono numeri: restano come suggerimento.
+    // Gli esercizi partono chiusi: nome, serie × ripetizioni e RIR.
     expect(find.text('Squat'), findsOneWidget);
+    expect(find.text('4 × 6-8 · RIR 1-2'), findsOneWidget);
+    expect(find.text('0/4'), findsOneWidget);
+    expect(find.text('Pausa di 1 s in buca'), findsNothing);
+    expect(
+      find.descendant(of: find.byType(Card), matching: find.byType(TextField)),
+      findsNothing,
+    );
+
+    // Toccato, l'esercizio si apre per registrare le serie.
+    await tester.tap(find.text('Squat'));
+    await tester.pumpAndSettle();
+    expect(find.text('75% 1RM · recupero 2:30'), findsOneWidget);
     expect(find.text('Pausa di 1 s in buca'), findsOneWidget);
+    // «6-8» e «75% 1RM» non sono numeri: restano come suggerimento.
     expect(find.widgetWithText(TextField, '6-8'), findsNWidgets(4));
     expect(find.widgetWithText(TextField, '75% 1RM'), findsNWidgets(4));
     await tester.enterText(find.widgetWithText(TextField, '6-8').first, '8');
@@ -60,6 +73,7 @@ void main() {
     // Serie fatta: parte il recupero previsto dal coach.
     await tester.tap(find.byType(Checkbox).first);
     await tester.pump();
+    expect(find.text('1/4'), findsOneWidget);
     expect(find.text('2:30'), findsOneWidget);
     telefono.orologio.avanza(const Duration(seconds: 60));
     await tester.pump(const Duration(seconds: 1));
@@ -101,11 +115,21 @@ void main() {
   testWidgets('con un valore non valido non si salva', (tester) async {
     final coach = telefono.aggiungiCoach('Marco Bianchi');
     await iniziaGiornoA(tester, coach);
+    await tester.tap(find.text('Squat'));
+    await tester.pumpAndSettle();
 
     await tester.enterText(find.widgetWithText(TextField, '6-8').first, 'otto');
+    // Chiuso l'esercizio, al salvataggio si riapre per mostrare l'errore.
+    await tester.tap(find.text('Squat'));
+    await tester.pumpAndSettle();
+    expect(
+      find.descendant(of: find.byType(Card), matching: find.byType(TextField)),
+      findsNothing,
+    );
     await tester.tap(find.text('Salva'));
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(find.text('Correggi i valori segnati in rosso.'), findsOneWidget);
+    expect(find.widgetWithText(TextField, 'otto'), findsOneWidget);
     expect(telefono.nucleo.diario.elenco(coach), isEmpty);
 
     // L'RPE di una serie va a passi di 0,5.
@@ -228,6 +252,8 @@ void main() {
   testWidgets('uscire senza salvare chiede conferma', (tester) async {
     final coach = telefono.aggiungiCoach('Marco Bianchi');
     await iniziaGiornoA(tester, coach);
+    await tester.tap(find.text('Squat'));
+    await tester.pumpAndSettle();
     await tester.enterText(find.widgetWithText(TextField, '6-8').first, '7');
     await tester.pump();
 

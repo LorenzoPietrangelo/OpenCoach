@@ -32,20 +32,24 @@ class EsercizioPrevisto {
   final List<RigaPrescrizione> prescrizione;
 }
 
-/// Una riga della prescrizione. Tutti i campi sono facoltativi; ripetizioni
-/// e carico sono testo libero, come «6-8» o «75% 1RM» (§8.1).
+/// Una riga della prescrizione. Tutti i campi sono facoltativi; ripetizioni,
+/// carico e RIR sono testo libero, come «6-8», «75% 1RM» o «1-2» (§8.1).
 class RigaPrescrizione {
   const RigaPrescrizione({
     this.serie,
     this.ripetizioni,
     this.carico,
     this.recupero,
+    this.rir,
   });
 
   final int? serie;
   final String? ripetizioni;
   final String? carico;
   final Duration? recupero;
+
+  /// Ripetizioni da lasciare in riserva, testo libero come «2» o «1-2».
+  final String? rir;
 }
 
 /// Note, validità e sedute di una scheda ricevuta, lette dal JSON del coach
@@ -79,6 +83,7 @@ extension ContenutoScheda on SchedaRicevuta {
                       final int secondi => Duration(seconds: secondi),
                       null => null,
                     },
+                    rir: _testo(riga['rir']),
                   ),
               ],
             ),

@@ -320,6 +320,10 @@ class _EditorSchedaState extends State<EditorScheda> {
     );
   }
 
+  /// Un esercizio su una riga: nome, serie, ripetizioni, recupero e RIR, con
+  /// le note a scomparsa. La riga modifica la prima prescrizione; le altre,
+  /// di schede scritte prima, restano com'erano finché il coach non le
+  /// toglie.
   Widget _esercizio(
     Testi t,
     Map<String, Object?> seduta,
@@ -327,27 +331,52 @@ class _EditorSchedaState extends State<EditorScheda> {
     int indice,
     int totale,
   ) {
-    final righe = _mappe(esercizio, 'prescrizione');
+    final prescrizione = _lista(esercizio, 'prescrizione');
+    if (prescrizione.firstOrNull is! Map<String, Object?>) {
+      prescrizione.insert(0, <String, Object?>{});
+    }
+    final riga = prescrizione.first! as Map<String, Object?>;
+    final altre = _mappe(esercizio, 'prescrizione').skip(1).toList();
     final esercizi = _lista(seduta, 'esercizi');
-    return Container(
+    final note = esercizio['note'] as String? ?? '';
+    final noteAperte = _noteAperte[esercizio] ?? note.isNotEmpty;
+    return Padding(
       key: _chiave(esercizio),
-      margin: const EdgeInsets.only(top: 16),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
-        borderRadius: BorderRadius.circular(8),
-      ),
+      padding: const EdgeInsets.only(top: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: TextFormField(
                   initialValue: esercizio['nome'] as String? ?? '',
-                  decoration: InputDecoration(labelText: t.nomeEsercizio),
+                  decoration: InputDecoration(labelText: t.nomeEsercizio, isDense: true),
                   onChanged: (v) => _cambia(() => esercizio['nome'] = v),
                 ),
+              ),
+              const SizedBox(width: 8),
+              _campoRiga(riga, 'serie', t.serie, 72, intero: true),
+              _campoRiga(riga, 'ripetizioni', t.ripetizioni, 110, suggerimento: '6-8'),
+              _CampoRecupero(
+                etichetta: t.recupero,
+                errore: t.recuperoNonValido,
+                secondi: riga['recupero_s'],
+                cambia: (secondi) => _cambia(() {
+                  if (secondi == null) {
+                    riga.remove('recupero_s');
+                  } else {
+                    riga['recupero_s'] = secondi;
+                  }
+                }),
+              ),
+              _campoRiga(riga, 'rir', t.rir, 72, suggerimento: '2'),
+              IconButton(
+                tooltip: t.noteEsercizio,
+                isSelected: noteAperte,
+                icon: Icon(note.isEmpty ? Icons.notes : Icons.sticky_note_2_outlined),
+                onPressed: () => setState(() => _noteAperte[esercizio] = !noteAperte),
               ),
               _Spostamenti(
                 su: indice > 0 ? () => _sposta(esercizi, esercizio, -1) : null,
@@ -357,43 +386,44 @@ class _EditorSchedaState extends State<EditorScheda> {
               ),
             ],
           ),
-          TextFormField(
-            initialValue: esercizio['note'] as String? ?? '',
-            decoration: InputDecoration(labelText: t.noteEsercizio),
-            onChanged: (v) => _cambia(() => esercizio['note'] = v),
-          ),
-          for (final riga in righe)
-            Padding(
-              key: _chiave(riga),
-              padding: const EdgeInsets.only(top: 8),
-              child: Row(
-                children: [
-                  _campoRiga(riga, 'serie', t.serie, 90, intero: true),
-                  _campoRiga(riga, 'ripetizioni', t.ripetizioni, 140),
-                  _campoRiga(riga, 'carico', t.carico, 160),
-                  _campoRiga(riga, 'recupero_s', t.recuperoSecondi, 130, intero: true),
-                  IconButton(
-                    tooltip: t.togliRiga,
-                    icon: const Icon(Icons.remove_circle_outline),
-                    onPressed: () => _cambia(() => _lista(esercizio, 'prescrizione').remove(riga)),
+          if (noteAperte)
+            TextFormField(
+              initialValue: note,
+              decoration: InputDecoration(labelText: t.noteEsercizio, isDense: true),
+              minLines: 1,
+              maxLines: 4,
+              onChanged: (v) => _cambia(() => esercizio['note'] = v),
+            ),
+          if (altre.isNotEmpty)
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    t.altreRighe(altre.map(_riassunto).join(' · ')),
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
-                ],
-              ),
+                ),
+                TextButton(
+                  onPressed: () => _cambia(() => prescrizione.removeRange(1, prescrizione.length)),
+                  child: Text(t.togliAltreRighe),
+                ),
+              ],
             ),
-          Align(
-            alignment: Alignment.centerLeft,
-            child: TextButton.icon(
-              onPressed: () => _cambia(
-                () => _lista(esercizio, 'prescrizione').add(<String, Object?>{}),
-              ),
-              icon: const Icon(Icons.add),
-              label: Text(t.aggiungiRiga),
-            ),
-          ),
         ],
       ),
     );
   }
+
+  /// Note mostrate o nascoste per ogni esercizio; senza scelta del coach si
+  /// vedono solo quelle già scritte.
+  final _noteAperte = Expando<bool>();
+
+  String _riassunto(Map<String, Object?> riga) => [
+    '${riga['serie'] ?? '?'} × ${riga['ripetizioni'] ?? '?'}',
+    if (riga['carico'] is String) riga['carico'] as String,
+    if (riga['recupero_s'] is int) recuperoLeggibile(riga['recupero_s'] as int),
+    if (riga['rir'] is String) 'RIR ${riga['rir']}',
+  ].join(', ');
 
   Widget _campoRiga(
     Map<String, Object?> riga,
@@ -401,6 +431,7 @@ class _EditorSchedaState extends State<EditorScheda> {
     String etichetta,
     double larghezza, {
     bool intero = false,
+    String? suggerimento,
   }) {
     return Padding(
       padding: const EdgeInsets.only(right: 8),
@@ -408,7 +439,11 @@ class _EditorSchedaState extends State<EditorScheda> {
         width: larghezza,
         child: TextFormField(
           initialValue: riga[chiave]?.toString() ?? '',
-          decoration: InputDecoration(labelText: etichetta, isDense: true),
+          decoration: InputDecoration(
+            labelText: etichetta,
+            hintText: suggerimento,
+            isDense: true,
+          ),
           keyboardType: intero ? TextInputType.number : TextInputType.text,
           inputFormatters: intero ? [FilteringTextInputFormatter.digitsOnly] : null,
           onChanged: (v) => _cambia(() {
@@ -460,6 +495,56 @@ class _CampoData extends StatelessWidget {
         if (giorno != null)
           IconButton(tooltip: t.togliData, icon: const Icon(Icons.clear), onPressed: togli),
       ],
+    );
+  }
+}
+
+/// Campo del recupero: accetta «90» o «1:30» e passa i secondi a [cambia],
+/// null se il campo è vuoto o non si capisce.
+class _CampoRecupero extends StatefulWidget {
+  const _CampoRecupero({
+    required this.etichetta,
+    required this.errore,
+    required this.secondi,
+    required this.cambia,
+  });
+
+  final String etichetta;
+  final String errore;
+  final Object? secondi;
+  final ValueChanged<int?> cambia;
+
+  @override
+  State<_CampoRecupero> createState() => _CampoRecuperoState();
+}
+
+class _CampoRecuperoState extends State<_CampoRecupero> {
+  var _nonValido = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final secondi = widget.secondi;
+    return Padding(
+      padding: const EdgeInsets.only(right: 8),
+      child: SizedBox(
+        width: 100,
+        child: TextFormField(
+          initialValue: secondi is int ? formattaRecupero(secondi) : '',
+          decoration: InputDecoration(
+            labelText: widget.etichetta,
+            hintText: '1:30',
+            isDense: true,
+            errorText: _nonValido ? widget.errore : null,
+            errorMaxLines: 2,
+          ),
+          inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9:]'))],
+          onChanged: (v) {
+            final valore = analizzaRecupero(v);
+            setState(() => _nonValido = v.trim().isNotEmpty && valore == null);
+            widget.cambia(valore);
+          },
+        ),
+      ),
     );
   }
 }
@@ -516,7 +601,8 @@ String erroreLeggibile(Testi t, String errore) {
           'serie' => t.serie,
           'ripetizioni' => t.ripetizioni,
           'carico' => t.carico,
-          'recupero_s' => t.recuperoSecondi,
+          'recupero_s' => t.recupero,
+          'rir' => t.rir,
           _ => parte,
         },
       },

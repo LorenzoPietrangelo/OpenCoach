@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 
 import '../l10n/testi.dart';
 import '../piattaforma/inviti_in_arrivo.dart';
+import 'avvisi.dart';
 import 'scansione_qr.dart';
 
 /// Abbinamento con il QR d'invito, con il link incollato a mano o con quello
@@ -37,6 +38,13 @@ class _AggiungiCoachState extends State<AggiungiCoach> {
   final _invito = TextEditingController();
   var _inCorso = false;
   String? _errore;
+
+  /// A che punto è il collegamento in corso; null prima del primo passo.
+  AvanzamentoAbbinamento? _avanzamento;
+
+  void _avanza(AvanzamentoAbbinamento avanzamento) {
+    if (mounted) setState(() => _avanzamento = avanzamento);
+  }
 
   @override
   void initState() {
@@ -79,9 +87,13 @@ class _AggiungiCoachState extends State<AggiungiCoach> {
     setState(() {
       _inCorso = true;
       _errore = null;
+      _avanzamento = null;
     });
     try {
-      final invito = await widget.nucleo.leggiInvito(testo);
+      final invito = await widget.nucleo.leggiInvito(
+        testo,
+        avanzamento: _avanza,
+      );
       if (!mounted) return;
       final conferma = await showDialog<bool>(
         context: context,
@@ -100,12 +112,40 @@ class _AggiungiCoachState extends State<AggiungiCoach> {
         ),
       );
       if (conferma != true) return;
-      await invito.collega();
-      if (mounted) Navigator.of(context).pop();
+      // Emesso il token, il collegamento c'è già: conferma e prima sync
+      // possono richiedere qualche minuto, mentre il coach ripubblica il
+      // servizio con la chiave del telefono, e proseguono in background. Lo
+      // stato della sync del coach le mostra.
+      final collegato = Completer<void>();
+      final abbinamento = invito.collega(
+        avanzamento: (avanzamento) {
+          _avanza(avanzamento);
+          if (avanzamento.fase == FaseAbbinamento.conferma &&
+              !collegato.isCompleted) {
+            collegato.complete();
+          }
+        },
+      );
+      await Future.any([collegato.future, abbinamento]);
+      unawaited(
+        abbinamento.then<void>(
+          (_) {},
+          onError: (Object e) => debugPrint('Prima sync non riuscita: $e'),
+        ),
+      );
+      if (!mounted) return;
+      final messaggi = ScaffoldMessenger.of(context);
+      Navigator.of(context).pop();
+      messaggi.avvisa(testi.collegatoA(invito.nomeCoach));
     } on ErroreAbbinamento catch (e) {
       if (mounted) setState(() => _errore = e.messaggio);
     } finally {
-      if (mounted) setState(() => _inCorso = false);
+      if (mounted) {
+        setState(() {
+          _inCorso = false;
+          _avanzamento = null;
+        });
+      }
     }
   }
 
@@ -138,7 +178,7 @@ class _AggiungiCoachState extends State<AggiungiCoach> {
           ),
           const SizedBox(height: 16),
           if (_inCorso)
-            Center(child: Text(testi.collegamentoInCorso))
+            _BarraAbbinamento(_avanzamento)
           else
             OutlinedButton(
               onPressed: () => _collega(_invito.text),
@@ -154,6 +194,66 @@ class _AggiungiCoachState extends State<AggiungiCoach> {
             ),
         ],
       ),
+    );
+  }
+}
+
+/// Barra d'avanzamento dell'abbinamento, con la fase in corso: collegarsi
+/// via Tor può richiedere qualche minuto, e l'atleta deve vedere che
+/// procede.
+class _BarraAbbinamento extends StatelessWidget {
+  const _BarraAbbinamento(this.avanzamento);
+
+  final AvanzamentoAbbinamento? avanzamento;
+
+  /// Quota della barra all'inizio di ogni fase; l'avvio di Tor la riempie
+  /// fino al 40% in base al suo bootstrap.
+  static double _valore(AvanzamentoAbbinamento? a) => switch (a?.fase) {
+    null => 0.02,
+    FaseAbbinamento.avvioTor => 0.02 + 0.38 * (a!.percentoTor ?? 0) / 100,
+    FaseAbbinamento.collegamento || FaseAbbinamento.attesaCoach => 0.5,
+    FaseAbbinamento.abbinamento => 0.7,
+    FaseAbbinamento.conferma => 0.85,
+  };
+
+  @override
+  Widget build(BuildContext context) {
+    final testi = Testi.of(context);
+    final a = avanzamento;
+    final testo = switch (a?.fase) {
+      null => testi.collegamentoInCorso,
+      FaseAbbinamento.avvioTor => testi.faseAvvioTor(a!.percentoTor ?? 0),
+      FaseAbbinamento.collegamento => testi.faseCollegamento,
+      FaseAbbinamento.attesaCoach => testi.faseAttesaCoach(a!.tentativo),
+      FaseAbbinamento.abbinamento => testi.faseAbbinamento,
+      FaseAbbinamento.conferma => testi.faseConferma,
+    };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        TweenAnimationBuilder<double>(
+          tween: Tween(end: _valore(a)),
+          duration: const Duration(milliseconds: 400),
+          builder: (context, valore, _) => LinearProgressIndicator(
+            value: valore,
+            minHeight: 8,
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            // La barra sta ferma tra una fase e l'altra: questo mostra che
+            // il telefono sta comunque lavorando.
+            const SizedBox.square(
+              dimension: 16,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Text(testo)),
+          ],
+        ),
+      ],
     );
   }
 }

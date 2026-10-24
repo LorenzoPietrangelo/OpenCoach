@@ -11,7 +11,10 @@ import 'dart:typed_data';
 abstract interface class TrasportoTor {
   /// Avvia Tor, se non è già attivo, e aspetta il bootstrap. Lancia
   /// [TorNonParte] se non si completa entro 60 s (§7.5).
-  Future<void> avvia();
+  ///
+  /// [avanzamento] riceve il bootstrap da 0 a 100 mentre procede; con Tor
+  /// già avviato riceve subito 100.
+  Future<void> avvia({void Function(int percento)? avanzamento});
 
   /// Ferma Tor: con l'app in background resta spento, salvo durante le sync
   /// (§7.4). Il suo stato (consenso, guardie) resta salvato.

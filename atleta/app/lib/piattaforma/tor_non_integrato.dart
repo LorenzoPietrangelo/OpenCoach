@@ -10,7 +10,8 @@ class TorNonIntegrato implements TrasportoTor {
   const TorNonIntegrato();
 
   @override
-  Future<void> avvia() async => throw const TorNonParte();
+  Future<void> avvia({void Function(int percento)? avanzamento}) async =>
+      throw const TorNonParte();
 
   @override
   Future<void> ferma() async {}

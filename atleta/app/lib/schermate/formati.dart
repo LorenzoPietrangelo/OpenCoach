@@ -70,13 +70,14 @@ num? leggiDecimale(String testo, {required num massimo, num? passo}) {
 }
 
 /// Una riga della prescrizione del coach (§8.1), come «4 × 6-8 · 75% 1RM ·
-/// recupero 2:30». Tutti i campi sono facoltativi.
+/// recupero 2:30 · RIR 1-2». Tutti i campi sono facoltativi.
 String testoPrescrizione(
   Testi testi, {
   int? serie,
   String? ripetizioni,
   String? carico,
   Duration? recupero,
+  String? rir,
 }) {
   final rip = ripetizioni == null || ripetizioni.isEmpty ? null : ripetizioni;
   return [
@@ -88,5 +89,6 @@ String testoPrescrizione(
       ?rip,
     if (carico != null && carico.isNotEmpty) carico,
     if (recupero != null) testi.recuperoDi(durata(recupero)),
+    if (rir != null && rir.isNotEmpty) testi.rirDi(rir),
   ].join(' · ');
 }

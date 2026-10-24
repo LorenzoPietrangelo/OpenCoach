@@ -38,6 +38,8 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            // Si aggiungono alle regole di R8 che mette Flutter.
+            proguardFiles("proguard-rules.pro")
         }
     }
 }

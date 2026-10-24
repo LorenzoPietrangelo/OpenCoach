@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:atleta_app/schermate/impostazioni.dart';
+import 'package:atleta_app/schermate/pagina_coach.dart';
 import 'package:atleta_nucleo/atleta_nucleo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -77,6 +78,66 @@ void main() {
     expect(telefono.nucleo.diario.elenco(coach), isEmpty);
     expect(find.text('Marco Bianchi'), findsNothing);
     expect(find.text('Non hai ancora collegato nessun coach.'), findsOneWidget);
+  });
+
+  testWidgets('scollegarsi anche dalla pagina del coach', (tester) async {
+    final coach = telefono.aggiungiCoach('Marco Bianchi');
+    await tester.pumpWidget(
+      conTesti(
+        Builder(
+          builder: (context) => TextButton(
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) =>
+                    PaginaCoach(nucleo: telefono.nucleo, coachId: coach),
+              ),
+            ),
+            child: const Text('Apri'),
+          ),
+        ),
+      ),
+    );
+    await tester.tap(find.text('Apri'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byType(PopupMenuButton<void>));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Scollegati'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Scollegati'));
+    await tester.pumpAndSettle();
+    expect(
+      telefono.nucleo.collegamenti.cerca(coach)!.stato,
+      StatoCollegamento.scollegato,
+    );
+
+    // Cancellati i dati, la pagina del coach si chiude.
+    await tester.tap(find.widgetWithText(FilledButton, 'Cancella'));
+    await tester.pumpAndSettle();
+    expect(telefono.nucleo.collegamenti.cerca(coach), isNull);
+    expect(find.text('Apri'), findsOneWidget);
+  });
+
+  testWidgets('con il collegamento chiuso il menu del coach cancella i dati', (
+    tester,
+  ) async {
+    final coach = telefono.aggiungiCoach(
+      'Marco Bianchi',
+      stato: StatoCollegamento.revocato,
+      problema: ProblemaSync.revocato,
+    );
+    await tester.pumpWidget(
+      conTesti(PaginaCoach(nucleo: telefono.nucleo, coachId: coach)),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(PopupMenuButton<void>));
+    await tester.pumpAndSettle();
+    expect(find.text('Scollegati'), findsNothing);
+    await tester.tap(find.text('Cancella i dati'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Conserva'));
+    await tester.pumpAndSettle();
+    expect(telefono.nucleo.collegamenti.cerca(coach), isNotNull);
   });
 
   testWidgets('dopo lo scollegamento i dati si possono conservare', (

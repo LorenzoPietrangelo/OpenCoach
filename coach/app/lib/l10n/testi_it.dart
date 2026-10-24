@@ -516,13 +516,21 @@ class TestiIt extends Testi {
   String get carico => 'Carico';
 
   @override
-  String get recuperoSecondi => 'Recupero (s)';
+  String get recupero => 'Recupero';
 
   @override
-  String get aggiungiRiga => 'Aggiungi una riga';
+  String get recuperoNonValido => 'es. 90 o 1:30';
 
   @override
-  String get togliRiga => 'Togli la riga';
+  String get rir => 'RIR';
+
+  @override
+  String altreRighe(String elenco) {
+    return 'Altre serie da una versione precedente: $elenco';
+  }
+
+  @override
+  String get togliAltreRighe => 'Toglile';
 
   @override
   String get spostaSu => 'Sposta su';

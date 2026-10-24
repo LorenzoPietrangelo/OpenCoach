@@ -18,6 +18,33 @@
   "annulla": "Annulla",
   "collega": "Collega",
   "collegamentoInCorso": "Collegamento in corso…",
+  "faseAvvioTor": "Avvio della rete Tor… {percento}%",
+  "@faseAvvioTor": {
+    "placeholders": {
+      "percento": {
+        "type": "int"
+      }
+    }
+  },
+  "faseCollegamento": "Collegamento al PC del coach…",
+  "faseAttesaCoach": "Il PC del coach non risponde ancora: un invito appena creato può impiegare un paio di minuti a essere raggiungibile. Riprovo… (tentativo {tentativo})",
+  "@faseAttesaCoach": {
+    "placeholders": {
+      "tentativo": {
+        "type": "int"
+      }
+    }
+  },
+  "faseAbbinamento": "Abbinamento del telefono…",
+  "faseConferma": "Conferma e prima sincronizzazione. Può richiedere qualche minuto, mentre il PC del coach aggiorna il collegamento.",
+  "collegatoA": "Collegato a {nome}. Le schede arrivano con la prima sincronizzazione, tra qualche minuto.",
+  "@collegatoA": {
+    "placeholders": {
+      "nome": {
+        "type": "String"
+      }
+    }
+  },
   "ultimaSync": "Ultima sync: {quando}",
   "@ultimaSync": {
     "placeholders": {
@@ -45,6 +72,11 @@
   "ogni6Ore": "Ogni 6 ore",
   "syncLimitata": "Le impostazioni della batteria non lasciano lavorare Open Coach in background, quindi la sync in background non parte. Nelle informazioni sull'app, alla voce Batteria, scegli «Ottimizzata» o «Senza restrizioni».",
   "apriImpostazioniApp": "Apri le impostazioni dell'app",
+  "nonOra": "Non ora",
+  "batteriaLimitataTitolo": "Le schede arrivano solo ad app aperta",
+  "batteriaLimitataTesto": "La batteria di Open Coach è «Limitata»: il telefono non la lascia sincronizzare in background, quindi le schede nuove del coach arrivano solo quando apri l'app.\n\nNelle impostazioni dell'app, alla voce Batteria, scegli «Senza restrizioni» per riceverle anche ad app chiusa.",
+  "batteriaOttimizzataTitolo": "Ricevi le schede prima",
+  "batteriaOttimizzataTesto": "Con la batteria «Ottimizzata» il telefono può rimandare di ore la sincronizzazione in background.\n\nPer ricevere le schede nuove del coach con meno ritardo, nelle impostazioni dell'app, alla voce Batteria, scegli «Senza restrizioni». Consuma un po' più di batteria.",
   "syncSoloAdAppAperta": "Su questo telefono le schede nuove arrivano quando apri l'app: il sistema non garantisce la sync in background.",
   "notificaSchede": "{numero, plural, =1{Nuova scheda da {coach}} other{{numero} schede nuove da {coach}}}",
   "@notificaSchede": {
@@ -167,6 +199,17 @@
       }
     }
   },
+  "serieFatte": "{fatte}/{totale}",
+  "@serieFatte": {
+    "placeholders": {
+      "fatte": {
+        "type": "int"
+      },
+      "totale": {
+        "type": "int"
+      }
+    }
+  },
   "numeroSerie": "{numero, plural, =1{1 serie} other{{numero} serie}}",
   "@numeroSerie": {
     "placeholders": {
@@ -179,6 +222,14 @@
   "@recuperoDi": {
     "placeholders": {
       "durata": {
+        "type": "String"
+      }
+    }
+  },
+  "rirDi": "RIR {valore}",
+  "@rirDi": {
+    "placeholders": {
+      "valore": {
         "type": "String"
       }
     }
@@ -322,6 +373,7 @@
   "scollegamentoNonRiuscito": "Scollegamento non riuscito. Riprova.",
   "coachAvvisato": "Il coach ha ricevuto lo scollegamento.",
   "coachNonAvvisato": "Il PC del coach non era raggiungibile: il collegamento resta attivo sul suo PC finché non lo chiude lui.",
+  "cancellaDatiCoach": "Cancella i dati",
   "cancellareDatiDi": "Cancellare i dati di {nome}?",
   "@cancellareDatiDi": {
     "placeholders": {

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math';
 
 import 'package:protocollo/protocollo.dart';
 
@@ -24,13 +25,67 @@ const _atteseDopoRifiuto = [
   Duration(seconds: 30),
 ];
 
+/// Per quanto la lettura dell'invito ritenta un coach che non si trova. Un
+/// invito appena creato fa ripubblicare il servizio del coach, e il nuovo
+/// descrittore può impiegare un paio di minuti ad arrivare sulla rete: nel
+/// frattempo Tor risponde che il servizio non c'è (F0).
+const attesaMassimaCoach = Duration(minutes: 2);
+
+/// Pause tra un tentativo e l'altro mentre il coach non si trova; l'ultima
+/// si ripete fino ad [attesaMassimaCoach].
+const _atteseSeIrraggiungibile = [
+  Duration(seconds: 5),
+  Duration(seconds: 10),
+  Duration(seconds: 20),
+  Duration(seconds: 30),
+];
+
+/// Fasi dell'abbinamento, nell'ordine, per la barra d'avanzamento
+/// dell'interfaccia.
+enum FaseAbbinamento {
+  /// Tor si avvia: [AvanzamentoAbbinamento.percentoTor] dice a che punto è.
+  avvioTor,
+
+  /// Il telefono contatta il coach dell'invito.
+  collegamento,
+
+  /// Il coach non si trova ancora: il telefono riprova tra poco.
+  attesaCoach,
+
+  /// L'atleta ha confermato: il telefono si abbina.
+  abbinamento,
+
+  /// Il coach ha emesso il token: il telefono conferma e fa la prima sync.
+  conferma,
+}
+
+/// A che punto è l'abbinamento.
+class AvanzamentoAbbinamento {
+  const AvanzamentoAbbinamento(this.fase, {this.percentoTor, this.tentativo = 0});
+
+  final FaseAbbinamento fase;
+
+  /// Avvio di Tor da 0 a 100, solo in [FaseAbbinamento.avvioTor].
+  final int? percentoTor;
+
+  /// Quante volte il coach non si è trovato, in [FaseAbbinamento.attesaCoach].
+  final int tentativo;
+}
+
+/// Chi segue l'avanzamento dell'abbinamento.
+typedef OsservatoreAbbinamento = void Function(AvanzamentoAbbinamento avanzamento);
+
 /// Punti 1–3 del §5.3: legge l'invito, prepara la chiave del dispositivo e,
 /// con la chiave d'invito in Tor, chiede al coach il suo nome.
+///
+/// Se il coach non si trova ritenta per [attesaMassimaCoach]: con un invito
+/// appena creato il suo servizio può non essere ancora pubblicato.
 Future<InvitoLetto> leggiInvito(
   ContestoAtleta c,
   MotoreSync motore,
-  String testo,
-) async {
+  String testo, {
+  OsservatoreAbbinamento? avanzamento,
+}) async {
   final UriInvito invito;
   try {
     invito = UriInvito.analizza(testo);
@@ -40,7 +95,13 @@ Future<InvitoLetto> leggiInvito(
     throw const ErroreAbbinamento(ProblemaAbbinamento.versioneInvito);
   }
   final chiave = await _chiaveDispositivo(c, invito);
-  final info = await _conInvito(c, invito, (api) => api.info());
+  final info = await _conInvito(
+    c,
+    invito,
+    (api) => api.info(),
+    avanzamento: avanzamento,
+    ritentaSeIrraggiungibile: true,
+  );
   if (!info.protocollo.any(versioniProtocollo.contains) ||
       confrontaVersioni(c.versioneApp, info.versioneAppMinima) < 0) {
     throw const ErroreAbbinamento(ProblemaAbbinamento.aggiornaApp);
@@ -80,16 +141,31 @@ Future<CoppiaX25519> _chiaveDispositivo(
 /// La chiave d'invito resta in Tor solo durante la chiamata: mentre l'atleta
 /// decide, un collegamento già attivo con lo stesso coach continua a usare
 /// la propria.
+///
+/// Con [ritentaSeIrraggiungibile] un coach che non si trova si ritenta per
+/// [attesaMassimaCoach]. Non vale per l'abbinamento: una risposta persa si
+/// recupera rileggendo l'invito (§5.3).
 Future<T> _conInvito<T>(
   ContestoAtleta c,
   UriInvito invito,
-  Future<T> Function(ClienteApi api) chiamata,
-) async {
+  Future<T> Function(ClienteApi api) chiamata, {
+  OsservatoreAbbinamento? avanzamento,
+  bool ritentaSeIrraggiungibile = false,
+}) async {
   if (!await c.rete.disponibile()) {
     throw const ErroreAbbinamento(ProblemaAbbinamento.offline);
   }
   try {
-    await c.tor.avvia();
+    await c.tor.avvia(
+      avanzamento: avanzamento == null
+          ? null
+          : (percento) => avanzamento(
+              AvanzamentoAbbinamento(
+                FaseAbbinamento.avvioTor,
+                percentoTor: percento,
+              ),
+            ),
+    );
   } on TorNonParte {
     throw const ErroreAbbinamento(ProblemaAbbinamento.torNonParte);
   }
@@ -97,6 +173,11 @@ Future<T> _conInvito<T>(
   try {
     var rifiuti = 0;
     var attese = 0;
+    var assenze = 0;
+    final scadenza = c.orologio.adesso().add(attesaMassimaCoach);
+    avanzamento?.call(
+      const AvanzamentoAbbinamento(FaseAbbinamento.collegamento),
+    );
     while (true) {
       final http = c.tor.creaHttpClient();
       try {
@@ -124,8 +205,26 @@ Future<T> _conInvito<T>(
             await c.orologio.attendi(_atteseDopoRifiuto[rifiuti++]);
           case TipoGuasto.irraggiungibile:
             c.registra('Coach non raggiungibile: $e');
-            throw const ErroreAbbinamento(
-              ProblemaAbbinamento.coachIrraggiungibile,
+            final pausa = _atteseSeIrraggiungibile[min(
+              assenze,
+              _atteseSeIrraggiungibile.length - 1,
+            )];
+            if (!ritentaSeIrraggiungibile ||
+                c.orologio.adesso().add(pausa).isAfter(scadenza)) {
+              throw const ErroreAbbinamento(
+                ProblemaAbbinamento.coachIrraggiungibile,
+              );
+            }
+            assenze++;
+            avanzamento?.call(
+              AvanzamentoAbbinamento(
+                FaseAbbinamento.attesaCoach,
+                tentativo: assenze,
+              ),
+            );
+            await c.orologio.attendi(pausa);
+            avanzamento?.call(
+              const AvanzamentoAbbinamento(FaseAbbinamento.collegamento),
             );
           case TipoGuasto.protocollo:
             c.registra('Risposta del coach non conforme al protocollo: $e');
@@ -198,10 +297,13 @@ class InvitoLetto {
   ///
   /// Lancia [ErroreAbbinamento]; dopo un errore si può chiamare di nuovo.
   /// Se l'atleta non conferma basta lasciar perdere l'invito letto.
-  Future<CoachCollegato> collega() async {
+  Future<CoachCollegato> collega({OsservatoreAbbinamento? avanzamento}) async {
     if (_inCorso || _concluso) throw StateError('Abbinamento già avviato');
     _inCorso = true;
     try {
+      avanzamento?.call(
+        const AvanzamentoAbbinamento(FaseAbbinamento.abbinamento),
+      );
       // La chiave va salvata prima di inviarla: se la risposta si perde e
       // l'app si chiude, rileggendo lo stesso invito l'abbinamento si ripete
       // con la stessa chiave (§5.3).
@@ -226,6 +328,7 @@ class InvitoLetto {
       final id = await _registra(risposta);
       _concluso = true;
       await _c.cassaforte.elimina(_voceAbbinamento);
+      avanzamento?.call(const AvanzamentoAbbinamento(FaseAbbinamento.conferma));
       // Conferma con la chiave del dispositivo, poi la prima sync, completa
       // perché cursore ed epoca sono vuoti (punti 6–8).
       await _motore.sincronizza(id, dopoAbbinamento: true);

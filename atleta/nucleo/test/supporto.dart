@@ -300,12 +300,20 @@ class TorFinto implements TrasportoTor {
   /// Eseguita una volta, all'inizio della prossima connessione.
   Future<void> Function()? primaDellaConnessione;
 
+  /// Percentuali che [avvia] annuncia prima di completare il bootstrap.
+  var avanzamentoAvvio = const [0, 50];
+
   @override
-  Future<void> avvia() async {
+  Future<void> avvia({void Function(int percento)? avanzamento}) async {
     if (nonParte) throw const TorNonParte();
-    if (attivo) return;
-    attivo = true;
-    avvii++;
+    if (!attivo) {
+      for (final percento in avanzamentoAvvio) {
+        avanzamento?.call(percento);
+      }
+      attivo = true;
+      avvii++;
+    }
+    avanzamento?.call(100);
   }
 
   @override

@@ -15,6 +15,24 @@ String dataOra(DateTime istante) {
 String soloData(DateTime giorno) =>
     '${_due(giorno.day)}/${_due(giorno.month)}/${giorno.year}';
 
+/// Recupero scritto dal coach in secondi («90») o in minuti e secondi
+/// («1:30»). Null se il testo non è né l'uno né l'altro.
+int? analizzaRecupero(String testo) {
+  final m = RegExp(r'^(?:(\d{1,3}):([0-5]\d)|(\d{1,5}))$').firstMatch(testo.trim());
+  if (m == null) return null;
+  if (m[3] != null) return int.parse(m[3]!);
+  return int.parse(m[1]!) * 60 + int.parse(m[2]!);
+}
+
+/// Il recupero come lo si scrive nell'editor: «45» sotto il minuto, «1:30»
+/// da un minuto in su.
+String formattaRecupero(int secondi) =>
+    secondi < 60 ? '$secondi' : '${secondi ~/ 60}:${_due(secondi % 60)}';
+
+/// Il recupero da leggere: «45 s», «1:30 min».
+String recuperoLeggibile(int secondi) =>
+    secondi < 60 ? '$secondi s' : '${formattaRecupero(secondi)} min';
+
 /// Chiede conferma di un'azione; vero se il coach conferma.
 Future<bool> conferma(
   BuildContext context, {

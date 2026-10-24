@@ -189,6 +189,58 @@ void main() {
     expect((await invito.collega()).problema, isNull);
   });
 
+  test(
+    "un invito appena creato si aspetta finché il servizio non è pubblicato",
+    () async {
+      final testo = await pc.invito(atletaId);
+      // Il descrittore del servizio non è ancora sulla rete: Tor risponde F0
+      // per due volte.
+      telefono.tor.guasti.addAll(const [
+        ErroreSocks(ErroreSocks.descrittoreNonTrovato),
+        ErroreSocks(ErroreSocks.descrittoreNonTrovato),
+      ]);
+      final fasi = <String>[];
+      void segui(AvanzamentoAbbinamento a) => fasi.add(switch (a.fase) {
+        FaseAbbinamento.avvioTor => 'tor ${a.percentoTor}',
+        FaseAbbinamento.attesaCoach => 'attesa ${a.tentativo}',
+        final fase => fase.name,
+      });
+
+      final invito = await telefono.nucleo.leggiInvito(testo, avanzamento: segui);
+      expect(invito.nomeCoach, 'Marco Bianchi');
+      await invito.collega(avanzamento: segui);
+      expect(fasi, [
+        'tor 0',
+        'tor 50',
+        'tor 100',
+        'collegamento',
+        'attesa 1',
+        'collegamento',
+        'attesa 2',
+        'collegamento',
+        'abbinamento',
+        'conferma',
+      ]);
+      expect(ambiente.orologio.attese.take(2), const [
+        Duration(seconds: 5),
+        Duration(seconds: 10),
+      ]);
+    },
+  );
+
+  test('il coach che non si trova si aspetta al massimo due minuti', () async {
+    final testo = await pc.invito(atletaId);
+    pc.spegni();
+    final inizio = ambiente.orologio.ora;
+    await expectLater(
+      telefono.nucleo.leggiInvito(testo),
+      throwsA(erroreAbbinamento(ProblemaAbbinamento.coachIrraggiungibile)),
+    );
+    final attesa = ambiente.orologio.ora.difference(inizio);
+    expect(attesa, greaterThan(const Duration(minutes: 1)));
+    expect(attesa, lessThanOrEqualTo(attesaMassimaCoach));
+  });
+
   test('app troppo vecchia per il coach', () async {
     pc.archivio.scriviImpostazione(Impostazioni.versioneAppMinima, '1.2.0');
     await expectLater(

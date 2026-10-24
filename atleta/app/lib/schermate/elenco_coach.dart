@@ -50,7 +50,10 @@ class _ElencoCoachState extends State<ElencoCoach> {
     _cambiamenti = widget.nucleo.cambiamenti.listen((_) => _aggiorna());
     widget.inviti?.addListener(_invitoArrivato);
     // Il link che ha aperto l'app arriva prima di questa schermata.
-    WidgetsBinding.instance.addPostFrameCallback((_) => _invitoArrivato());
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _invitoArrivato();
+      unawaited(_consigliaBatteria());
+    });
   }
 
   @override
@@ -79,6 +82,68 @@ class _ElencoCoachState extends State<ElencoCoach> {
     _abbinamento = false;
     // Un link arrivato mentre la schermata si chiudeva.
     _invitoArrivato();
+    // Con il primo coach collegato il consiglio sulla batteria diventa utile.
+    if (mounted) unawaited(_consigliaBatteria());
+  }
+
+  /// Il consiglio sulla batteria è già comparso da quando l'app è aperta.
+  var _consiglioMostrato = false;
+
+  /// Per quanto «Non ora» nasconde il consiglio sulla batteria.
+  static const _rinvioConsiglio = Duration(days: 7);
+
+  /// Con la batteria «Limitata» le sync in background non partono, con
+  /// «Ottimizzata» possono ritardare di ore (§7.4): con un coach collegato
+  /// l'app lo dice e porta alle impostazioni. Non compare con «Senza
+  /// restrizioni», né per una settimana dopo «Non ora».
+  Future<void> _consigliaBatteria() async {
+    final background = widget.background;
+    if (background == null || _consiglioMostrato) return;
+    if (widget.nucleo.collegamenti.attivi().isEmpty) return;
+    final StatoBatteria stato;
+    final DateTime? rimandato;
+    try {
+      stato = await background.statoBatteria();
+      rimandato = await background.consiglioBatteriaRimandato();
+    } on Exception {
+      // Senza il codice Android, per esempio nei test, niente consiglio.
+      return;
+    }
+    final adesso = widget.nucleo.contesto.orologio.adesso();
+    if (stato == StatoBatteria.senzaRestrizioni) return;
+    if (rimandato != null && adesso.isBefore(rimandato)) return;
+    // Un'altra schermata sopra, per esempio l'abbinamento: si aspetta.
+    if (!mounted || !(ModalRoute.of(context)?.isCurrent ?? false)) return;
+    _consiglioMostrato = true;
+    final testi = Testi.of(context);
+    final limitata = stato == StatoBatteria.limitata;
+    final scelta = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        icon: const Icon(Icons.battery_alert_outlined),
+        title: Text(
+          limitata ? testi.batteriaLimitataTitolo : testi.batteriaOttimizzataTitolo,
+        ),
+        content: Text(
+          limitata ? testi.batteriaLimitataTesto : testi.batteriaOttimizzataTesto,
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(testi.nonOra),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(testi.apriImpostazioniApp),
+          ),
+        ],
+      ),
+    );
+    if (scelta == true) {
+      await background.apriImpostazioniApp();
+    } else {
+      await background.rimandaConsiglioBatteria(adesso.add(_rinvioConsiglio));
+    }
   }
 
   void _leggi() {

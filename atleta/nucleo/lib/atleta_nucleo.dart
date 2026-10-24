@@ -3,7 +3,13 @@
 /// e sincronizzazione, senza interfaccia e senza Flutter.
 library;
 
-export 'src/abbinamento.dart' show InvitoLetto;
+export 'src/abbinamento.dart'
+    show
+        AvanzamentoAbbinamento,
+        FaseAbbinamento,
+        InvitoLetto,
+        OsservatoreAbbinamento,
+        attesaMassimaCoach;
 export 'src/archivio.dart';
 export 'src/cassaforte.dart';
 export 'src/collegamenti.dart';

@@ -10,6 +10,7 @@ import 'contenuto_scheda.dart';
 import 'dettaglio_log.dart';
 import 'dettaglio_scheda.dart';
 import 'formati.dart';
+import 'scollegamento.dart';
 import 'stato_sync.dart';
 
 /// Un coach (§10.2): lo stato della sync (§7.5) con «Sincronizza ora», le
@@ -92,6 +93,12 @@ class _PaginaCoachState extends State<PaginaCoach>
     messaggi.avvisa(testi.allenamentoSalvato);
   }
 
+  /// Dopo lo scollegamento, se l'atleta ha cancellato i dati del coach, la
+  /// pagina non ha più niente da mostrare.
+  Future<void> _chiudiSe(Future<bool> datiCancellati) async {
+    if (await datiCancellati && mounted) Navigator.of(context).pop();
+  }
+
   Future<void> _apriScheda(SchedaRicevuta scheda) => Navigator.of(context).push(
     MaterialPageRoute<void>(
       builder: (_) => DettaglioScheda(
@@ -125,7 +132,25 @@ class _PaginaCoachState extends State<PaginaCoach>
         ? RefreshIndicator(onRefresh: _sincronizza, child: elenco)
         : elenco;
     return Scaffold(
-      appBar: AppBar(title: Text(coach.nomeCoach)),
+      appBar: AppBar(
+        title: Text(coach.nomeCoach),
+        actions: [
+          PopupMenuButton<void>(
+            itemBuilder: (_) => [
+              if (attivo)
+                PopupMenuItem(
+                  onTap: () => _chiudiSe(scollegaDalCoach(context, _nucleo, coach)),
+                  child: Text(testi.scollega),
+                )
+              else
+                PopupMenuItem(
+                  onTap: () => _chiudiSe(cancellaDatiDelCoach(context, _nucleo, coach)),
+                  child: Text(testi.cancellaDatiCoach),
+                ),
+            ],
+          ),
+        ],
+      ),
       body: Column(
         children: [
           _StatoSync(

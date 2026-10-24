@@ -55,7 +55,7 @@ void main() {
     expect(find.text('Revisione nuova'), findsOneWidget);
     expect(find.text('Giorno A'), findsOneWidget);
     expect(find.text('Giorno B'), findsOneWidget);
-    expect(find.text('4 × 6-8 · 75% 1RM · recupero 2:30'), findsOneWidget);
+    expect(find.text('4 × 6-8 · 75% 1RM · recupero 2:30 · RIR 1-2'), findsOneWidget);
     expect(find.text('3 × 30 s'), findsOneWidget);
     expect(find.text('Pausa di 1 s in buca'), findsOneWidget);
     expect(find.text('Inizia'), findsNWidgets(2));

@@ -206,6 +206,7 @@ class _CartaSeduta extends StatelessWidget {
                           ripetizioni: riga.ripetizioni,
                           carico: riga.carico,
                           recupero: riga.recupero,
+                          rir: riga.rir,
                         ),
                       ),
                     if (esercizio.note.isNotEmpty)

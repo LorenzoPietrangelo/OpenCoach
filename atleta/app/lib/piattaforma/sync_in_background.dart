@@ -50,6 +50,18 @@ List<NotificaSchede> notificheSchede(
 /// notifiche stanno nel codice Kotlin dell'app (MotoreFlutter, LavoroSync):
 /// quando è il momento chiede a [sincronizza] le notifiche da mostrare, sul
 /// nucleo del processo, lo stesso dell'interfaccia se l'app è aperta.
+/// Le scelte di Android per la batteria di un'app.
+enum StatoBatteria {
+  /// Le sync in background partono quasi in orario.
+  senzaRestrizioni,
+
+  /// Il default: Android può rimandarle anche di ore.
+  ottimizzata,
+
+  /// Non partono mai: le schede arrivano solo ad app aperta.
+  limitata,
+}
+
 class SyncInBackground {
   SyncInBackground(
     this._nucleo, {
@@ -133,6 +145,30 @@ class SyncInBackground {
   /// batteria «Limitata» le sync in background non partono.
   Future<bool> limitata() async =>
       await _canale.invokeMethod<bool>('limitata') ?? false;
+
+  /// Come il telefono tratta la batteria dell'app, che decide quanto
+  /// ritardano le sync in background.
+  Future<StatoBatteria> statoBatteria() async =>
+      switch (await _canale.invokeMethod<String>('statoBatteria')) {
+        'limitata' => StatoBatteria.limitata,
+        'senza_restrizioni' => StatoBatteria.senzaRestrizioni,
+        _ => StatoBatteria.ottimizzata,
+      };
+
+  /// Fino a quando l'atleta ha rimandato il consiglio sulla batteria; null se
+  /// non l'ha mai rimandato.
+  Future<DateTime?> consiglioBatteriaRimandato() async {
+    final millisecondi =
+        await _canale.invokeMethod<int>('avvisoBatteriaRimandato') ?? 0;
+    return millisecondi == 0
+        ? null
+        : DateTime.fromMillisecondsSinceEpoch(millisecondi, isUtc: true);
+  }
+
+  Future<void> rimandaConsiglioBatteria(DateTime fino) => _canale.invokeMethod(
+    'rimandaAvvisoBatteria',
+    {'fino': fino.millisecondsSinceEpoch},
+  );
 
   /// Apre le informazioni sull'app nelle impostazioni del telefono.
   Future<void> apriImpostazioniApp() =>

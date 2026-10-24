@@ -178,6 +178,7 @@ Map<String, Object?> schedaForza({
               'ripetizioni': '6-8',
               'carico': '75% 1RM',
               'recupero_s': 150,
+              'rir': '1-2',
             },
           ],
         },

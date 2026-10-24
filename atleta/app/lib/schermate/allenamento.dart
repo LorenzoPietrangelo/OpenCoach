@@ -57,6 +57,14 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
   /// Esercizi misurati a tempo invece che a ripetizioni.
   final _aTempo = <EsercizioInCorso>{};
 
+  /// Esercizi aperti per registrare le serie; gli altri mostrano solo nome
+  /// e prescrizione.
+  final _aperti = <EsercizioInCorso>{};
+
+  void _apriOChiudi(EsercizioInCorso esercizio) => setState(
+    () => _aperti.remove(esercizio) || _aperti.add(esercizio),
+  );
+
   /// Campi con un valore non valido: finché ce ne sono non si salva.
   final _nonValidi = <(SerieInCorso, _Campo)>{};
   var _durataValida = true;
@@ -85,6 +93,9 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
     _aTempo.addAll(
       _a.esercizi.where((e) => e.serie.any((s) => s.durataS != null)),
     );
+    // Un allenamento già registrato si apre per correggerlo: le serie si
+    // vedono subito.
+    if (widget.logId != null) _aperti.addAll(_a.esercizi);
   }
 
   @override
@@ -230,7 +241,8 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
       massimo: 200,
     );
     if (nome == null || nome.isEmpty) return;
-    _cambia(() => _a.aggiungiEsercizio(nome));
+    // Un esercizio aggiunto si apre: l'atleta lo aggiunge per registrarlo.
+    _cambia(() => _aperti.add(_a.aggiungiEsercizio(nome)));
   }
 
   Future<void> _rinomina(EsercizioInCorso esercizio) async {
@@ -268,6 +280,7 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
   void _togliEsercizio(EsercizioInCorso esercizio) => _cambia(() {
     _a.esercizi.remove(esercizio);
     _aTempo.remove(esercizio);
+    _aperti.remove(esercizio);
     _nonValidi.removeWhere(
       (campo) => esercizio.serie.any((serie) => identical(serie, campo.$1)),
     );
@@ -326,6 +339,16 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
     final messaggi = ScaffoldMessenger.of(context);
     final coachId = _a.coachId;
     if (_nonValidi.isNotEmpty || !_durataValida || coachId == null) {
+      // I valori da correggere devono vedersi: si aprono i loro esercizi.
+      setState(() {
+        for (final esercizio in _a.esercizi) {
+          if (esercizio.serie.any(
+            (serie) => _nonValidi.any((campo) => identical(campo.$1, serie)),
+          )) {
+            _aperti.add(esercizio);
+          }
+        }
+      });
       messaggi.avvisa(testi.correggiValori);
       return;
     }
@@ -537,65 +560,138 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
     final noteCoach = esercizio.noteCoach.isNotEmpty
         ? esercizio.noteCoach
         : previsto?.note ?? '';
+    final aperto = _aperti.contains(esercizio);
+    final fatte = esercizio.serie.where((s) => s.completata).length;
+    // Chiuso, l'esercizio mostra solo serie, ripetizioni e RIR (§8.1);
+    // carico e recupero si vedono aprendolo.
+    final riepilogo = previsto == null || previsto.prescrizione.isEmpty
+        ? testi.numeroSerie(esercizio.serie.length)
+        : [
+            for (final riga in previsto.prescrizione)
+              testoPrescrizione(
+                testi,
+                serie: riga.serie,
+                ripetizioni: riga.ripetizioni,
+                rir: riga.rir,
+              ),
+          ].where((t) => t.isNotEmpty).join(' + ');
+    final dettagli = [
+      if (previsto != null)
+        for (final riga in previsto.prescrizione)
+          testoPrescrizione(
+            testi,
+            carico: riga.carico,
+            recupero: riga.recupero,
+          ),
+    ].where((t) => t.isNotEmpty);
     return Card(
       key: ObjectKey(esercizio),
       margin: const EdgeInsets.symmetric(vertical: 6),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 4, 4, 4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ListTile(
+            title: Text(esercizio.nome, style: tema.titleMedium),
+            subtitle: riepilogo.isEmpty ? null : Text(riepilogo),
+            trailing: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Expanded(child: Text(esercizio.nome, style: tema.titleMedium)),
-                _menu(esercizio, aTempo),
+                Text(
+                  testi.serieFatte(fatte, esercizio.serie.length),
+                  style: tema.labelMedium,
+                ),
+                Icon(aperto ? Icons.expand_less : Icons.expand_more),
               ],
             ),
-            if (previsto != null)
-              for (final riga in previsto.prescrizione)
-                Text(
-                  testoPrescrizione(
-                    testi,
-                    serie: riga.serie,
-                    ripetizioni: riga.ripetizioni,
-                    carico: riga.carico,
-                    recupero: riga.recupero,
-                  ),
-                ),
-            if (noteCoach.isNotEmpty)
-              Text(
-                noteCoach,
-                style: tema.bodySmall?.copyWith(fontStyle: FontStyle.italic),
-              ),
-            if (esercizio.note.isNotEmpty)
-              Text(testi.tueNote(esercizio.note), style: tema.bodySmall),
-            const SizedBox(height: 8),
-            _colonne(
-              numero: Text(testi.serie, style: tema.labelSmall),
-              ripetizioni: conRipetizioni
-                  ? Text(testi.ripetizioniBreve, style: tema.labelSmall)
-                  : null,
-              durata: conDurata
-                  ? Text(testi.secondiBreve, style: tema.labelSmall)
-                  : null,
-              carico: Text(testi.kg, style: tema.labelSmall),
-              rpe: Text(testi.rpe, style: tema.labelSmall),
-              fatta: Text(testi.fatta, style: tema.labelSmall),
-            ),
-            for (final (indice, serie) in esercizio.serie.indexed)
-              _serie(
-                indice,
-                serie,
+            onTap: () => _apriOChiudi(esercizio),
+          ),
+          AnimatedSize(
+            duration: const Duration(milliseconds: 200),
+            alignment: Alignment.topCenter,
+            // Chiuso, l'esercizio tiene vivi i suoi campi: un valore ancora da
+            // correggere non si perde.
+            child: Visibility(
+              visible: aperto,
+              maintainState: true,
+              replacement: const SizedBox(width: double.infinity),
+              child: _registrazione(
+                esercizio,
+                aTempo: aTempo,
                 conRipetizioni: conRipetizioni,
                 conDurata: conDurata,
+                dettagli: dettagli,
+                noteCoach: noteCoach,
               ),
-            TextButton.icon(
-              onPressed: () => _cambia(esercizio.aggiungiSerie),
-              icon: const Icon(Icons.add),
-              label: Text(testi.aggiungiSerie),
             ),
-          ],
-        ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// La parte che si apre toccando l'esercizio: carico e recupero previsti,
+  /// note, le serie da registrare e il menu dell'esercizio.
+  Widget _registrazione(
+    EsercizioInCorso esercizio, {
+    required bool aTempo,
+    required bool conRipetizioni,
+    required bool conDurata,
+    required Iterable<String> dettagli,
+    required String noteCoach,
+  }) {
+    final testi = Testi.of(context);
+    final tema = Theme.of(context).textTheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 4, 4),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [for (final dettaglio in dettagli) Text(dettaglio)],
+                ),
+              ),
+              _menu(esercizio, aTempo),
+            ],
+          ),
+          if (noteCoach.isNotEmpty)
+            Text(
+              noteCoach,
+              style: tema.bodySmall?.copyWith(fontStyle: FontStyle.italic),
+            ),
+          if (esercizio.note.isNotEmpty)
+            Text(testi.tueNote(esercizio.note), style: tema.bodySmall),
+          const SizedBox(height: 8),
+          _colonne(
+            numero: Text(testi.serie, style: tema.labelSmall),
+            ripetizioni: conRipetizioni
+                ? Text(testi.ripetizioniBreve, style: tema.labelSmall)
+                : null,
+            durata: conDurata
+                ? Text(testi.secondiBreve, style: tema.labelSmall)
+                : null,
+            carico: Text(testi.kg, style: tema.labelSmall),
+            rpe: Text(testi.rpe, style: tema.labelSmall),
+            fatta: Text(testi.fatta, style: tema.labelSmall),
+          ),
+          for (final (indice, serie) in esercizio.serie.indexed)
+            _serie(
+              indice,
+              serie,
+              conRipetizioni: conRipetizioni,
+              conDurata: conDurata,
+            ),
+          TextButton.icon(
+            onPressed: () => _cambia(esercizio.aggiungiSerie),
+            icon: const Icon(Icons.add),
+            label: Text(testi.aggiungiSerie),
+          ),
+        ],
       ),
     );
   }

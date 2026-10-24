@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:io';
 
 import 'package:protocollo/protocollo.dart';
@@ -18,6 +19,12 @@ class Collegamenti {
 
   final ContestoAtleta _c;
   final MotoreSync _motore;
+
+  /// Quanto [scollega] aspetta il coach, avvio di Tor compreso, prima di
+  /// scollegare il telefono senza avvisarlo. Con il PC spento la
+  /// connessione arriverebbe al timeout di 90 s (§6.2), troppo per un
+  /// atleta che aspetta davanti a uno spinner.
+  var attesaAvviso = const Duration(seconds: 20);
 
   /// Tutti i collegamenti, compresi quelli chiusi, per nome del coach.
   List<CoachCollegato> elenco() => [
@@ -76,16 +83,40 @@ class Collegamenti {
     final credenziali = await _c.credenziali(coach.id);
     if (credenziali == null || !await _c.rete.disponibile()) return false;
     HttpClient? http;
-    try {
+    var scaduto = false;
+    Future<void> avvisa() async {
       await _c.tor.avvia();
+      // Scaduta l'attesa, scollega toglie la chiave del coach da Tor: non va
+      // rimessa.
+      if (scaduto) return;
       await _c.assicuraChiave(coach.indirizzo, credenziali.chiave);
+      if (scaduto) {
+        // Rimessa mentre scollega la toglieva.
+        await _c.rimuoviChiaveSeInutile(coach.indirizzo);
+        return;
+      }
       http = _c.tor.creaHttpClient();
       await ClienteApi(
         indirizzo: coach.indirizzo,
-        http: http,
+        http: http!,
         token: credenziali.token,
       ).scollega();
+    }
+
+    final avviso = avvisa();
+    // Scaduta l'attesa, l'avviso si interrompe quando il finally chiude il
+    // client: il suo errore non interessa più a nessuno.
+    avviso.ignore();
+    try {
+      await avviso.timeout(attesaAvviso);
       return true;
+    } on TimeoutException {
+      scaduto = true;
+      _c.registra(
+        'Scollegamento non comunicato al coach: nessuna risposta in '
+        '${attesaAvviso.inSeconds} s',
+      );
+      return false;
     } on TorNonParte {
       return false;
     } catch (e) {

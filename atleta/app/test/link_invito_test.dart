@@ -34,8 +34,9 @@ class _TorLento implements TrasportoTor {
   void nonParte() => _avvio.completeError(const TorNonParte());
 
   @override
-  Future<void> avvia() {
+  Future<void> avvia({void Function(int percento)? avanzamento}) {
     avvii++;
+    avanzamento?.call(30);
     return _avvio.future;
   }
 
@@ -144,13 +145,22 @@ void main() {
     inviti = InvitiInArrivo();
     final link = linkInvito();
     await tester.pumpWidget(AppAtleta(nucleo: telefono.nucleo, inviti: inviti));
+    // Durante il collegamento la barra si muove sempre: si va avanti a tempo,
+    // non finché la schermata è ferma.
+    Future<void> attendi() async {
+      for (var i = 0; i < 10; i++) {
+        await tester.pump(const Duration(milliseconds: 100));
+      }
+    }
+
     await apriLink(tester, link);
-    await tester.pumpAndSettle();
-    expect(find.text('Collegamento in corso…'), findsOneWidget);
+    await attendi();
+    expect(find.text('Avvio della rete Tor… 30%'), findsOneWidget);
+    expect(find.byType(LinearProgressIndicator), findsOneWidget);
     expect(tor.avvii, 1);
 
     await apriLink(tester, link);
-    await tester.pumpAndSettle();
+    await attendi();
     expect(find.byType(AggiungiCoach), findsOneWidget);
     expect(inviti.inAttesa, isNull);
 

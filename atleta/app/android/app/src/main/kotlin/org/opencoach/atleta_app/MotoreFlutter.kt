@@ -11,6 +11,7 @@ import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import android.provider.Settings
 import io.flutter.FlutterInjector
 import io.flutter.embedding.engine.FlutterEngine
@@ -38,6 +39,13 @@ object MotoreFlutter {
 
     /** Tempo concesso al codice Dart per aprire l'archivio e la cassaforte. */
     private const val ATTESA_NUCLEO_MS = 60_000L
+
+    /** Preferenze degli avvisi mostrati all'atleta. */
+    private const val AVVISI = "avvisi"
+    private const val AVVISO_BATTERIA = "batteria_rimandato_fino"
+
+    private fun avvisi(context: Context) =
+        context.getSharedPreferences(AVVISI, Context.MODE_PRIVATE)
 
     private var motore: FlutterEngine? = null
     private var canale: MethodChannel? = null
@@ -149,6 +157,34 @@ object MotoreFlutter {
                     Build.VERSION.SDK_INT >= 28 &&
                         app.getSystemService(ActivityManager::class.java).isBackgroundRestricted,
                 )
+                // «Limitata»: nessun lavoro in background. «Senza restrizioni»:
+                // l'app è esclusa dall'ottimizzazione della batteria, e i
+                // lavori periodici partono quasi in orario. «Ottimizzata», il
+                // default: Android può rimandarli anche di ore.
+                "statoBatteria" -> risultato.success(
+                    when {
+                        Build.VERSION.SDK_INT >= 28 &&
+                            app.getSystemService(ActivityManager::class.java)
+                                .isBackgroundRestricted -> "limitata"
+                        app.getSystemService(PowerManager::class.java)
+                            .isIgnoringBatteryOptimizations(app.packageName) -> "senza_restrizioni"
+                        else -> "ottimizzata"
+                    },
+                )
+                // Fino a quando non riproporre il consiglio sulla batteria,
+                // in millisecondi dal 1970; 0 se non è stato rimandato.
+                "avvisoBatteriaRimandato" -> risultato.success(
+                    avvisi(app).getLong(AVVISO_BATTERIA, 0L),
+                )
+                "rimandaAvvisoBatteria" -> {
+                    avvisi(app).edit()
+                        .putLong(
+                            AVVISO_BATTERIA,
+                            chiamata.argument<Number>("fino")?.toLong() ?: 0L,
+                        )
+                        .apply()
+                    risultato.success(null)
+                }
                 "apriImpostazioniApp" -> {
                     app.startActivity(
                         Intent(

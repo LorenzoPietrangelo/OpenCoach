@@ -969,23 +969,35 @@ abstract class Testi {
   /// **'Carico'**
   String get carico;
 
-  /// No description provided for @recuperoSecondi.
+  /// No description provided for @recupero.
   ///
   /// In it, this message translates to:
-  /// **'Recupero (s)'**
-  String get recuperoSecondi;
+  /// **'Recupero'**
+  String get recupero;
 
-  /// No description provided for @aggiungiRiga.
+  /// No description provided for @recuperoNonValido.
   ///
   /// In it, this message translates to:
-  /// **'Aggiungi una riga'**
-  String get aggiungiRiga;
+  /// **'es. 90 o 1:30'**
+  String get recuperoNonValido;
 
-  /// No description provided for @togliRiga.
+  /// No description provided for @rir.
   ///
   /// In it, this message translates to:
-  /// **'Togli la riga'**
-  String get togliRiga;
+  /// **'RIR'**
+  String get rir;
+
+  /// No description provided for @altreRighe.
+  ///
+  /// In it, this message translates to:
+  /// **'Altre serie da una versione precedente: {elenco}'**
+  String altreRighe(String elenco);
+
+  /// No description provided for @togliAltreRighe.
+  ///
+  /// In it, this message translates to:
+  /// **'Toglile'**
+  String get togliAltreRighe;
 
   /// No description provided for @spostaSu.
   ///

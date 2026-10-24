@@ -111,6 +111,7 @@ void _contenutoScheda(_Verifica v, Map<String, Object?> m) {
         v.testo(riga, 'ripetizioni', pr, massimo: 50);
         v.testo(riga, 'carico', pr, massimo: 50);
         v.intero(riga, 'recupero_s', pr, minimo: 0, massimo: 3600);
+        v.testo(riga, 'rir', pr, massimo: 20);
       }
     }
   }

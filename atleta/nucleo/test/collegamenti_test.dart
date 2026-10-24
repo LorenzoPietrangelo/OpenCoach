@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
@@ -133,6 +134,27 @@ void main() {
       isNotNull,
       reason: 'il coach dovrà revocarlo dal suo PC',
     );
+  });
+
+  test('scollegarsi non aspetta un coach che non risponde', () async {
+    final coach = await ambiente.abbina(telefono, pc, atletaId);
+    final collegamenti = telefono.nucleo.collegamenti
+      ..attesaAvviso = const Duration(milliseconds: 200);
+    final bloccata = Completer<void>();
+    telefono.tor.primaDellaConnessione = () => bloccata.future;
+
+    final inizio = DateTime.now();
+    expect(await collegamenti.scollega(coach.id), isFalse);
+    expect(DateTime.now().difference(inizio), lessThan(const Duration(seconds: 5)));
+    expect(stato(coach.id).stato, StatoCollegamento.scollegato);
+    expect(telefono.cassaforte.nomi, isEmpty);
+    expect(telefono.tor.chiavi, isEmpty);
+
+    // La connessione che si sblocca dopo non cambia niente.
+    bloccata.complete();
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(telefono.tor.chiavi, isEmpty);
+    expect(stato(coach.id).stato, StatoCollegamento.scollegato);
   });
 
   test('i dati di un collegamento attivo non si cancellano', () async {

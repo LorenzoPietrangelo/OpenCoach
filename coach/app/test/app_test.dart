@@ -1,3 +1,4 @@
+import 'package:coach_app/comuni.dart';
 import 'package:coach_app/servizi.dart';
 import 'package:coach_nucleo/coach_nucleo.dart';
 import 'package:flutter/material.dart';
@@ -95,6 +96,22 @@ void main() {
     await tester.enterText(find.widgetWithText(TextFormField, 'Esercizio'), 'Squat');
     await tester.enterText(find.widgetWithText(TextFormField, 'Serie'), '4');
     await tester.enterText(find.widgetWithText(TextFormField, 'Ripetizioni'), '6-8');
+    // Il recupero si scrive anche in minuti e secondi.
+    await tester.enterText(find.widgetWithText(TextFormField, 'Recupero'), '1:');
+    await tester.pump();
+    expect(find.text('es. 90 o 1:30'), findsOneWidget);
+    await tester.enterText(find.widgetWithText(TextFormField, 'Recupero'), '1:30');
+    await tester.pump();
+    expect(find.text('es. 90 o 1:30'), findsNothing);
+    await tester.enterText(find.widgetWithText(TextFormField, 'RIR'), '2');
+    // Le note dell'esercizio sono a scomparsa.
+    expect(find.widgetWithText(TextFormField, 'Note dell\'esercizio'), findsNothing);
+    await tester.tap(find.byTooltip('Note dell\'esercizio'));
+    await tester.pump();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, 'Note dell\'esercizio'),
+      'Pausa in buca',
+    );
     await tester.tap(find.text('Pubblica'));
     await tester.pumpAndSettle();
 
@@ -104,14 +121,29 @@ void main() {
     final contenuto = coach.nucleo.schede.contenutoRevisione(scheda.id, 1)!;
     expect(validaContenutoScheda(contenuto), isEmpty);
     final esercizio = ((contenuto['sedute'] as List).single as Map)['esercizi'] as List;
+    expect((esercizio.single as Map)['note'], 'Pausa in buca');
     expect((esercizio.single as Map)['prescrizione'], [
-      {'serie': 4, 'ripetizioni': '6-8'},
+      {'serie': 4, 'ripetizioni': '6-8', 'recupero_s': 90, 'rir': '2'},
     ]);
 
     await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
     expect(find.text('Forza'), findsOneWidget);
     expect(find.textContaining('Revisione 1 · in attesa di consegna'), findsOneWidget);
+  });
+
+  test('il recupero si legge in secondi o in minuti e secondi', () {
+    expect(analizzaRecupero('90'), 90);
+    expect(analizzaRecupero(' 1:30 '), 90);
+    expect(analizzaRecupero('2:05'), 125);
+    expect(analizzaRecupero('1:5'), isNull);
+    expect(analizzaRecupero('1:60'), isNull);
+    expect(analizzaRecupero('1:'), isNull);
+    expect(analizzaRecupero(''), isNull);
+    expect(formattaRecupero(45), '45');
+    expect(formattaRecupero(150), '2:30');
+    expect(recuperoLeggibile(45), '45 s');
+    expect(recuperoLeggibile(90), '1:30 min');
   });
 
   testWidgets('uscire dall\'editor con modifiche chiede conferma', (tester) async {
@@ -197,7 +229,7 @@ void main() {
     await tester.tap(find.text('Giorno A'));
     await tester.pumpAndSettle();
     expect(find.text('Serie 1: 8 ripetizioni, 80 kg'), findsOneWidget);
-    expect(find.text('Prescritto: 4 × 6-8, 75% 1RM, 150 s'), findsOneWidget);
+    expect(find.text('Prescritto: 4 × 6-8, 75% 1RM, 2:30 min'), findsOneWidget);
   });
 
   testWidgets('notifica sul desktop gli allenamenti in arrivo', (tester) async {

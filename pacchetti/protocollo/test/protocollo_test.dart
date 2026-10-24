@@ -64,6 +64,7 @@ Map<String, Object?> contenutoSchedaDiEsempio() => {
               'ripetizioni': '6-8',
               'carico': '75% 1RM',
               'recupero_s': 150,
+              'rir': '1-2',
             },
           ],
         },
@@ -309,6 +310,24 @@ void main() {
           'sedute[0].esercizi[0].id: id ripetuto',
         ]),
       );
+    });
+
+    test('il RIR della prescrizione è un testo breve', () {
+      final contenuto = contenutoSchedaDiEsempio();
+      final seduta =
+          (contenuto['sedute'] as List<Object?>).first as Map<String, Object?>;
+      final esercizio =
+          (seduta['esercizi'] as List<Object?>).first as Map<String, Object?>;
+      final riga =
+          (esercizio['prescrizione'] as List<Object?>).first as Map<String, Object?>;
+      riga['rir'] = 2;
+      expect(validaContenutoScheda(contenuto), [
+        'sedute[0].esercizi[0].prescrizione[0].rir: deve essere un testo',
+      ]);
+      riga['rir'] = 'x' * 21;
+      expect(validaContenutoScheda(contenuto), [
+        'sedute[0].esercizi[0].prescrizione[0].rir: al massimo 20 caratteri',
+      ]);
     });
 
     test('una scheda senza sedute non si può pubblicare', () {

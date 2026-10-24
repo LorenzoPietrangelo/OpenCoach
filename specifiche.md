@@ -336,7 +336,7 @@ Per ogni coach sono sempre visibili l'ultima sync riuscita e il numero di log in
           "nome": "Squat",
           "note": "Pausa di 1 s in buca",
           "prescrizione": [
-            { "serie": 4, "ripetizioni": "6-8", "carico": "75% 1RM", "recupero_s": 150 }
+            { "serie": 4, "ripetizioni": "6-8", "carico": "75% 1RM", "recupero_s": 150, "rir": "1-2" }
           ]
         }
       ]
@@ -346,7 +346,7 @@ Per ogni coach sono sempre visibili l'ultima sync riuscita e il numero di log in
 ```
 
 - `revisione` cresce a ogni ripubblicazione. L'app mostra sempre l'ultima ricevuta.
-- `ripetizioni` e `carico` sono testo libero («8», «6-8», «30 s», «RPE 8», «75% 1RM»). Tutti i campi della prescrizione sono facoltativi.
+- `ripetizioni` e `carico` sono testo libero («8», «6-8», «30 s», «RPE 8», «75% 1RM»), come `rir`, le ripetizioni da lasciare in riserva («2», «1-2»). Tutti i campi della prescrizione sono facoltativi.
 - Gli id di sedute ed esercizi restano stabili tra le revisioni, così i log restano collegati.
 - L'ordine degli array è l'ordine di visualizzazione.
 - Le schede archiviate restano sul telefono in sola lettura, nella sezione «Archivio».

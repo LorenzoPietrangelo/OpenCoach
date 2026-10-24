@@ -65,9 +65,14 @@ class NucleoAtleta {
   /// «Collegarti a Marco Bianchi?» e, se l'atleta conferma, chiama
   /// [abbinamento.InvitoLetto.collega].
   ///
+  /// [avanzamento] segue l'avvio di Tor e i tentativi verso il coach, per la
+  /// barra d'avanzamento.
+  ///
   /// Lancia `ErroreAbbinamento` con il messaggio da mostrare (§5.4).
-  Future<abbinamento.InvitoLetto> leggiInvito(String testo) =>
-      abbinamento.leggiInvito(contesto, sync, testo);
+  Future<abbinamento.InvitoLetto> leggiInvito(
+    String testo, {
+    abbinamento.OsservatoreAbbinamento? avanzamento,
+  }) => abbinamento.leggiInvito(contesto, sync, testo, avanzamento: avanzamento);
 
   /// Id dei coach i cui dati o il cui stato sono cambiati: l'interfaccia li
   /// rilegge.

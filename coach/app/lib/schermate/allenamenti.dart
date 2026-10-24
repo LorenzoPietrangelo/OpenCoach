@@ -136,7 +136,8 @@ class _DialogoAllenamento extends StatelessWidget {
   String _rigaPrescrizione(Map<String, Object?> r) => [
     if (r['serie'] != null || r['ripetizioni'] != null) '${r['serie'] ?? '?'} × ${r['ripetizioni'] ?? '?'}',
     if (r['carico'] is String) r['carico'] as String,
-    if (r['recupero_s'] is int) '${r['recupero_s']} s',
+    if (r['recupero_s'] is int) recuperoLeggibile(r['recupero_s'] as int),
+    if (r['rir'] is String) 'RIR ${r['rir']}',
   ].join(', ');
 
   String _serie(Testi t, int numero, Map<String, Object?> s) {

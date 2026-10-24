@@ -102,7 +102,7 @@ opencoach://invito?v=1&o=<onion>&i=<id>&s=<segreto>&k=<chiave>
 7. Alla conferma il programma chiude l'invito e toglie la chiave d'invito dal servizio. Se la conferma non arriva entro la scadenza dell'invito, il programma toglie comunque la chiave d'invito; il dispositivo resta attivo.
 8. L'app esegue la prima sync, completa (§7.3).
 
-Ripetere `POST /v1/abbinamento` con la stessa chiave di dispositivo prima della conferma restituisce un token nuovo e invalida il precedente: copre il caso in cui la risposta si perda.
+Ripetere `POST /v1/abbinamento` con la stessa chiave di dispositivo prima della conferma restituisce un token nuovo e invalida il precedente: copre il caso in cui la risposta si perda, e l'app lo fa da sola quando la risposta non arriva.
 
 ### 5.4 Errori durante l'abbinamento
 
@@ -137,7 +137,7 @@ Il coach genera un nuovo invito per lo stesso atleta. Il nuovo dispositivo sosti
 - La versione maggiore del protocollo è nel percorso (`/v1`). Entro la stessa versione si aggiungono solo campi facoltativi, ed entrambe le parti ignorano i campi sconosciuti.
 - Limiti: richiesta e risposta fino a 2 MiB (oltre si pagina), un log fino a 64 KiB, una scheda fino a 256 KiB, al massimo 100 log per richiesta.
 - Frequenza: al massimo 30 richieste al minuto per dispositivo, 10 tentativi al minuto in totale su `POST /v1/abbinamento`, 10 sync contemporanee.
-- Timeout lato app: 90 s per stabilire la connessione, 60 s per ricevere la risposta. Nella lettura dell'invito (§5.3, punto 3) ogni tentativo dura al massimo 30, poi 45, poi 60 s, e i tentativi si ripetono per circa 2 minuti: la prima connessione di un Tor appena avviato a volte resta appesa, mentre una nuova riesce in pochi secondi.
+- Timeout lato app: 90 s per stabilire la connessione, 60 s per ricevere la risposta. Nella lettura dell'invito e nell'abbinamento (§5.3, punti 3 e 4) ogni tentativo dura al massimo 30, poi 45, poi 60 s, e i tentativi si ripetono per circa 2 minuti: una connessione a volte resta appesa, mentre una nuova riesce in pochi secondi.
 - Formato degli errori: `{ "errore": "<codice>", "messaggio": "<testo tecnico>" }`. L'app mostra i propri testi in base al codice, non il messaggio.
 
 ### 6.3 Endpoint

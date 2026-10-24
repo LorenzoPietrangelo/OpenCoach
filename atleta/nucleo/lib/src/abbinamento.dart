@@ -100,7 +100,6 @@ Future<InvitoLetto> leggiInvito(
     invito,
     (api) => api.info(),
     avanzamento: avanzamento,
-    ritentaSeIrraggiungibile: true,
   );
   if (!info.protocollo.any(versioniProtocollo.contains) ||
       confrontaVersioni(c.versioneApp, info.versioneAppMinima) < 0) {
@@ -142,22 +141,25 @@ Future<CoppiaX25519> _chiaveDispositivo(
 /// decide, un collegamento già attivo con lo stesso coach continua a usare
 /// la propria.
 ///
-/// Con [ritentaSeIrraggiungibile] un coach che non si trova si ritenta per
-/// [attesaMassimaCoach]. Non vale per l'abbinamento: una risposta persa si
-/// recupera rileggendo l'invito (§5.3).
+/// Un coach che non si trova, o un tentativo appeso, si ritenta per
+/// [attesaMassimaCoach]. Vale anche per l'abbinamento: ripeterlo con la stessa
+/// chiave del dispositivo dà un token nuovo, ed è proprio il caso della
+/// risposta persa previsto dal §5.3. [fase] è quella che l'interfaccia mostra
+/// mentre la chiamata è in corso.
 Future<T> _conInvito<T>(
   ContestoAtleta c,
   UriInvito invito,
   Future<T> Function(ClienteApi api) chiamata, {
   OsservatoreAbbinamento? avanzamento,
-  bool ritentaSeIrraggiungibile = false,
+  FaseAbbinamento fase = FaseAbbinamento.collegamento,
 }) async {
   if (!await c.rete.disponibile()) {
     throw const ErroreAbbinamento(ProblemaAbbinamento.offline);
   }
   try {
     await c.tor.avvia(
-      avanzamento: avanzamento == null
+      // All'abbinamento Tor è già avviato: la sua percentuale non si mostra.
+      avanzamento: avanzamento == null || fase != FaseAbbinamento.collegamento
           ? null
           : (percento) => avanzamento(
               AvanzamentoAbbinamento(
@@ -175,16 +177,13 @@ Future<T> _conInvito<T>(
     var attese = 0;
     var assenze = 0;
     final scadenza = c.orologio.adesso().add(attesaMassimaCoach);
-    avanzamento?.call(
-      const AvanzamentoAbbinamento(FaseAbbinamento.collegamento),
-    );
+    avanzamento?.call(AvanzamentoAbbinamento(fase));
     while (true) {
       final http = c.tor.creaHttpClient();
       try {
         final risposta = chiamata(
           ClienteApi(indirizzo: invito.indirizzo, http: http),
         );
-        if (!ritentaSeIrraggiungibile) return await risposta;
         // Un tentativo appeso non si aspetta fino al timeout di 90 s: uno
         // nuovo di solito riesce prima. Quello abbandonato finisce da solo.
         final durate = c.durataTentativiInvito;
@@ -214,8 +213,7 @@ Future<T> _conInvito<T>(
               assenze,
               _atteseSeIrraggiungibile.length - 1,
             )];
-            if (!ritentaSeIrraggiungibile ||
-                c.orologio.adesso().add(pausa).isAfter(scadenza)) {
+            if (c.orologio.adesso().add(pausa).isAfter(scadenza)) {
               throw const ErroreAbbinamento(
                 ProblemaAbbinamento.coachIrraggiungibile,
               );
@@ -228,9 +226,7 @@ Future<T> _conInvito<T>(
               ),
             );
             await c.orologio.attendi(pausa);
-            avanzamento?.call(
-              const AvanzamentoAbbinamento(FaseAbbinamento.collegamento),
-            );
+            avanzamento?.call(AvanzamentoAbbinamento(fase));
           case TipoGuasto.protocollo:
             c.registra('Risposta del coach non conforme al protocollo: $e');
             throw const ErroreAbbinamento(ProblemaAbbinamento.erroreImprevisto);
@@ -306,9 +302,8 @@ class InvitoLetto {
     if (_inCorso || _concluso) throw StateError('Abbinamento già avviato');
     _inCorso = true;
     try {
-      avanzamento?.call(
-        const AvanzamentoAbbinamento(FaseAbbinamento.abbinamento),
-      );
+      // La fase «abbinamento» la segnala _conInvito, anche dopo ogni
+      // tentativo ripetuto.
       // La chiave va salvata prima di inviarla: se la risposta si perde e
       // l'app si chiude, rileggendo lo stesso invito l'abbinamento si ripete
       // con la stessa chiave (§5.3).
@@ -329,6 +324,8 @@ class InvitoLetto {
             dispositivo: _c.dispositivo,
           ),
         ),
+        avanzamento: avanzamento,
+        fase: FaseAbbinamento.abbinamento,
       );
       final id = await _registra(risposta);
       _concluso = true;

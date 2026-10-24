@@ -338,24 +338,22 @@ void main() {
   });
 
   test(
-    "risposta all'abbinamento persa: si ripete con la stessa chiave",
+    "risposta all'abbinamento persa: l'app la ripete da sola con la stessa chiave",
     () async {
       final testo = await pc.invito(atletaId);
       final invito = await telefono.nucleo.leggiInvito(testo);
       pc.perdiProssimaRisposta = true;
-      await expectLater(
-        invito.collega(),
-        throwsA(erroreAbbinamento(ProblemaAbbinamento.coachIrraggiungibile)),
-      );
-      expect(
-        pc.eventi.whereType<DispositivoAbbinato>(),
-        hasLength(1),
-        reason: 'il coach ha trattato la richiesta',
-      );
-
-      // L'app si chiude; riaperta, l'atleta scansiona di nuovo lo stesso QR.
-      await telefono.riapri();
-      final coach = await (await telefono.nucleo.leggiInvito(testo)).collega();
+      final fasi = <FaseAbbinamento>[];
+      final coach = await invito.collega(avanzamento: (a) => fasi.add(a.fase));
+      // Il coach ha trattato la richiesta persa; la ripetizione con la stessa
+      // chiave rinnova solo il token.
+      expect(pc.eventi.whereType<DispositivoAbbinato>(), hasLength(1));
+      expect(fasi, [
+        FaseAbbinamento.abbinamento,
+        FaseAbbinamento.attesaCoach,
+        FaseAbbinamento.abbinamento,
+        FaseAbbinamento.conferma,
+      ]);
       expect(coach.confermaInSospeso, isFalse);
       expect(coach.problema, isNull);
       expect(pc.eventi.whereType<InvitoContestato>(), isEmpty);

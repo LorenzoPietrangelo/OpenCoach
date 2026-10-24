@@ -137,7 +137,7 @@ Il coach genera un nuovo invito per lo stesso atleta. Il nuovo dispositivo sosti
 - La versione maggiore del protocollo è nel percorso (`/v1`). Entro la stessa versione si aggiungono solo campi facoltativi, ed entrambe le parti ignorano i campi sconosciuti.
 - Limiti: richiesta e risposta fino a 2 MiB (oltre si pagina), un log fino a 64 KiB, una scheda fino a 256 KiB, al massimo 100 log per richiesta.
 - Frequenza: al massimo 30 richieste al minuto per dispositivo, 10 tentativi al minuto in totale su `POST /v1/abbinamento`, 10 sync contemporanee.
-- Timeout lato app: 90 s per stabilire la connessione, 60 s per ricevere la risposta.
+- Timeout lato app: 90 s per stabilire la connessione, 60 s per ricevere la risposta. Nella lettura dell'invito (§5.3, punto 3) ogni tentativo dura al massimo 30, poi 45, poi 60 s, e i tentativi si ripetono per circa 2 minuti: la prima connessione di un Tor appena avviato a volte resta appesa, mentre una nuova riesce in pochi secondi.
 - Formato degli errori: `{ "errore": "<codice>", "messaggio": "<testo tecnico>" }`. L'app mostra i propri testi in base al codice, non il messaggio.
 
 ### 6.3 Endpoint

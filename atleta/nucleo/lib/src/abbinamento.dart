@@ -181,9 +181,14 @@ Future<T> _conInvito<T>(
     while (true) {
       final http = c.tor.creaHttpClient();
       try {
-        return await chiamata(
+        final risposta = chiamata(
           ClienteApi(indirizzo: invito.indirizzo, http: http),
         );
+        if (!ritentaSeIrraggiungibile) return await risposta;
+        // Un tentativo appeso non si aspetta fino al timeout di 90 s: uno
+        // nuovo di solito riesce prima. Quello abbandonato finisce da solo.
+        final durate = c.durataTentativiInvito;
+        return await risposta.timeout(durate[min(assenze, durate.length - 1)]);
       } catch (e) {
         final guasto = classifica(e);
         switch (guasto?.tipo) {

@@ -37,6 +37,16 @@ class ContestoAtleta {
   /// (§11.2).
   final void Function(String) registra;
 
+  /// Durata massima di ogni tentativo di leggere un invito; l'ultima vale
+  /// per tutti i tentativi successivi. La prima connessione di un Tor appena
+  /// avviato a volte resta appesa fino al timeout di 90 s (§6.2), mentre un
+  /// tentativo nuovo riesce in pochi secondi. I test le accorciano.
+  var durataTentativiInvito = const [
+    Duration(seconds: 30),
+    Duration(seconds: 45),
+    Duration(seconds: 60),
+  ];
+
   final _cambiamenti = StreamController<int>.broadcast();
 
   /// Indirizzi per cui in questa esecuzione Tor ha già la chiave del

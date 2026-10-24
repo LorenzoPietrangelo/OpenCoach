@@ -66,7 +66,48 @@ class MotoreSync {
 
   final _confermaProlungata = <int>{};
 
+  /// Interruzioni chieste per ogni coach: un'operazione in corso le guarda
+  /// tra un tentativo e l'altro e durante le attese.
+  final _interruzioni = <int, Completer<void>>{};
+
+  /// Canale della sync in corso per ogni coach, da chiudere se si interrompe.
+  final _canali = <int, _Canale>{};
+
   Database get _db => _c.db;
+
+  /// Ferma subito la sync in corso con [coachId], e quelle in coda per lui
+  /// finiscono senza contattarlo, finché non si chiama [riprendi]. Serve allo
+  /// scollegamento: altrimenti aspetterebbe la sync in corso, che con il coach
+  /// irraggiungibile o subito dopo l'abbinamento dura anche minuti.
+  void interrompi(int coachId) {
+    final interruzione = _interruzioni.putIfAbsent(coachId, Completer.new);
+    if (!interruzione.isCompleted) interruzione.complete();
+    _canali[coachId]?.chiudi();
+  }
+
+  /// Le operazioni con [coachId] tornano a funzionare normalmente.
+  void riprendi(int coachId) {
+    if (_interruzioni[coachId]?.isCompleted ?? false) _interruzioni.remove(coachId);
+  }
+
+  bool _interrotta(int coachId) => _interruzioni[coachId]?.isCompleted ?? false;
+
+  /// Aspetta [operazione], ma smette subito, con [_Interrotta], se la sync
+  /// con [coachId] si interrompe. Chiudere il client HTTP non basta: una
+  /// connessione che Tor sta ancora aprendo arriverebbe fino al suo timeout.
+  /// L'operazione abbandonata finisce da sola, e il suo esito si ignora.
+  Future<T> _interrompibile<T>(int coachId, Future<T> operazione) {
+    final interruzione = _interruzioni.putIfAbsent(coachId, Completer.new);
+    return Future.any([
+      operazione,
+      interruzione.future.then<T>((_) => throw const _Interrotta()),
+    ]);
+  }
+
+  /// Attende [durata], ma smette subito se la sync con [coachId] si
+  /// interrompe.
+  Future<void> _attendi(int coachId, Duration durata) =>
+      _interrompibile(coachId, _c.orologio.attendi(durata));
 
   /// Vero se una sync o un'altra operazione con il coach è in corso o in
   /// coda.
@@ -120,7 +161,9 @@ class MotoreSync {
     required bool dopoAbbinamento,
   }) async {
     final coach = _c.coach(coachId);
-    if (coach == null || coach.stato == StatoCollegamento.scollegato) {
+    if (coach == null ||
+        coach.stato == StatoCollegamento.scollegato ||
+        _interrotta(coachId)) {
       return EsitoSync(coachId: coachId, problema: ProblemaSync.scollegato);
     }
     if (coach.stato == StatoCollegamento.revocato) {
@@ -134,8 +177,13 @@ class MotoreSync {
         'rifiuti_chiave = 0 WHERE id = ?',
         [istante(_c.orologio.adesso()), coachId],
       );
+    } on _Interrotta {
+      // L'atleta si sta scollegando: il guasto, se c'è, l'ha causato lui.
+      esito.problema = ProblemaSync.scollegato;
     } on _Fallimento catch (fallimento) {
-      esito.problema = await _registraFallimento(coach, fallimento);
+      esito.problema = _interrotta(coachId)
+          ? ProblemaSync.scollegato
+          : await _registraFallimento(coach, fallimento);
     } catch (e, traccia) {
       _c.registra('Errore imprevisto nella sync: $e\n$traccia');
       esito.problema = await _registraFallimento(
@@ -157,7 +205,7 @@ class MotoreSync {
       throw const _Fallimento(ProblemaSync.offline);
     }
     try {
-      await _c.tor.avvia();
+      await _interrompibile(coach.id, _c.tor.avvia());
     } on TorNonParte {
       throw const _Fallimento(ProblemaSync.torNonParte);
     }
@@ -169,17 +217,23 @@ class MotoreSync {
       throw const _Fallimento(ProblemaSync.chiaveNonAccettata);
     }
     await _c.assicuraChiave(coach.indirizzo, credenziali.chiave);
-    final canale = _Canale(_c, coach.indirizzo, credenziali.token);
+    if (_interrotta(coach.id)) throw const _Interrotta();
+    final canale = _canali[coach.id] = _Canale(_c, coach.indirizzo, credenziali.token);
     try {
       if (coach.confermaInSospeso) {
         await _conferma(coach, canale, prolungata: dopoAbbinamento);
       }
       await _scambia(coach, canale, esito);
+    } on _Interrotta {
+      rethrow;
     } on _Fallimento {
       rethrow;
     } catch (e, traccia) {
+      // Una richiesta troncata perché il canale è stato chiuso.
+      if (_interrotta(coach.id)) throw const _Interrotta();
       throw _fallimento(e, traccia);
     } finally {
+      if (identical(_canali[coach.id], canale)) _canali.remove(coach.id);
       canale.chiudi();
     }
   }
@@ -196,12 +250,15 @@ class MotoreSync {
     var attesa = _primaAttesaConferma;
     while (true) {
       try {
-        await _conRitentativi(canale.api.confermaAbbinamento);
+        await _conRitentativi(coach.id, canale.api.confermaAbbinamento);
         _db.execute('UPDATE coach SET conferma_in_sospeso = 0 WHERE id = ?', [
           coach.id,
         ]);
         return;
+      } on _Interrotta {
+        rethrow;
       } catch (e) {
+        if (_interrotta(coach.id)) throw const _Interrotta();
         // Tor dà F5 finché le directory hanno il descrittore pubblicato
         // prima della chiave del dispositivo: a ogni tentativo ne interroga
         // un'altra.
@@ -212,7 +269,7 @@ class MotoreSync {
         if (diRete) _c.registra('Conferma non riuscita: $e');
         final trascorso = _c.orologio.adesso().difference(inizio);
         if (!prolungata || !diRete || trascorso >= durataConferma) rethrow;
-        await _c.orologio.attendi(attesa);
+        await _attendi(coach.id, attesa);
         attesa = attesa * 2 > _attesaConfermaMassima
             ? _attesaConfermaMassima
             : attesa * 2;
@@ -235,7 +292,7 @@ class MotoreSync {
       final RispostaSync prima;
       try {
         // Punto 3.
-        prima = await _chiama(canale, epoca, cursore, lotto);
+        prima = await _chiama(coach.id, canale, epoca, cursore, lotto);
       } on ErroreApi catch (e) {
         if (e.stato != 413 || lotto.isEmpty) rethrow;
         // Richiesta oltre i limiti del coach: si divide il lotto (§6.4).
@@ -288,7 +345,7 @@ class MotoreSync {
         // Le pagine successive si chiedono con il nuovo cursore e senza log
         // (§6.3).
         inviati.clear();
-        risposta = await _chiama(canale, epoca, cursore, const []);
+        risposta = await _chiama(coach.id, canale, epoca, cursore, const []);
       }
       _c.segnala(coach.id);
 
@@ -302,11 +359,13 @@ class MotoreSync {
   }
 
   Future<RispostaSync> _chiama(
+    int coachId,
     _Canale canale,
     String? epoca,
     String? cursore,
     List<LogAllenamento> lotto,
   ) => _conRitentativi(
+    coachId,
     () => canale.api.sincronizza(
       RichiestaSync(
         epoca: epoca,
@@ -319,11 +378,11 @@ class MotoreSync {
 
   /// Esegue [chiamata] ritentando dopo 429 e 503 secondo `Retry-After` e
   /// dopo gli altri 5xx con attesa crescente (§6.4).
-  Future<T> _conRitentativi<T>(Future<T> Function() chiamata) async {
+  Future<T> _conRitentativi<T>(int coachId, Future<T> Function() chiamata) async {
     var attesa = _primaAttesaErrore;
     for (var tentativo = 0; ; tentativo++) {
       try {
-        return await chiamata();
+        return await _interrompibile(coachId, chiamata());
       } on ErroreApi catch (e) {
         final limite = e.stato == 429 || e.stato == 503;
         if ((!limite && e.stato < 500) || tentativo >= _ritentativiMassimi) {
@@ -331,7 +390,7 @@ class MotoreSync {
         }
         final pausa = limite ? e.riprovaTra ?? attesa : attesa;
         if (pausa > _attesaMassima) rethrow;
-        await _c.orologio.attendi(pausa);
+        await _attendi(coachId, pausa);
         attesa *= 2;
       }
     }
@@ -657,6 +716,11 @@ class MotoreSync {
     }
     return problema;
   }
+}
+
+/// Operazione fermata da [MotoreSync.interrompi]: l'atleta si scollega.
+class _Interrotta implements Exception {
+  const _Interrotta();
 }
 
 /// Sync interrotta, con il problema da mostrare.

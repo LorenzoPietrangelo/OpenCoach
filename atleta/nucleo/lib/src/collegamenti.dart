@@ -46,7 +46,17 @@ class Collegamenti {
   /// Restituisce vero se il coach ha ricevuto lo scollegamento; altrimenti il
   /// dispositivo resta attivo sul suo PC finché non lo revoca lui. I log
   /// ancora in coda non arrivano più al coach.
-  Future<bool> scollega(int coachId) => _motore.inEsclusiva(coachId, () async {
+  ///
+  /// Una sync in corso con il coach si ferma subito invece di essere
+  /// aspettata: dopo l'abbinamento la conferma si ritenta per minuti.
+  Future<bool> scollega(int coachId) {
+    _motore.interrompi(coachId);
+    return _motore.inEsclusiva(coachId, () => _scollega(coachId));
+  }
+
+  Future<bool> _scollega(int coachId) async {
+    // Le operazioni in coda prima di questa sono già finite.
+    _motore.riprendi(coachId);
     final coach = _c.coach(coachId);
     if (coach == null) throw const OperazioneNonAmmessa('Coach inesistente');
     final avvisato =
@@ -60,7 +70,7 @@ class Collegamenti {
     await _c.rimuoviChiaveSeInutile(coach.indirizzo);
     _c.segnala(coachId);
     return avvisato;
-  });
+  }
 
   /// Cancella dal telefono schede e log di un coach con cui il collegamento
   /// è chiuso (§10.2, §11.3).

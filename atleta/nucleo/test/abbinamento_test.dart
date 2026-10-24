@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:atleta_nucleo/atleta_nucleo.dart';
 import 'package:coach_nucleo/coach_nucleo.dart';
 import 'package:protocollo/protocollo.dart';
@@ -227,6 +229,27 @@ void main() {
       ]);
     },
   );
+
+  test('un tentativo appeso non si aspetta fino al timeout', () async {
+    final testo = await pc.invito(atletaId);
+    telefono.nucleo.contesto.durataTentativiInvito = const [
+      Duration(milliseconds: 200),
+    ];
+    // La prima connessione resta appesa, come quella di un Tor appena
+    // avviato che arriverebbe al timeout di 90 s.
+    final appesa = Completer<void>();
+    telefono.tor.primaDellaConnessione = () => appesa.future;
+
+    final inizio = DateTime.now();
+    final invito = await telefono.nucleo.leggiInvito(testo);
+    expect(invito.nomeCoach, 'Marco Bianchi');
+    expect(DateTime.now().difference(inizio), lessThan(const Duration(seconds: 5)));
+    // La connessione appesa non è mai arrivata al coach: è riuscita la
+    // seconda, dopo la pausa di 5 s.
+    expect(telefono.tor.connessioni, 1);
+    expect(ambiente.orologio.attese, const [Duration(seconds: 5)]);
+    appesa.complete();
+  });
 
   test('il coach che non si trova si aspetta al massimo due minuti', () async {
     final testo = await pc.invito(atletaId);

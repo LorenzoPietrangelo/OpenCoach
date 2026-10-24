@@ -157,6 +157,32 @@ void main() {
     expect(stato(coach.id).stato, StatoCollegamento.scollegato);
   });
 
+  test('scollegarsi non aspetta la sync in corso con il coach', () async {
+    final coach = await ambiente.abbina(telefono, pc, atletaId);
+    // La prossima connessione resta appesa, come quando Tor non raggiunge il
+    // PC del coach e arriva al timeout di 90 s.
+    final bloccata = Completer<void>();
+    telefono.tor.primaDellaConnessione = () => bloccata.future;
+    final sync = telefono.nucleo.sync.sincronizza(coach.id);
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(telefono.nucleo.sync.inCorso(coach.id), isTrue);
+
+    final inizio = DateTime.now();
+    expect(await telefono.nucleo.collegamenti.scollega(coach.id), isTrue);
+    expect(DateTime.now().difference(inizio), lessThan(const Duration(seconds: 5)));
+    // La sync interrotta non registra un guasto: l'atleta si è scollegato.
+    expect((await sync).problema, ProblemaSync.scollegato);
+    expect(stato(coach.id).stato, StatoCollegamento.scollegato);
+    expect(pc.nucleo.dispositivi.attivo(atletaId), isNull);
+    expect(telefono.tor.chiavi, isEmpty);
+
+    // Più tardi la connessione appesa si sblocca: non cambia niente.
+    bloccata.complete();
+    await Future<void>.delayed(const Duration(milliseconds: 50));
+    expect(stato(coach.id).stato, StatoCollegamento.scollegato);
+    expect(telefono.tor.chiavi, isEmpty);
+  });
+
   test('i dati di un collegamento attivo non si cancellano', () async {
     final coach = await ambiente.abbina(telefono, pc, atletaId);
     await expectLater(

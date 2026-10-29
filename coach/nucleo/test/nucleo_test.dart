@@ -323,6 +323,80 @@ void main() {
     });
   });
 
+  group('libreria', () {
+    late String atletaId;
+    const video1 = 'https://www.youtube.com/watch?v=uno';
+    const video2 = 'https://www.youtube.com/watch?v=due';
+
+    setUp(() => atletaId = a.nucleo.atleti.crea('Giulia').id);
+
+    Object? videoPubblicato(String schedaId) {
+      final scheda = a.nucleo.schede.cerca(schedaId)!;
+      final contenuto = a.nucleo.schede.contenutoRevisione(schedaId, scheda.revisione)!;
+      final seduta = (contenuto['sedute'] as List<Object?>).first as Map<String, Object?>;
+      final esercizio = (seduta['esercizi'] as List<Object?>).first as Map<String, Object?>;
+      return esercizio['video'];
+    }
+
+    test('la scheda pubblicata prende il video dall\'esercizio con lo stesso nome', () {
+      a.nucleo.libreria.salva(nome: ' squat ', note: 'Petto alto', video: video1);
+      expect(a.nucleo.libreria.perNome('SQUAT')!.nome, 'squat');
+      final id = a.nucleo.schede.crea(atletaId, contenuto: contenutoScheda('A'));
+      a.nucleo.schede.pubblica(id);
+      expect(videoPubblicato(id), video1);
+      expect(a.nucleo.schede.cerca(id)!.bozza.toString(), isNot(contains(video1)));
+      expect(a.nucleo.schede.cerca(id)!.modificheNonPubblicate, isFalse);
+    });
+
+    test('nome doppio, link non https e nome vuoto si rifiutano', () {
+      a.nucleo.libreria.salva(nome: 'Squat');
+      for (final salva in [
+        () => a.nucleo.libreria.salva(nome: 'SQUAT'),
+        () => a.nucleo.libreria.salva(nome: 'Panca', video: 'http://esempio.it/v'),
+        () => a.nucleo.libreria.salva(nome: '  '),
+      ]) {
+        expect(salva, throwsA(isA<OperazioneNonValida>()));
+      }
+      expect(a.nucleo.libreria.elenco(), hasLength(1));
+    });
+
+    test('un video cambiato si ripubblica senza le modifiche della bozza', () {
+      final esercizio = a.nucleo.libreria.salva(nome: 'Squat', video: video1);
+      final id = a.nucleo.schede.crea(atletaId, contenuto: contenutoScheda('A'));
+      a.nucleo.schede.pubblica(id);
+      a.nucleo.schede.salvaBozza(id, contenutoScheda('B'));
+      final altra = a.nucleo.schede.crea(atletaId, contenuto: contenutoScheda('C'));
+      a.nucleo.schede.pubblica(altra);
+      expect(a.nucleo.schede.conVideoDaAggiornare(), isEmpty);
+
+      a.nucleo.libreria.salva(id: esercizio, nome: 'Squat', video: video2);
+      expect(a.nucleo.schede.cerca(altra)!.modificheNonPubblicate, isTrue);
+      expect(
+        a.nucleo.schede.conVideoDaAggiornare().map((s) => s.id),
+        unorderedEquals([id, altra]),
+      );
+
+      expect(a.nucleo.schede.aggiornaVideo(id), 2);
+      expect(videoPubblicato(id), video2);
+      final scheda = a.nucleo.schede.cerca(id)!;
+      expect(
+        a.nucleo.schede.contenutoRevisione(id, 2)!['titolo'],
+        'A',
+        reason: 'la bozza B non si pubblica',
+      );
+      expect(scheda.modificheNonPubblicate, isTrue);
+      expect(a.nucleo.schede.aggiornaVideo(id), isNull);
+
+      a.nucleo.schede.aggiornaVideo(altra);
+      expect(a.nucleo.schede.cerca(altra)!.modificheNonPubblicate, isFalse);
+      expect(a.nucleo.schede.conVideoDaAggiornare(), isEmpty);
+
+      a.nucleo.libreria.elimina(esercizio);
+      a.nucleo.schede.aggiornaVideo(altra);
+      expect(videoPubblicato(altra), isNull);
+    });
+  });
+
   group('sincronizzazione', () {
     late String atletaId;
     late TelefonoFinto telefono;
@@ -330,6 +404,59 @@ void main() {
     setUp(() async {
       atletaId = a.nucleo.atleti.crea('Giulia').id;
       telefono = await a.abbinaTelefono(atletaId);
+    });
+
+    test('pesi: salvati, corretti, eliminati e cancellati se l\'atleta smette di condividerli', () async {
+      Map<String, Object?> peso(String id, int rev, String giorno, num kg) => {
+        'id': id,
+        'rev': rev,
+        'eliminato': false,
+        'giorno': giorno,
+        'kg': kg,
+      };
+      final lunedi = nuovoUuid();
+      final martedi = nuovoUuid();
+      var risposta = (await telefono.sincronizza(
+        pesi: [
+          peso(lunedi, 1, '2026-10-26', 72.4),
+          peso(martedi, 1, '2026-10-27', 72),
+          {'id': 'non-valido', 'rev': 1, 'eliminato': false},
+        ],
+        pesiCondivisi: true,
+      )).first;
+      expect([for (final p in risposta.pesiAccettati!) p.id], [lunedi, martedi]);
+      expect(
+        [for (final p in a.nucleo.pesi.elenco(atletaId)) (p.giorno.day, p.kg)],
+        [(26, 72.4), (27, 72.0)],
+      );
+
+      // Una rev più vecchia si conferma senza cambiare il valore.
+      await telefono.sincronizza(pesi: [peso(lunedi, 2, '2026-10-26', 71.9)]);
+      risposta = (await telefono.sincronizza(pesi: [peso(lunedi, 1, '2026-10-26', 99)])).single;
+      expect(risposta.pesiAccettati!.single.rev, 1);
+      expect(a.nucleo.pesi.elenco(atletaId).first.kg, 71.9);
+      await telefono.sincronizza(
+        pesi: [
+          {'id': martedi, 'rev': 2, 'eliminato': true},
+        ],
+      );
+      expect(a.nucleo.pesi.elenco(atletaId), hasLength(1));
+
+      // Lo stato completo elenca id e rev, anche delle lapidi.
+      telefono.cursore = null;
+      risposta = (await telefono.sincronizza()).single;
+      expect(
+        {for (final p in risposta.pesi) p.id: p.rev},
+        {lunedi: 2, martedi: 2},
+      );
+
+      // Un'app vecchia non dice nulla e non tocca i pesi.
+      await telefono.sincronizza();
+      expect(a.nucleo.pesi.elenco(atletaId), hasLength(1));
+      await telefono.sincronizza(pesiCondivisi: false);
+      expect(a.nucleo.pesi.elenco(atletaId), isEmpty);
+      telefono.cursore = null;
+      expect((await telefono.sincronizza()).single.pesi, isEmpty);
     });
 
     test('la prima sync è completa e non contiene le bozze', () async {

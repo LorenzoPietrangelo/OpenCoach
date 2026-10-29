@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:protocollo/protocollo.dart';
 import 'package:sqlite3/sqlite3.dart';
@@ -8,6 +9,7 @@ import 'package:sqlite3/sqlite3.dart';
 import 'contesto.dart';
 import 'guasti.dart';
 import 'modelli.dart';
+import 'pesi.dart';
 import 'problemi.dart';
 import 'schede.dart';
 import 'tempo.dart';
@@ -287,12 +289,28 @@ class MotoreSync {
     var cursore = coach.cursore;
     var massimo = logPerRichiesta;
     while (true) {
-      // Punto 2: fino a 100 log dalla coda.
+      // Punto 2: fino a 100 log dalla coda, e i pesi da mandare (§8.5).
       final lotto = _lotto(coach.id, massimo);
+      final condivide = _condividePesi(coach.id);
+      final pesi = condivide && _pesiSupportati(coach.id) != false
+          ? pesiInCoda(_db, coach.id)
+          : const <Map<String, Object?>>[];
+      // Le risposte ai questionari partono dopo le loro foto (§8.6).
+      await _caricaFoto(coach.id, canale);
+      final risposte = _risposteInCoda(coach.id);
       final RispostaSync prima;
       try {
         // Punto 3.
-        prima = await _chiama(coach.id, canale, epoca, cursore, lotto);
+        prima = await _chiama(
+          coach.id,
+          canale,
+          epoca,
+          cursore,
+          lotto,
+          pesi: pesi,
+          pesiCondivisi: condivide,
+          risposte: risposte,
+        );
       } on ErroreApi catch (e) {
         if (e.stato != 413 || lotto.isEmpty) rethrow;
         // Richiesta oltre i limiti del coach: si divide il lotto (§6.4).
@@ -306,7 +324,11 @@ class MotoreSync {
       }
 
       final inviati = {for (final log in lotto) log.id: log.rev};
-      var progressi = 0;
+      var progressi = _c.archivio.transazione(
+        () =>
+            _applicaEsitiPesi(coach.id, prima, pesi) +
+            _applicaEsitiRisposte(coach.id, prima, risposte),
+      );
       _Accumulo? accumulo;
       var risposta = prima;
       while (true) {
@@ -349,10 +371,10 @@ class MotoreSync {
       }
       _c.segnala(coach.id);
 
-      // Punto 5: se restano log in coda si torna al punto 2.
+      // Punto 5: se restano log, pesi o risposte in coda si torna al punto 2.
       if (!_ciSonoInCoda(coach.id)) return;
-      if (lotto.isNotEmpty && progressi == 0) {
-        _c.registra('Il coach non ha confermato né rifiutato i log inviati');
+      if ((lotto.isNotEmpty || pesi.isNotEmpty || risposte.isNotEmpty) && progressi == 0) {
+        _c.registra('Il coach non ha confermato né rifiutato quello che gli è stato inviato');
         return;
       }
     }
@@ -363,8 +385,11 @@ class MotoreSync {
     _Canale canale,
     String? epoca,
     String? cursore,
-    List<LogAllenamento> lotto,
-  ) => _conRitentativi(
+    List<LogAllenamento> lotto, {
+    List<Map<String, Object?>> pesi = const [],
+    bool? pesiCondivisi,
+    List<Map<String, Object?>> risposte = const [],
+  }) => _conRitentativi(
     coachId,
     () => canale.api.sincronizza(
       RichiestaSync(
@@ -372,9 +397,126 @@ class MotoreSync {
         cursore: cursore,
         log: [for (final log in lotto) log.perProtocollo],
         versioneApp: _c.versioneApp,
+        pesi: pesi,
+        pesiCondivisi: pesiCondivisi,
+        risposte: risposte,
       ),
     ),
   );
+
+  /// Carica le foto dei questionari inviati che il coach non ha ancora.
+  Future<void> _caricaFoto(int coachId, _Canale canale) async {
+    for (final riga in _db.select(
+      'SELECT foto.id, foto.dati FROM foto JOIN questionari ON '
+      'questionari.coach_id = foto.coach_id AND questionari.id = foto.questionario_id '
+      "WHERE foto.coach_id = ? AND questionari.stato = 'in_invio' AND foto.caricata = 0",
+      [coachId],
+    )) {
+      final id = riga['id'] as String;
+      await _conRitentativi(coachId, () => canale.api.caricaFoto(id, riga['dati'] as Uint8List));
+      _db.execute('UPDATE foto SET caricata = 1 WHERE id = ?', [id]);
+    }
+  }
+
+  List<Map<String, Object?>> _risposteInCoda(int coachId) => [
+    for (final riga in _db.select(
+      "SELECT risposta FROM questionari WHERE coach_id = ? AND stato = 'in_invio' "
+      'ORDER BY ricevuto_il LIMIT ?',
+      [coachId, Limiti.rispostePerRichiesta],
+    ))
+      jsonDecode(riga['risposta'] as String) as Map<String, Object?>,
+  ];
+
+  /// Risposte confermate o rifiutate dal coach; restituisce quante delle
+  /// inviate hanno avuto un esito. Se mancano foto, si ricaricano tutte alla
+  /// prossima richiesta; gli altri rifiuti tornano all'atleta.
+  int _applicaEsitiRisposte(
+    int coachId,
+    RispostaSync r,
+    List<Map<String, Object?>> inviate,
+  ) {
+    final id = {for (final risposta in inviate) risposta['questionario_id']};
+    var progressi = 0;
+    for (final accettata in r.risposteAccettate) {
+      if (!id.contains(accettata)) continue;
+      progressi++;
+      _db.execute(
+        "UPDATE questionari SET stato = 'inviato' WHERE coach_id = ? AND id = ? AND stato = 'in_invio'",
+        [coachId, accettata],
+      );
+    }
+    for (final rifiutata in r.risposteRifiutate) {
+      if (!id.contains(rifiutata.id)) continue;
+      progressi++;
+      if (rifiutata.errore == RifiutoRisposta.fotoMancanti) {
+        _db.execute(
+          'UPDATE foto SET caricata = 0 WHERE coach_id = ? AND questionario_id = ?',
+          [coachId, rifiutata.id],
+        );
+      } else {
+        final motivo = rifiutata.errore.length > 50 ? rifiutata.errore.substring(0, 50) : rifiutata.errore;
+        _db.execute(
+          "UPDATE questionari SET stato = 'da_compilare', rifiuto = ? "
+          "WHERE coach_id = ? AND id = ? AND stato = 'in_invio'",
+          [motivo, coachId, rifiutata.id],
+        );
+      }
+    }
+    return progressi;
+  }
+
+  /// Salva un questionario ricevuto, se non c'è già.
+  void _salvaQuestionario(int coachId, Map<String, Object?> questionario, String ora, _Esito esito) {
+    final id = questionario['id'];
+    _db.execute(
+      'INSERT INTO questionari (coach_id, id, contenuto, ricevuto_il, stato) '
+      "VALUES (?, ?, ?, ?, 'da_compilare') ON CONFLICT (coach_id, id) DO NOTHING",
+      [coachId, id, jsonEncode({...questionario}..remove('id')), ora],
+    );
+    if (_db.updatedRows > 0) esito.questionariNuovi.add(id! as String);
+  }
+
+  bool _condividePesi(int coachId) =>
+      _db.select('SELECT condividi_pesi FROM coach WHERE id = ?', [
+        coachId,
+      ]).firstOrNull?['condividi_pesi'] ==
+      1;
+
+  bool? _pesiSupportati(int coachId) {
+    final valore = _db.select('SELECT pesi_supportati FROM coach WHERE id = ?', [
+      coachId,
+    ]).firstOrNull?['pesi_supportati'];
+    return valore is int ? valore == 1 : null;
+  }
+
+  /// Pesi confermati dal coach; restituisce quanti dei pesi inviati hanno
+  /// avuto un esito. Una risposta senza `pesi_accettati` viene da un
+  /// programma che non conosce i pesi: l'app smette di mandarglieli finché
+  /// non si aggiorna.
+  int _applicaEsitiPesi(
+    int coachId,
+    RispostaSync r,
+    List<Map<String, Object?>> inviati,
+  ) {
+    final accettati = r.pesiAccettati;
+    _db.execute('UPDATE coach SET pesi_supportati = ? WHERE id = ?', [
+      accettati == null ? 0 : 1,
+      coachId,
+    ]);
+    if (accettati == null) return 0;
+    final rev = {for (final p in inviati) p['id'] as String: p['rev'] as int};
+    var progressi = 0;
+    for (final confermato in accettati) {
+      if (rev[confermato.id] != confermato.rev) continue;
+      progressi++;
+      _db.execute(
+        'INSERT INTO pesi_inviati (coach_id, peso_id, rev) VALUES (?, ?, ?) '
+        'ON CONFLICT (coach_id, peso_id) DO UPDATE SET rev = MAX(rev, excluded.rev)',
+        [coachId, confermato.id, confermato.rev],
+      );
+    }
+    return progressi;
+  }
 
   /// Esegue [chiamata] ritentando dopo 429 e 503 secondo `Retry-After` e
   /// dopo gli altri 5xx con attesa crescente (§6.4).
@@ -415,10 +557,18 @@ class MotoreSync {
     return lotto;
   }
 
-  bool _ciSonoInCoda(int coachId) => _db.select(
-    'SELECT 1 FROM log WHERE coach_id = ? AND $condizioneInCoda LIMIT 1',
-    [coachId],
-  ).isNotEmpty;
+  bool _ciSonoInCoda(int coachId) =>
+      _db.select(
+        'SELECT 1 FROM log WHERE coach_id = ? AND $condizioneInCoda LIMIT 1',
+        [coachId],
+      ).isNotEmpty ||
+      _db.select(
+        "SELECT 1 FROM questionari WHERE coach_id = ? AND stato = 'in_invio' LIMIT 1",
+        [coachId],
+      ).isNotEmpty ||
+      (_condividePesi(coachId) &&
+          _pesiSupportati(coachId) != false &&
+          pesiInCoda(_db, coachId, massimo: 1).isNotEmpty);
 
   /// Controlla che la risposta si possa salvare così com'è. Se non è
   /// conforme al protocollo non si applica nulla: meglio fermarsi che
@@ -444,6 +594,15 @@ class MotoreSync {
       if (errori.isNotEmpty) {
         throw FormatException('Log non valido: ${errori.first}');
       }
+    }
+    for (final questionario in r.questionari) {
+      final errori = validaQuestionario(questionario);
+      if (errori.isNotEmpty) {
+        throw FormatException('Questionario non valido: ${errori.first}');
+      }
+    }
+    if (!r.questionariAnnullati.every(uuidValido)) {
+      throw const FormatException('Id di questionario annullato non valido');
     }
   }
 
@@ -505,6 +664,18 @@ class MotoreSync {
         id,
       ]);
       esito.schedeNuove.remove(id);
+    }
+    for (final questionario in r.questionari) {
+      _salvaQuestionario(coachId, questionario, ora, esito);
+    }
+    // Un questionario annullato sparisce solo se l'atleta non l'ha già
+    // inviato: le sue risposte arrivano comunque al coach.
+    for (final id in r.questionariAnnullati) {
+      _db.execute(
+        "DELETE FROM questionari WHERE coach_id = ? AND id = ? AND stato = 'da_compilare'",
+        [coachId, id],
+      );
+      esito.questionariNuovi.remove(id);
     }
     _salvaPosizione(coachId, r.epoca, r.cursore);
   }
@@ -573,6 +744,37 @@ class MotoreSync {
         [coachId, id],
       );
       if (locale.confermata >= locale.rev) esito.rimessiInCoda++;
+    }
+
+    // I questionari da compilare sono quelli che il coach elenca; quelli già
+    // inviati dall'atleta restano.
+    for (final riga in _db.select(
+      "SELECT id FROM questionari WHERE coach_id = ? AND stato = 'da_compilare'",
+      [coachId],
+    )) {
+      if (!completo.questionari.containsKey(riga['id'])) {
+        _db.execute('DELETE FROM questionari WHERE coach_id = ? AND id = ?', [coachId, riga['id']]);
+      }
+    }
+    for (final questionario in completo.questionari.values) {
+      _salvaQuestionario(coachId, questionario, ora, esito);
+    }
+
+    // I pesi che il coach non ha, o ha in una rev più vecchia, tornano in
+    // coda per lui, come i log. Da un programma che non conosce i pesi non
+    // si deduce nulla.
+    if (_pesiSupportati(coachId) ?? false) {
+      _db.execute('DELETE FROM pesi_inviati WHERE coach_id = ?', [coachId]);
+      if (_condividePesi(coachId)) {
+        for (final riga in _db.select('SELECT id, rev FROM pesi')) {
+          final delCoach = completo.pesi[riga['id']];
+          if (delCoach == null) continue;
+          _db.execute(
+            'INSERT INTO pesi_inviati (coach_id, peso_id, rev) VALUES (?, ?, ?)',
+            [coachId, riga['id'], delCoach],
+          );
+        }
+      }
     }
     _salvaPosizione(coachId, completo.epoca, cursore);
   }
@@ -761,12 +963,24 @@ class _Accumulo {
   final schede = <String, Map<String, Object?>>{};
   final log = <String, Map<String, Object?>>{};
 
+  /// `rev` di ogni peso che il coach ha, per id.
+  final pesi = <String, int>{};
+
+  /// Questionari senza risposta, per id.
+  final questionari = <String, Map<String, Object?>>{};
+
   void aggiungi(RispostaSync pagina) {
     for (final scheda in pagina.schede) {
       schede[scheda['id'] as String] = scheda;
     }
     for (final voce in pagina.log) {
       log[voce['id'] as String] = voce;
+    }
+    for (final peso in pagina.pesi) {
+      pesi[peso.id] = peso.rev;
+    }
+    for (final questionario in pagina.questionari) {
+      questionari[questionario['id'] as String] = questionario;
     }
   }
 }
@@ -781,6 +995,7 @@ class _Esito {
   var rifiutati = 0;
   var rimessiInCoda = 0;
   final schedeNuove = <String>{};
+  final questionariNuovi = <String>{};
 
   EsitoSync risultato(SchedeRicevute schede) => EsitoSync(
     coachId: coachId,
@@ -790,5 +1005,6 @@ class _Esito {
     logRifiutati: rifiutati,
     logRimessiInCoda: rimessiInCoda,
     schedeNuove: [for (final id in schedeNuove) ?schede.cerca(coachId, id)],
+    questionariNuovi: questionariNuovi.toList(),
   );
 }

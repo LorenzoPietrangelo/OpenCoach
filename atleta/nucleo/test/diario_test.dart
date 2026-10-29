@@ -209,6 +209,53 @@ void main() {
     expect(diario().elenco(coach.id).single.id, log.id);
   });
 
+  test('l\'ultima volta: le serie fatte nel log più recente con l\'esercizio', () {
+    Map<String, Object?> conSerie(
+      String eseguitoIl,
+      String nome,
+      List<Map<String, Object?>> serie, {
+      String? esercizioId,
+    }) => allenamento(eseguitoIl: eseguitoIl)
+      ..['esercizi'] = [
+        {'esercizio_id': esercizioId, 'nome': nome, 'note': '', 'serie': serie},
+      ];
+    Map<String, Object?> serie(int ripetizioni, num carico, {bool fatta = true}) => {
+      'ripetizioni': ripetizioni,
+      'carico_kg': carico,
+      'completata': fatta,
+    };
+    final esercizioId = nuovoUuid();
+    diario().salva(
+      coach.id,
+      conSerie('2026-10-01T08:00:00+02:00', 'Back squat', [serie(8, 70)], esercizioId: esercizioId),
+    );
+    diario().salva(
+      coach.id,
+      conSerie('2026-10-05T08:00:00+02:00', ' squat ', [serie(6, 80), serie(5, 80, fatta: false)]),
+    );
+    final eliminato = diario().salva(
+      coach.id,
+      conSerie('2026-10-08T08:00:00+02:00', 'Squat', [serie(1, 100)]),
+    );
+    diario().elimina(coach.id, eliminato.id);
+    diario().salva(coach.id, conSerie('2026-10-20T08:00:00+02:00', 'Squat', [serie(3, 90)]));
+
+    final dieci = DateTime.parse('2026-10-10T08:00:00+02:00');
+    final ultime = diario().ultimaVolta(nome: 'SQUAT', prima: dieci);
+    expect([for (final s in ultime) (s.ripetizioni, s.caricoKg)], [(6, 80)]);
+
+    // Lo stesso esercizio della scheda vale anche con un altro nome.
+    final perId = diario().ultimaVolta(esercizioId: esercizioId, nome: 'Panca', prima: dieci);
+    expect([for (final s in perId) s.caricoKg], [70]);
+
+    expect(diario().ultimaVolta(nome: 'Stacco', prima: dieci), isEmpty);
+    expect(
+      diario().ultimaVolta(nome: 'Squat', prima: DateTime.parse('2026-10-01T08:00:00+02:00')),
+      isEmpty,
+      reason: 'un log non è «l\'ultima volta» di se stesso',
+    );
+  });
+
   test('storico in ordine di esecuzione, eliminati esclusi', () {
     final vecchio = diario().salva(
       coach.id,

@@ -16,8 +16,14 @@ Comandi:
   atleta <nome>    crea l'atleta e mostra il suo invito
   invito <nome>    nuovo invito per un atleta esistente
   scheda <nome>    pubblica una scheda di prova per l'atleta
+  video <esercizio> <link>
+                   mette il video nella libreria e aggiorna le schede
   elenco           atleti, telefoni e inviti
   log <nome>       allenamenti ricevuti dall'atleta
+  pesi <nome>      pesi che l'atleta condivide
+  questionario <nome>
+                   manda all'atleta un questionario di prova con 2 foto
+  risposte <nome>  risposte ai questionari, con il peso delle foto
   esci''';
 
 Future<void> main(List<String> argomenti) async {
@@ -72,6 +78,19 @@ Future<void> main(List<String> argomenti) async {
           final atleta = _atleta(nucleo, nome);
           final id = nucleo.schede.crea(atleta.id, contenuto: _schedaDiProva());
           stdout.writeln('Pubblicata la revisione ${nucleo.schede.pubblica(id)}');
+        case 'video' when parole.length >= 3:
+          final esercizio = parole.sublist(1, parole.length - 1).join(' ');
+          nucleo.libreria.salva(
+            id: nucleo.libreria.perNome(esercizio)?.id,
+            nome: esercizio,
+            note: nucleo.libreria.perNome(esercizio)?.note ?? '',
+            video: parole.last,
+          );
+          for (final scheda in nucleo.schede.conVideoDaAggiornare()) {
+            stdout.writeln(
+              '${scheda.titolo}: revisione ${nucleo.schede.aggiornaVideo(scheda.id)}',
+            );
+          }
         case 'elenco':
           for (final r in nucleo.atleti.elenco()) {
             final d = r.dispositivo;
@@ -82,6 +101,26 @@ Future<void> main(List<String> argomenti) async {
               '${r.invito == null ? '' : ', invito ${r.invito!.stato.nome}'}',
             );
           }
+        case 'questionario':
+          final atleta = _atleta(nucleo, nome);
+          final modello = nucleo.questionari.modelli().firstOrNull?.id ??
+              nucleo.questionari.creaModello(_questionarioDiProva());
+          stdout.writeln('Mandato il questionario ${nucleo.questionari.invia(modello, atleta.id)}');
+        case 'risposte':
+          for (final q in nucleo.questionari.inviati(_atleta(nucleo, nome).id)) {
+            stdout.writeln(
+              '- ${q.titolo}: ${q.stato.name}'
+              '${q.risposta == null ? '' : ' ${jsonEncode(q.risposta!['risposte'])}'}'
+              '${q.foto.isEmpty ? '' : ', foto ${[for (final f in q.foto) '${nucleo.questionari.foto(f)?.length} byte'].join(', ')}'}',
+            );
+          }
+        case 'pesi':
+          final pesi = nucleo.pesi.elenco(_atleta(nucleo, nome).id);
+          stdout.writeln(
+            pesi.isEmpty
+                ? 'Nessun peso condiviso'
+                : [for (final p in pesi) '${formattaData(p.giorno)} ${p.kg} kg'].join(', '),
+          );
         case 'log':
           final atleta = _atleta(nucleo, nome);
           for (final a in nucleo.allenamenti.elenco(atleta.id)) {
@@ -123,6 +162,7 @@ String _descrivi(NucleoCoach nucleo, EventoCoach e) {
       '$atleta ha ${eliminato ? 'eliminato' : 'inviato'} il log $logId',
     RevisioneRicevuta(:final revisione) => '$atleta ha ricevuto la revisione $revisione',
     DispositivoSincronizzato() => '$atleta ha sincronizzato',
+    QuestionarioRisposto(:final titolo) => '$atleta ha risposto a «$titolo»',
   };
 }
 
@@ -159,3 +199,29 @@ Map<String, String> _leggiOpzioni(List<String> argomenti) {
   }
   return opzioni;
 }
+
+Map<String, Object?> _questionarioDiProva() => {
+  'titolo': 'Check mensile',
+  'descrizione': 'Come è andato il mese? Rispondi con calma.',
+  'domande': [
+    {
+      'id': nuovoUuid(),
+      'tipo': 'scelta_singola',
+      'testo': 'Quanti giorni a settimana ti sei allenato?',
+      'obbligatoria': true,
+      'opzioni': ['2 giorni', '3 giorni', '4 giorni'],
+      'altro': true,
+    },
+    {
+      'id': nuovoUuid(),
+      'tipo': 'numero',
+      'testo': 'Quanto pesi?',
+      'obbligatoria': true,
+      'unita': 'kg',
+      'peso_corporeo': true,
+    },
+    {'id': nuovoUuid(), 'tipo': 'scala', 'testo': 'Energia durante gli allenamenti', 'obbligatoria': false},
+    {'id': nuovoUuid(), 'tipo': 'testo_lungo', 'testo': 'Infortuni o fastidi?', 'obbligatoria': false},
+  ],
+  'foto': {'numero': 2, 'istruzioni': 'Corpo intero, di fronte e di schiena.'},
+};

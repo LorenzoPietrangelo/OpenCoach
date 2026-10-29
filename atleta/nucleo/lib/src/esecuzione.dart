@@ -268,6 +268,24 @@ class SerieInCorso {
   };
 }
 
+/// Una serie già registrata in un log, per suggerire i valori la volta
+/// successiva.
+class SerieFatta {
+  const SerieFatta({this.ripetizioni, this.caricoKg, this.durataS});
+
+  factory SerieFatta.daLog(Map<String, Object?> serie) => SerieFatta(
+    ripetizioni: _intero(serie['ripetizioni']),
+    caricoKg: _numero(serie['carico_kg']),
+    durataS: _intero(serie['durata_s']),
+  );
+
+  final int? ripetizioni;
+  final num? caricoKg;
+  final int? durataS;
+
+  bool get vuota => ripetizioni == null && caricoKg == null && durataS == null;
+}
+
 final _numeroIntero = RegExp(r'^\s*(\d{1,5})\s*$');
 
 /// Secondi o minuti, anche con la notazione 30" e 2'.

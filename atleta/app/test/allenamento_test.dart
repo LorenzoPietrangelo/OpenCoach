@@ -15,9 +15,10 @@ void main() {
   /// Apre la seduta «Giorno A» di una scheda nuova del coach [coach].
   Future<Map<String, Object?>> iniziaGiornoA(
     WidgetTester tester,
-    int coach,
-  ) async {
-    final scheda = schedaForza();
+    int coach, {
+    Map<String, Object?>? scheda,
+  }) async {
+    scheda ??= schedaForza();
     telefono.aggiungiScheda(coach, scheda, vista: true);
     await tester.pumpWidget(
       conTesti(
@@ -110,6 +111,75 @@ void main() {
       'durata_s': 30,
       'completata': false,
     });
+  });
+
+  testWidgets('in grigio i valori dell\'ultima volta, e il video dell\'esercizio', (
+    tester,
+  ) async {
+    final coach = telefono.aggiungiCoach('Marco Bianchi');
+    telefono.nucleo.diario.salva(coach, {
+      'scheda_id': null,
+      'scheda_revisione': null,
+      'seduta_id': null,
+      'eseguito_il': '2026-10-14T18:00:00+02:00',
+      'note': '',
+      'esercizi': [
+        {
+          'esercizio_id': null,
+          'nome': 'panca',
+          'note': '',
+          'serie': [
+            {'ripetizioni': 8, 'carico_kg': 62.5, 'completata': true},
+            {'ripetizioni': 7, 'carico_kg': 62.5, 'completata': true},
+          ],
+        },
+      ],
+    });
+    final scheda = schedaForza();
+    final squat =
+        (((scheda['sedute']! as List<Object?>).first! as Map<String, Object?>)['esercizi']!
+                as List<Object?>)
+            .first! as Map<String, Object?>;
+    squat['video'] = 'https://www.youtube.com/watch?v=abcdefghijk';
+    await iniziaGiornoA(tester, coach, scheda: scheda);
+
+    // Il video si vede solo aprendo l'esercizio, e non si carica da solo.
+    expect(find.text('Guarda il video'), findsNothing);
+    await tester.tap(find.text('Squat'));
+    await tester.pumpAndSettle();
+    expect(find.text('Guarda il video'), findsOneWidget);
+    await tester.tap(find.text('Squat'));
+    await tester.pumpAndSettle();
+
+    // La panca prescrive 8 × 60 kg, ma l'ultima volta era 8 e 7 × 62,5:
+    // i campi restano vuoti e lo mostrano in grigio.
+    await tester.tap(find.text('Panca'));
+    await tester.pumpAndSettle();
+    final campi = find.descendant(of: find.byType(Card), matching: find.byType(TextField));
+    String? suggerimento(int i) => tester.widget<TextField>(campi.at(i)).decoration?.hintText;
+    String testo(int i) => tester.widget<TextField>(campi.at(i)).controller!.text;
+    // Serie 1: ripetizioni, carico, RPE; serie 2 lo stesso.
+    expect([suggerimento(0), suggerimento(1), suggerimento(3), suggerimento(4)], [
+      '8',
+      '62,5',
+      '7',
+      '62,5',
+    ]);
+    expect([testo(0), testo(1)], ['', '']);
+
+    // Segnata fatta, la serie prende i valori in grigio.
+    await tester.tap(find.byType(Checkbox).first);
+    await tester.pump();
+    expect([testo(0), testo(1)], ['8', '62,5']);
+    await tester.tap(find.text('Salva'));
+    await tester.pumpAndSettle();
+
+    final log = telefono.nucleo.diario.elenco(coach).first;
+    final panca = esercizi(log.contenuto!)[1]['serie']! as List<Object?>;
+    expect(panca, [
+      {'ripetizioni': 8, 'carico_kg': 62.5, 'completata': true},
+      {'completata': false},
+    ]);
   });
 
   testWidgets('con un valore non valido non si salva', (tester) async {

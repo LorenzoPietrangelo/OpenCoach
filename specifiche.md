@@ -195,6 +195,8 @@ Con token.
   "epoca": "…",          // null alla prima sync
   "cursore": "…",        // null = chiedi lo stato completo
   "log": [ /* Log, al massimo 100 */ ],
+  "pesi": [ /* Peso (§8.5), al massimo 500; facoltativo */ ],
+  "pesi_condivisi": true,  // facoltativo: false = l'atleta non condivide il peso con questo coach
   "versione_app": "1.0.3"
 }
 ```
@@ -211,7 +213,9 @@ Risposta 200:
   "schede_eliminate": [ "…" ],
   "log": [ /* Log, solo se completo */ ],
   "cursore": "…",
-  "altro": false
+  "altro": false,
+  "pesi_accettati": [ { "id": "…", "rev": 3 } ],
+  "pesi": [ { "id": "…", "rev": 3 } ]   // solo se completo
 }
 ```
 
@@ -220,6 +224,14 @@ Risposta 200:
 - In una risposta incrementale `schede` contiene solo le schede cambiate dopo il cursore e `log` è vuoto.
 - Con `altro: true` l'app ripete la chiamata con il nuovo cursore e senza log, finché `altro` è false.
 - Codici d'errore per `log_rifiutati`: `non_valido` (schema), `troppo_grande`, `altro_atleta` (id già usato da un altro atleta).
+- I pesi (§8.5) sono un'aggiunta entro la v1. Il programma tratta i pesi ricevuti come i log e li elenca in `pesi_accettati`; un peso non valido o di un altro atleta non compare e l'app lo ritenta. Con `pesi_condivisi: false` il programma cancella tutti i pesi dell'atleta e ignora quelli inviati. Nella risposta completa `pesi` elenca `id` e `rev` di tutti i pesi che il programma ha dell'atleta, comprese le eliminazioni, dopo schede e log.
+- Una risposta senza `pesi_accettati` viene da un programma che non conosce i pesi: l'app smette di mandarglieli e lo dice all'atleta, finché una risposta successiva non contiene il campo.
+- Anche i questionari (§8.6) sono un'aggiunta entro la v1. La richiesta può contenere `risposte`, al massimo 20. Il programma salva quelle valide e le elenca in `risposte_accettate` (id del questionario); le altre vanno in `risposte_rifiutate` con `sconosciuto` (questionario inesistente o di un altro atleta), `non_valida` o `foto_mancanti` (manca almeno una delle foto indicate). Rimandare risposte già salvate le conferma senza cambiarle.
+- Un questionario mandato o annullato riceve un numero di sequenza come le schede: nella risposta incrementale `questionari` contiene quelli mandati dopo il cursore e `questionari_annullati` gli id di quelli annullati; nella completa `questionari` contiene tutti quelli ancora senza risposta, dopo i pesi.
+
+#### `PUT /v1/foto/<id>`
+
+Con token. Una foto di un questionario: corpo `image/jpeg` di al massimo 1,5 MiB, `<id>` è un UUID generato dall'app. Risposta 204. Idempotente: ricaricare la stessa foto non cambia nulla. Errori: 400 se non è un JPEG, 409 se l'id è già di un altro atleta, 413 se è troppo grande. La foto si lega al questionario quando arrivano le risposte che la citano.
 
 #### `DELETE /v1/dispositivo`
 
@@ -246,6 +258,9 @@ Con token. L'atleta si scollega dal coach; il programma revoca il dispositivo. R
 | --- | --- | --- |
 | Schede e revisioni | Coach | Sola lettura sul telefono |
 | Log | Atleta | Sola lettura sul PC del coach |
+| Pesi | Atleta | Sola lettura sul PC dei coach con cui l'atleta li condivide |
+| Questionari | Coach | Sola lettura sul telefono, salvo le risposte |
+| Risposte ai questionari e foto | Atleta | Sola lettura sul PC del coach; inviate, non si modificano più |
 | Note private del coach sull'atleta | Coach | Non inviate |
 
 ### 7.2 Lato programma
@@ -261,16 +276,17 @@ Con token. L'atleta si scollega dal coach; il programma revoca il dispositivo. R
 Una sync con un coach:
 
 1. Avvia Tor, se non è già attivo.
-2. Prende dalla coda fino a 100 log, cioè i log con `rev` maggiore dell'ultima `rev` confermata dal coach.
-3. Chiama `POST /v1/sync` con il cursore e l'epoca salvati.
-4. Con una risposta incrementale applica in un'unica transazione locale: schede nuove o cambiate, schede eliminate, log confermati (solo se la `rev` locale è ancora quella inviata), nuovo cursore.
-5. Se `altro` è true o restano log in coda, torna al punto 2.
+2. Prende dalla coda fino a 100 log, cioè i log con `rev` maggiore dell'ultima `rev` confermata dal coach. Se l'atleta condivide il peso con quel coach, prende anche fino a 500 pesi con `rev` maggiore dell'ultima confermata da lui, escluse le eliminazioni di pesi che il coach non ha mai ricevuto.
+3. Chiama `POST /v1/sync` con il cursore e l'epoca salvati, e con `pesi_condivisi`.
+4. Con una risposta incrementale applica in un'unica transazione locale: schede nuove o cambiate, schede eliminate, log confermati (solo se la `rev` locale è ancora quella inviata), nuovo cursore. I pesi confermati si registrano come confermati da quel coach.
+5. Se `altro` è true o restano log o pesi in coda, torna al punto 2.
 
 Con una risposta completa l'app accumula tutte le pagine e le applica insieme solo dopo l'ultima:
 
 - sostituisce l'insieme delle schede con quello ricevuto;
 - inserisce i log che non ha, e prende la versione del coach se ha `rev` maggiore;
 - rimette in coda i log locali assenti dalla risposta o presenti con `rev` minore. Così, dopo un ripristino del coach da backup, i telefoni reinviano i log arrivati dopo quel backup;
+- considera confermati da quel coach esattamente i pesi elencati in `pesi`, con la loro `rev`: gli altri tornano in coda per lui;
 - salva cursore ed epoca.
 
 Se una sync completa si interrompe, la successiva ricomincia da capo.
@@ -335,6 +351,7 @@ Per ogni coach sono sempre visibili l'ultima sync riuscita e il numero di log in
           "id": "…",
           "nome": "Squat",
           "note": "Pausa di 1 s in buca",
+          "video": "https://www.youtube.com/watch?v=…",   // facoltativo
           "prescrizione": [
             { "serie": 4, "ripetizioni": "6-8", "carico": "75% 1RM", "recupero_s": 150, "rir": "1-2" }
           ]
@@ -347,6 +364,7 @@ Per ogni coach sono sempre visibili l'ultima sync riuscita e il numero di log in
 
 - `revisione` cresce a ogni ripubblicazione. L'app mostra sempre l'ultima ricevuta.
 - `ripetizioni` e `carico` sono testo libero («8», «6-8», «30 s», «RPE 8», «75% 1RM»), come `rir`, le ripetizioni da lasciare in riserva («2», «1-2»). Tutti i campi della prescrizione sono facoltativi.
+- `video` è il link a un video che mostra l'esercizio: solo `https`, senza credenziali, al massimo 500 caratteri. Il programma lo prende dalla libreria degli esercizi alla pubblicazione (§9.3). È un campo aggiunto entro la v1: un'app che non lo conosce lo ignora (§6.2).
 - Gli id di sedute ed esercizi restano stabili tra le revisioni, così i log restano collegati.
 - L'ordine degli array è l'ordine di visualizzazione.
 - Le schede archiviate restano sul telefono in sola lettura, nella sezione «Archivio».
@@ -398,6 +416,11 @@ SQLite in modalità WAL nella cartella dati dell'utente (`%APPDATA%\OpenCoach`, 
 | `schede` | Id, atleta, bozza corrente, stato (bozza, pubblicata, archiviata, eliminata), ultima revisione, sequenza |
 | `revisioni` | Contenuto di ogni revisione pubblicata, per mostrare la prescrizione a cui si riferisce un log |
 | `log` | Id, atleta, dispositivo, `rev`, contenuto, data di ricezione |
+| `libreria` | Id, nome, nome normalizzato (unico), note, link al video |
+| `pesi` | Id, atleta, `rev`, eliminato, giorno, kg, data di ricezione |
+| `questionari` | Modelli scritti dal coach: id, contenuto, date |
+| `questionari_inviati` | Id, atleta, modello, contenuto al momento dell'invio, data d'invio, sequenza, stato (inviato, risposto, annullato), risposte, data di ricezione, letto |
+| `foto` | Id, atleta, questionario, JPEG, data di ricezione. Stanno nell'archivio, quindi anche nel backup cifrato |
 
 Segreto e chiave privata d'invito si cancellano quando l'invito si chiude.
 
@@ -405,7 +428,67 @@ Segreto e chiave privata d'invito si cancellano quando l'invito si chiude.
 
 SQLite nello spazio privato dell'app. Su iOS i file usano la classe di protezione `CompleteUntilFirstUserAuthentication`, così la sync in background può leggerli.
 
-Per ogni coach: indirizzo, nome, id dell'atleta e del dispositivo, cursore, epoca, data dell'ultima sync; le sue schede; i log, ciascuno con la `rev` locale e l'ultima `rev` confermata. Chiavi e token sono conservati come descritto al §4.
+Per ogni coach: indirizzo, nome, id dell'atleta e del dispositivo, cursore, epoca, data dell'ultima sync, se l'atleta gli condivide il peso e se il suo programma lo riceve; le sue schede; i log, ciascuno con la `rev` locale e l'ultima `rev` confermata; per ogni peso, l'ultima `rev` che ha confermato. I pesi stanno una volta sola, fuori dai coach. Chiavi e token sono conservati come descritto al §4.
+
+### 8.5 Peso
+
+```jsonc
+{
+  "id": "…",                             // generato dall'app, uno per giorno
+  "rev": 2,
+  "eliminato": false,
+  "giorno": "2026-10-27",
+  "kg": 72.4,                            // da 20 a 400
+  "modificato_il": "2026-10-27T07:30:00+01:00"
+}
+```
+
+- Un peso per giorno. Correggerlo o eliminarlo incrementa `rev`; il giorno tiene lo stesso `id` anche dopo un'eliminazione. Un peso eliminato si invia come `{ "id", "rev", "eliminato": true }`.
+- Il peso è dell'atleta, non di un coach. Per ogni coach l'atleta sceglie se condividerlo: è condiviso per default. Smettendo, alla sync successiva quel coach cancella tutti i pesi dell'atleta; ricominciando, li riceve di nuovo tutti.
+- L'app non accetta pesi fuori intervallo o per un giorno futuro.
+
+### 8.6 Questionario
+
+Come lo riceve l'app:
+
+```jsonc
+{
+  "id": "…",
+  "inviato_il": "2026-10-27T10:00:00+01:00",
+  "titolo": "Check mensile",
+  "descrizione": "…",                    // facoltativa
+  "domande": [
+    { "id": "…", "tipo": "scelta_singola", "testo": "Quanti giorni a settimana?", "obbligatoria": true,
+      "opzioni": ["2 giorni", "3 giorni", "4 giorni"], "altro": true },
+    { "id": "…", "tipo": "numero", "testo": "Quanto pesi?", "obbligatoria": true,
+      "unita": "kg", "peso_corporeo": true }
+  ],
+  "foto": { "numero": 5, "istruzioni": "Corpo intero, non allo specchio" }   // facoltativo
+}
+```
+
+- Tipi di domanda: `testo_breve` (fino a 500 caratteri), `testo_lungo` (fino a 5000), `numero` (con `unita` facoltativa), `scelta_singola` e `scelta_multipla` (con `opzioni` e, se `altro` è true, una risposta scritta), `scala` (intero da 1 a 10). Una domanda `numero` con `peso_corporeo` si precompila con l'ultimo peso registrato dall'atleta.
+- Al massimo 100 domande, 50 opzioni per domanda e 10 foto. Un questionario ha almeno una domanda o una richiesta di foto.
+- Il contenuto si copia all'invio: cambiare il modello dopo non cambia quello che l'atleta ha ricevuto.
+
+Le risposte, come le manda l'app:
+
+```jsonc
+{
+  "questionario_id": "…",
+  "inviata_il": "2026-10-27T18:00:00+01:00",
+  "risposte": [
+    { "domanda_id": "…", "valore": { "altro": "Giorni alterni" } },
+    { "domanda_id": "…", "valore": 72.4 }
+  ],
+  "foto": [ "…", "…" ]                   // id delle foto già caricate, quante ne chiede il coach
+}
+```
+
+- Il valore dipende dal tipo: un testo, un numero, `{ "scelta": "…" }` o `{ "altro": "…" }` per la scelta singola, `{ "scelte": [ … ], "altro": "…" }` per la multipla. Le domande senza risposta non compaiono; quelle obbligatorie devono comparire.
+- L'atleta compila anche in più volte: le risposte si salvano sul telefono man mano. Inviate, non si modificano più.
+- Le foto si scattano nell'app, e non finiscono nella galleria, oppure si scelgono dalla galleria. Prima di allegarle l'app le ricomprime in JPEG con il lato corto di al massimo 1600 pixel e senza dati EXIF: niente posizione GPS né modello del telefono. Ogni foto si carica con `PUT /v1/foto/<id>` prima delle risposte.
+- Il coach può annullare un questionario senza risposta: sparisce dal telefono se l'atleta non l'ha ancora inviato; se l'ha inviato, le risposte arrivano lo stesso.
 
 ## 9. Programma del coach
 
@@ -446,11 +529,30 @@ Schede:
 - archiviare ed eliminare;
 - vedere per ogni revisione se l'atleta l'ha ricevuta e quando.
 
+Libreria degli esercizi:
+
+- creare, modificare ed eliminare esercizi con nome (unico, senza distinguere maiuscole e spazi ai lati), note e link a un video;
+- nell'editor, scrivendo il nome di un esercizio, il programma propone quelli della libreria; sceglierne uno copia nella scheda il nome e, se la scheda non ne ha, le note;
+- le schede seguono la libreria per nome: alla pubblicazione ogni esercizio prende il video dell'esercizio con lo stesso nome, o nessun video. La bozza non contiene il video;
+- quando la libreria cambia, le schede il cui video cambierebbe risultano con modifiche non pubblicate. Il programma propone di aggiornare i video delle schede pubblicate: crea una revisione dall'ultima pubblicata con i video nuovi, senza le modifiche ancora in bozza. Le schede archiviate restano come sono.
+
+Questionari (§8.6):
+
+- creare, modificare, duplicare ed eliminare modelli: titolo, descrizione, domande di ogni tipo, eventuale richiesta di foto con le istruzioni. Eliminare un modello non tocca i questionari già mandati;
+- dalla pagina dell'atleta, mandare un modello: un check mensile è un questionario rimandato ogni volta dal coach. Annullare un questionario senza risposta;
+- leggere le risposte con le foto, segnate come nuove finché non si aprono, con una notifica sul desktop quando arrivano;
+- nell'editor delle schede, un pannello accanto mostra le risposte dell'atleta, dalla più recente.
+
 Log:
 
 - elenco per atleta in ordine di esecuzione, con il dettaglio di ogni seduta e il confronto con la prescrizione della revisione usata;
 - segnalazione dei log eseguiti su una revisione non più attuale;
 - i log sono in sola lettura.
+
+Peso:
+
+- se l'atleta lo condivide, nella sua pagina: l'ultimo peso, la media degli ultimi 7 giorni e la differenza con i 7 giorni prima, il grafico con i pesi di ogni giorno e la media mobile di 7 giorni, l'elenco;
+- i pesi sono in sola lettura ed entrano nell'esportazione JSON.
 
 Notifiche desktop, disattivabili: log ricevuto, abbinamento completato, invito usato da un secondo telefono.
 
@@ -475,8 +577,12 @@ Notifiche desktop, disattivabili: log ricevuto, abbinamento completato, invito u
 - Primo avvio: «Scansiona il QR del tuo coach», oppure incolla il codice. Nessun account, nessuna registrazione.
 - Schede: elenco per coach, dettaglio delle sedute, scelta della seduta da eseguire, avviso quando arriva una nuova revisione.
 - Esecuzione: per ogni esercizio le serie sono precompilate con la prescrizione; l'atleta inserisce ripetizioni, carico, durata e RPE effettivi, usa un timer di recupero e scrive note. Può aggiungere esercizi non previsti o registrare un allenamento libero. Al salvataggio il log entra in coda e parte una sync.
+- L'ultima volta: per ogni serie i campi vuoti mostrano in grigio ripetizioni, carico e durata della stessa serie nell'allenamento più recente con l'esercizio (stesso id della scheda o stesso nome, con qualsiasi coach; contano solo le serie segnate fatte). Dove c'è un valore dell'ultima volta il campo non si precompila dalla prescrizione. Segnare una serie fatta riempie i campi vuoti con i valori in grigio. Senza un'ultima volta, i campi mostrano la prescrizione come prima.
+- Video: aprendo un esercizio con `video`, l'app mostra «Guarda il video». Un video di YouTube si guarda nell'app (`youtube-nocookie.com`), gli altri link si aprono in un'altra app. Il player si carica solo al tocco e va in pausa quando l'esercizio si chiude. Il video non passa da Tor (§11.1).
 - Storico: i propri log, modificabili ed eliminabili. Ogni modifica incrementa `rev` e rimette il log in coda.
 - Stato della sync come al §7.5, con il tasto «Sincronizza ora».
+- Questionari (§8.6): nella pagina del coach, prima quelli da compilare; la schermata principale dice quanti sono e una sync in background che ne riceve di nuovi li annuncia con una notifica.
+- Peso (§8.5): dalla schermata principale, il peso di oggi o di un altro giorno, la media degli ultimi 7 giorni, il grafico, l'elenco con correzione ed eliminazione, e per ogni coach l'interruttore «condividi». Se il programma di un coach non riceve i pesi, l'app lo dice accanto al suo nome.
 - Impostazioni: coach collegati (nome, indirizzo, ultima sync); scollegarsi da un coach, che chiama `DELETE /v1/dispositivo` se il coach è raggiungibile e poi, dopo conferma, cancella i dati locali di quel coach; frequenza della sync in background (Android); esportazione dei propri dati in JSON.
 - L'app può essere abbinata a più coach contemporaneamente. Schede e log restano separati per coach.
 - Dopo una revoca le schede e i log di quel coach restano consultabili ed esportabili, ma non si sincronizzano più.
@@ -495,6 +601,7 @@ Notifiche desktop, disattivabili: log ricevuto, abbinamento completato, invito u
 | Atleta | Le proprie schede e i propri log. Non vede gli altri atleti né l'indirizzo IP del coach |
 | Coach | I dati dei propri atleti. Non vede l'indirizzo IP degli atleti |
 | Chi accede al PC del coach | Tutti i dati del coach. È fuori dal modello di minaccia; si consiglia la cifratura del disco |
+| Il sito di un video di un esercizio (per esempio YouTube) | Quando l'atleta tocca «Guarda il video», l'indirizzo IP del telefono e quale video guarda: il video arriva senza Tor. Non vede il coach né il collegamento con lui |
 
 ### 11.2 Misure
 
@@ -509,6 +616,10 @@ Notifiche desktop, disattivabili: log ricevuto, abbinamento completato, invito u
 ### 11.3 Dati personali
 
 I dati restano sul PC del coach e sui telefoni degli atleti. Lo sviluppatore non ne riceve nessuno. Il programma permette di esportare e cancellare tutti i dati di un atleta; l'app permette all'atleta di esportare e cancellare i propri.
+
+Il peso è un dato sulla salute: lo riceve solo il coach a cui l'atleta sceglie di condividerlo, e l'atleta può ritirarlo in ogni momento (§8.5).
+
+Anche le risposte ai questionari e le foto del corpo possono essere dati sulla salute. Arrivano solo al coach che ha mandato il questionario, passando da Tor; sul suo PC stanno nell'archivio e nel backup cifrato. Chi accede al PC del coach le vede, come il resto (§11.1).
 
 ## 12. Requisiti non funzionali
 
@@ -537,7 +648,7 @@ I dati restano sul PC del coach e sui telefoni degli atleti. Lo sviluppatore non
 - Casella postale sempre accesa sul modello di Briar. Richiederà una nuova versione del protocollo.
 - Più dispositivi attivi per lo stesso atleta.
 - Chat o commenti tra coach e atleta.
-- Allegati multimediali (video, foto).
+- Video che passano da Tor, e foto fuori dai questionari. I link ai video degli esercizi (§8.1) e le foto dei questionari (§8.6) ci sono.
 - Bridge Tor (obfs4, Snowflake).
 - Accesso del coach da più PC o dal telefono.
 - Aggiornamento automatico del programma del coach.

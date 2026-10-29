@@ -193,4 +193,58 @@ CREATE TABLE log (
 );
 CREATE INDEX log_atleta ON log (atleta_id, eseguito_il);
 ''',
+  '''
+CREATE TABLE libreria (
+  id TEXT PRIMARY KEY,
+  nome TEXT NOT NULL,
+  chiave TEXT NOT NULL UNIQUE,
+  note TEXT NOT NULL DEFAULT '',
+  video TEXT,
+  creato_il TEXT NOT NULL,
+  modificato_il TEXT NOT NULL
+);
+''',
+  '''
+CREATE TABLE pesi (
+  id TEXT PRIMARY KEY,
+  atleta_id TEXT NOT NULL REFERENCES atleti (id) ON DELETE CASCADE,
+  rev INTEGER NOT NULL,
+  eliminato INTEGER NOT NULL,
+  giorno TEXT,
+  kg REAL,
+  ricevuto_il TEXT NOT NULL
+);
+CREATE INDEX pesi_atleta ON pesi (atleta_id, giorno);
+''',
+  '''
+CREATE TABLE questionari (
+  id TEXT PRIMARY KEY,
+  contenuto TEXT NOT NULL,
+  creato_il TEXT NOT NULL,
+  modificato_il TEXT NOT NULL
+);
+
+CREATE TABLE questionari_inviati (
+  id TEXT PRIMARY KEY,
+  atleta_id TEXT NOT NULL REFERENCES atleti (id) ON DELETE CASCADE,
+  modello_id TEXT,
+  contenuto TEXT NOT NULL,
+  inviato_il TEXT NOT NULL,
+  sequenza INTEGER NOT NULL,
+  stato TEXT NOT NULL CHECK (stato IN ('inviato', 'risposto', 'annullato')),
+  risposta TEXT,
+  risposto_il TEXT,
+  letto INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX questionari_inviati_atleta ON questionari_inviati (atleta_id, sequenza);
+
+CREATE TABLE foto (
+  id TEXT PRIMARY KEY,
+  atleta_id TEXT NOT NULL REFERENCES atleti (id) ON DELETE CASCADE,
+  questionario_id TEXT,
+  dati BLOB NOT NULL,
+  ricevuta_il TEXT NOT NULL
+);
+CREATE INDEX foto_questionario ON foto (questionario_id);
+''',
 ];

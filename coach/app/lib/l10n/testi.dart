@@ -231,6 +231,18 @@ abstract class Testi {
   /// **'Atleti'**
   String get sezioneAtleti;
 
+  /// No description provided for @sezioneLibreria.
+  ///
+  /// In it, this message translates to:
+  /// **'Libreria'**
+  String get sezioneLibreria;
+
+  /// No description provided for @sezioneQuestionariMenu.
+  ///
+  /// In it, this message translates to:
+  /// **'Questionari'**
+  String get sezioneQuestionariMenu;
+
   /// No description provided for @sezioneStato.
   ///
   /// In it, this message translates to:
@@ -542,6 +554,366 @@ abstract class Testi {
   /// In it, this message translates to:
   /// **'Allenamenti'**
   String get schedaAllenamenti;
+
+  /// No description provided for @schedaPeso.
+  ///
+  /// In it, this message translates to:
+  /// **'Peso'**
+  String get schedaPeso;
+
+  /// No description provided for @nessunPeso.
+  ///
+  /// In it, this message translates to:
+  /// **'L\'atleta non ti ha ancora condiviso il suo peso. Lo registra nell\'app, dalla versione 1.2.0, e sceglie con quali coach condividerlo.'**
+  String get nessunPeso;
+
+  /// No description provided for @ultimoPeso.
+  ///
+  /// In it, this message translates to:
+  /// **'Ultimo peso, {giorno}'**
+  String ultimoPeso(String giorno);
+
+  /// No description provided for @mediaSettimana.
+  ///
+  /// In it, this message translates to:
+  /// **'Media degli ultimi 7 giorni'**
+  String get mediaSettimana;
+
+  /// No description provided for @rispettoSettimanaPrima.
+  ///
+  /// In it, this message translates to:
+  /// **'Rispetto ai 7 giorni prima'**
+  String get rispettoSettimanaPrima;
+
+  /// No description provided for @legendaGraficoPeso.
+  ///
+  /// In it, this message translates to:
+  /// **'I punti sono i pesi di ogni giorno, la linea è la media degli ultimi 7 giorni.'**
+  String get legendaGraficoPeso;
+
+  /// No description provided for @tuttiIPesi.
+  ///
+  /// In it, this message translates to:
+  /// **'Tutti i pesi'**
+  String get tuttiIPesi;
+
+  /// No description provided for @schedaQuestionari.
+  ///
+  /// In it, this message translates to:
+  /// **'Questionari'**
+  String get schedaQuestionari;
+
+  /// No description provided for @sezioneQuestionari.
+  ///
+  /// In it, this message translates to:
+  /// **'Questionari'**
+  String get sezioneQuestionari;
+
+  /// No description provided for @nuovoQuestionario.
+  ///
+  /// In it, this message translates to:
+  /// **'Nuovo questionario'**
+  String get nuovoQuestionario;
+
+  /// No description provided for @modificaQuestionario.
+  ///
+  /// In it, this message translates to:
+  /// **'Modifica il questionario'**
+  String get modificaQuestionario;
+
+  /// No description provided for @questionariSpiegazione.
+  ///
+  /// In it, this message translates to:
+  /// **'Anamnesi iniziale, check mensili, tutto quello che vuoi chiedere ai tuoi atleti, anche con delle foto. Si mandano dalla pagina dell\'atleta, nella scheda «Questionari».'**
+  String get questionariSpiegazione;
+
+  /// No description provided for @nessunQuestionario.
+  ///
+  /// In it, this message translates to:
+  /// **'Non hai ancora scritto questionari.'**
+  String get nessunQuestionario;
+
+  /// No description provided for @numeroDomande.
+  ///
+  /// In it, this message translates to:
+  /// **'{n, plural, =1{1 domanda} other{{n} domande}}'**
+  String numeroDomande(int n);
+
+  /// No description provided for @numeroFoto.
+  ///
+  /// In it, this message translates to:
+  /// **'{n, plural, =1{1 foto} other{{n} foto}}'**
+  String numeroFoto(int n);
+
+  /// No description provided for @eliminaQuestionarioTitolo.
+  ///
+  /// In it, this message translates to:
+  /// **'Eliminare «{titolo}»?'**
+  String eliminaQuestionarioTitolo(String titolo);
+
+  /// No description provided for @eliminaQuestionarioTesto.
+  ///
+  /// In it, this message translates to:
+  /// **'I questionari già mandati agli atleti, con le loro risposte, restano.'**
+  String get eliminaQuestionarioTesto;
+
+  /// No description provided for @tipoTestoBreve.
+  ///
+  /// In it, this message translates to:
+  /// **'Testo breve'**
+  String get tipoTestoBreve;
+
+  /// No description provided for @tipoTestoLungo.
+  ///
+  /// In it, this message translates to:
+  /// **'Testo lungo'**
+  String get tipoTestoLungo;
+
+  /// No description provided for @tipoNumero.
+  ///
+  /// In it, this message translates to:
+  /// **'Numero'**
+  String get tipoNumero;
+
+  /// No description provided for @tipoSceltaSingola.
+  ///
+  /// In it, this message translates to:
+  /// **'Scelta singola'**
+  String get tipoSceltaSingola;
+
+  /// No description provided for @tipoSceltaMultipla.
+  ///
+  /// In it, this message translates to:
+  /// **'Scelta multipla'**
+  String get tipoSceltaMultipla;
+
+  /// No description provided for @tipoScala.
+  ///
+  /// In it, this message translates to:
+  /// **'Scala da 1 a 10'**
+  String get tipoScala;
+
+  /// No description provided for @titoloQuestionario.
+  ///
+  /// In it, this message translates to:
+  /// **'Titolo'**
+  String get titoloQuestionario;
+
+  /// No description provided for @descrizioneQuestionario.
+  ///
+  /// In it, this message translates to:
+  /// **'Descrizione'**
+  String get descrizioneQuestionario;
+
+  /// No description provided for @descrizioneAiuto.
+  ///
+  /// In it, this message translates to:
+  /// **'L\'atleta la legge prima delle domande: a cosa serve il questionario, come compilarlo'**
+  String get descrizioneAiuto;
+
+  /// No description provided for @domandaNumero.
+  ///
+  /// In it, this message translates to:
+  /// **'Domanda {n}'**
+  String domandaNumero(int n);
+
+  /// No description provided for @aggiungiDomanda.
+  ///
+  /// In it, this message translates to:
+  /// **'Aggiungi una domanda'**
+  String get aggiungiDomanda;
+
+  /// No description provided for @togliDomanda.
+  ///
+  /// In it, this message translates to:
+  /// **'Togli la domanda'**
+  String get togliDomanda;
+
+  /// No description provided for @opzioni.
+  ///
+  /// In it, this message translates to:
+  /// **'Opzioni'**
+  String get opzioni;
+
+  /// No description provided for @opzioniAiuto.
+  ///
+  /// In it, this message translates to:
+  /// **'Una per riga'**
+  String get opzioniAiuto;
+
+  /// No description provided for @consentiAltro.
+  ///
+  /// In it, this message translates to:
+  /// **'Consenti «Altro:» con una risposta scritta'**
+  String get consentiAltro;
+
+  /// No description provided for @unita.
+  ///
+  /// In it, this message translates to:
+  /// **'Unità'**
+  String get unita;
+
+  /// No description provided for @pesoCorporeo.
+  ///
+  /// In it, this message translates to:
+  /// **'È il peso corporeo'**
+  String get pesoCorporeo;
+
+  /// No description provided for @pesoCorporeoAiuto.
+  ///
+  /// In it, this message translates to:
+  /// **'L\'app la precompila con l\'ultimo peso registrato dall\'atleta'**
+  String get pesoCorporeoAiuto;
+
+  /// No description provided for @obbligatoria.
+  ///
+  /// In it, this message translates to:
+  /// **'Obbligatoria'**
+  String get obbligatoria;
+
+  /// No description provided for @chiediFoto.
+  ///
+  /// In it, this message translates to:
+  /// **'Chiedi delle foto'**
+  String get chiediFoto;
+
+  /// No description provided for @chiediFotoAiuto.
+  ///
+  /// In it, this message translates to:
+  /// **'L\'atleta le scatta o le sceglie dalla galleria; l\'app le comprime e toglie la posizione GPS'**
+  String get chiediFotoAiuto;
+
+  /// No description provided for @quanteFoto.
+  ///
+  /// In it, this message translates to:
+  /// **'Quante foto'**
+  String get quanteFoto;
+
+  /// No description provided for @daUnoADieci.
+  ///
+  /// In it, this message translates to:
+  /// **'Da 1 a 10'**
+  String get daUnoADieci;
+
+  /// No description provided for @istruzioniFoto.
+  ///
+  /// In it, this message translates to:
+  /// **'Istruzioni per le foto'**
+  String get istruzioniFoto;
+
+  /// No description provided for @istruzioniFotoAiuto.
+  ///
+  /// In it, this message translates to:
+  /// **'Per esempio le pose, la luce, il corpo intero'**
+  String get istruzioniFotoAiuto;
+
+  /// No description provided for @questionarioSalvato.
+  ///
+  /// In it, this message translates to:
+  /// **'Questionario salvato'**
+  String get questionarioSalvato;
+
+  /// No description provided for @questionarioIncompleto.
+  ///
+  /// In it, this message translates to:
+  /// **'Il questionario non è completo'**
+  String get questionarioIncompleto;
+
+  /// No description provided for @mandaQuestionario.
+  ///
+  /// In it, this message translates to:
+  /// **'Manda un questionario'**
+  String get mandaQuestionario;
+
+  /// No description provided for @mandaQuestionarioA.
+  ///
+  /// In it, this message translates to:
+  /// **'Mandare a {nome}'**
+  String mandaQuestionarioA(String nome);
+
+  /// No description provided for @primaCreaUnQuestionario.
+  ///
+  /// In it, this message translates to:
+  /// **'Prima scrivi un questionario nella sezione «Questionari»'**
+  String get primaCreaUnQuestionario;
+
+  /// No description provided for @questionarioMandato.
+  ///
+  /// In it, this message translates to:
+  /// **'Mandato: l\'atleta lo riceve alla prossima sincronizzazione'**
+  String get questionarioMandato;
+
+  /// No description provided for @nessunQuestionarioMandato.
+  ///
+  /// In it, this message translates to:
+  /// **'Non hai ancora mandato questionari a questo atleta.'**
+  String get nessunQuestionarioMandato;
+
+  /// No description provided for @inAttesaDiRisposta.
+  ///
+  /// In it, this message translates to:
+  /// **'Mandato il {quando}, in attesa di risposta'**
+  String inAttesaDiRisposta(String quando);
+
+  /// No description provided for @rispostoIl.
+  ///
+  /// In it, this message translates to:
+  /// **'Risposte arrivate il {quando}'**
+  String rispostoIl(String quando);
+
+  /// No description provided for @questionarioAnnullato.
+  ///
+  /// In it, this message translates to:
+  /// **'Annullato'**
+  String get questionarioAnnullato;
+
+  /// No description provided for @annullaQuestionario.
+  ///
+  /// In it, this message translates to:
+  /// **'Annulla'**
+  String get annullaQuestionario;
+
+  /// No description provided for @annullaQuestionarioTitolo.
+  ///
+  /// In it, this message translates to:
+  /// **'Annullare il questionario?'**
+  String get annullaQuestionarioTitolo;
+
+  /// No description provided for @annullaQuestionarioTesto.
+  ///
+  /// In it, this message translates to:
+  /// **'Sparisce dal telefono dell\'atleta alla prossima sincronizzazione. Se l\'ha già compilato e inviato, le risposte arrivano lo stesso.'**
+  String get annullaQuestionarioTesto;
+
+  /// No description provided for @fotoAllegate.
+  ///
+  /// In it, this message translates to:
+  /// **'Foto'**
+  String get fotoAllegate;
+
+  /// No description provided for @altroValore.
+  ///
+  /// In it, this message translates to:
+  /// **'Altro: {valore}'**
+  String altroValore(String valore);
+
+  /// No description provided for @risposteAtleta.
+  ///
+  /// In it, this message translates to:
+  /// **'Risposte ai questionari'**
+  String get risposteAtleta;
+
+  /// No description provided for @nessunaRisposta.
+  ///
+  /// In it, this message translates to:
+  /// **'L\'atleta non ha ancora risposto a nessun questionario.'**
+  String get nessunaRisposta;
+
+  /// No description provided for @notificaQuestionarioRisposto.
+  ///
+  /// In it, this message translates to:
+  /// **'{nome} ha risposto a «{titolo}»'**
+  String notificaQuestionarioRisposto(String nome, String titolo);
 
   /// No description provided for @telefono.
   ///
@@ -950,6 +1322,114 @@ abstract class Testi {
   /// In it, this message translates to:
   /// **'Togli l\'esercizio'**
   String get togliEsercizio;
+
+  /// No description provided for @salvaNellaLibreria.
+  ///
+  /// In it, this message translates to:
+  /// **'Salva nella libreria'**
+  String get salvaNellaLibreria;
+
+  /// No description provided for @videoDallaLibreria.
+  ///
+  /// In it, this message translates to:
+  /// **'Video dalla libreria: {link}'**
+  String videoDallaLibreria(String link);
+
+  /// No description provided for @nellaLibreriaSenzaVideo.
+  ///
+  /// In it, this message translates to:
+  /// **'Nella libreria, senza video: aggiungilo'**
+  String get nellaLibreriaSenzaVideo;
+
+  /// No description provided for @nuovoEsercizio.
+  ///
+  /// In it, this message translates to:
+  /// **'Nuovo esercizio'**
+  String get nuovoEsercizio;
+
+  /// No description provided for @modificaEsercizio.
+  ///
+  /// In it, this message translates to:
+  /// **'Modifica l\'esercizio'**
+  String get modificaEsercizio;
+
+  /// No description provided for @libreriaSpiegazione.
+  ///
+  /// In it, this message translates to:
+  /// **'Gli esercizi che usi più spesso, con le note e il link a un video che mostra come si eseguono. Nelle schede li trovi scrivendo il nome; ogni esercizio con lo stesso nome riceve il video quando pubblichi la scheda.'**
+  String get libreriaSpiegazione;
+
+  /// No description provided for @libreriaVuota.
+  ///
+  /// In it, this message translates to:
+  /// **'La libreria è vuota.'**
+  String get libreriaVuota;
+
+  /// No description provided for @linkVideo.
+  ///
+  /// In it, this message translates to:
+  /// **'Link al video'**
+  String get linkVideo;
+
+  /// No description provided for @linkVideoAiuto.
+  ///
+  /// In it, this message translates to:
+  /// **'YouTube, Vimeo o un altro sito, con https://'**
+  String get linkVideoAiuto;
+
+  /// No description provided for @videoNonValido.
+  ///
+  /// In it, this message translates to:
+  /// **'Serve un link che inizia con https://'**
+  String get videoNonValido;
+
+  /// No description provided for @noteLibreriaAiuto.
+  ///
+  /// In it, this message translates to:
+  /// **'Si copiano nella scheda quando scegli l\'esercizio'**
+  String get noteLibreriaAiuto;
+
+  /// No description provided for @eliminaEsercizioTitolo.
+  ///
+  /// In it, this message translates to:
+  /// **'Eliminare {nome} dalla libreria?'**
+  String eliminaEsercizioTitolo(String nome);
+
+  /// No description provided for @eliminaEsercizioTesto.
+  ///
+  /// In it, this message translates to:
+  /// **'Le schede già scritte non cambiano, ma alla prossima pubblicazione l\'esercizio non avrà più il video.'**
+  String get eliminaEsercizioTesto;
+
+  /// No description provided for @videoDaAggiornare.
+  ///
+  /// In it, this message translates to:
+  /// **'{schede, plural, =1{Una scheda pubblicata ha un video diverso da quello della libreria.} other{{schede} schede pubblicate hanno un video diverso da quello della libreria.}}'**
+  String videoDaAggiornare(int schede);
+
+  /// No description provided for @aggiornaVideo.
+  ///
+  /// In it, this message translates to:
+  /// **'Aggiorna i video'**
+  String get aggiornaVideo;
+
+  /// No description provided for @aggiornaVideoTitolo.
+  ///
+  /// In it, this message translates to:
+  /// **'Aggiornare i video nelle schede?'**
+  String get aggiornaVideoTitolo;
+
+  /// No description provided for @aggiornaVideoTesto.
+  ///
+  /// In it, this message translates to:
+  /// **'Gli atleti ricevono i video nuovi alla prossima sync. Le modifiche in bozza non vengono pubblicate.'**
+  String get aggiornaVideoTesto;
+
+  /// No description provided for @videoAggiornati.
+  ///
+  /// In it, this message translates to:
+  /// **'{schede, plural, =1{Video aggiornato in una scheda} other{Video aggiornati in {schede} schede}}'**
+  String videoAggiornati(int schede);
 
   /// No description provided for @serie.
   ///

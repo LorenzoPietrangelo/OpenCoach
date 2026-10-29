@@ -11,6 +11,9 @@ import 'esportazioni.dart';
 import 'eventi.dart';
 import 'identita.dart';
 import 'inviti.dart';
+import 'libreria.dart';
+import 'pesi.dart';
+import 'questionari.dart';
 import 'schede.dart';
 import 'sincronizzazione.dart';
 import 'tempo.dart';
@@ -39,11 +42,14 @@ class NucleoCoach {
   late final atleti = GestioneAtleti(contesto, inviti);
   late final dispositivi = GestioneDispositivi(contesto);
   late final schede = GestioneSchede(contesto);
+  late final libreria = GestioneLibreria(contesto, schede);
+  late final pesi = GestionePesi(contesto);
+  late final questionari = GestioneQuestionari(contesto);
   late final allenamenti = GestioneAllenamenti(contesto, schede);
   late final abbinamento = ServizioAbbinamento(contesto);
   late final sincronizzazione = _budgetPagina == null
-      ? ServizioSincronizzazione(contesto, schede)
-      : ServizioSincronizzazione(contesto, schede, budgetPagina: _budgetPagina);
+      ? ServizioSincronizzazione(contesto, schede, questionari)
+      : ServizioSincronizzazione(contesto, schede, questionari, budgetPagina: _budgetPagina);
   late final esportazioni = GestioneEsportazioni(
     contesto,
     atleti,

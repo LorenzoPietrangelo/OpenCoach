@@ -8,6 +8,7 @@ import '../l10n/testi.dart';
 import 'avvisi.dart';
 import 'contenuto_scheda.dart';
 import 'formati.dart';
+import 'video_esercizio.dart';
 
 /// Esecuzione di un allenamento (§10.2): le serie partono dalla
 /// prescrizione; l'atleta scrive ripetizioni, carico, durata e RPE
@@ -95,8 +96,35 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
     );
     // Un allenamento già registrato si apre per correggerlo: le serie si
     // vedono subito.
-    if (widget.logId != null) _aperti.addAll(_a.esercizi);
+    if (widget.logId != null) {
+      _aperti.addAll(_a.esercizi);
+    } else {
+      // Dove c'è un valore dell'ultima volta il campo resta vuoto e lo
+      // mostra in grigio, invece del numero preso dalla prescrizione.
+      for (final esercizio in _a.esercizi) {
+        final precedenti = _ultimaVolta(esercizio);
+        for (final (i, serie) in esercizio.serie.indexed) {
+          final prima = precedenti.elementAtOrNull(i);
+          if (prima == null) continue;
+          if (prima.ripetizioni != null) serie.ripetizioni = null;
+          if (prima.caricoKg != null) serie.caricoKg = null;
+          if (prima.durataS != null) serie.durataS = null;
+        }
+      }
+    }
   }
+
+  /// Le serie fatte l'ultima volta con l'esercizio, per nome e id: se
+  /// l'atleta rinomina un esercizio aggiunto, si cercano di nuovo.
+  final _precedenti = <(EsercizioInCorso, String), List<SerieFatta>>{};
+
+  List<SerieFatta> _ultimaVolta(EsercizioInCorso esercizio) =>
+      _precedenti[(esercizio, esercizio.nome)] ??= widget.nucleo.diario
+          .ultimaVolta(
+            esercizioId: esercizio.esercizioId,
+            nome: esercizio.nome,
+            prima: _a.inizio,
+          );
 
   @override
   void dispose() {
@@ -135,9 +163,16 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
       });
 
   /// Segna la serie fatta e, se il coach ha previsto un recupero, avvia il
-  /// timer.
-  void _completa(SerieInCorso serie, bool fatta) {
-    _cambia(() => serie.completata = fatta);
+  /// timer. I campi lasciati vuoti prendono i valori dell'ultima volta, che
+  /// l'atleta vedeva in grigio.
+  void _completa(SerieInCorso serie, SerieFatta? prima, bool fatta) {
+    _cambia(() {
+      serie.completata = fatta;
+      if (!fatta || prima == null) return;
+      serie.ripetizioni ??= prima.ripetizioni;
+      serie.caricoKg ??= prima.caricoKg;
+      serie.durataS ??= prima.durataS;
+    });
     final recupero = serie.recupero;
     if (fatta && recupero != null && recupero > Duration.zero) {
       _avviaRecupero(recupero);
@@ -622,6 +657,8 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
                 conDurata: conDurata,
                 dettagli: dettagli,
                 noteCoach: noteCoach,
+                video: previsto?.video,
+                aperto: aperto,
               ),
             ),
           ),
@@ -639,9 +676,12 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
     required bool conDurata,
     required Iterable<String> dettagli,
     required String noteCoach,
+    required Uri? video,
+    required bool aperto,
   }) {
     final testi = Testi.of(context);
     final tema = Theme.of(context).textTheme;
+    final precedenti = _ultimaVolta(esercizio);
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 4, 4),
       child: Column(
@@ -666,6 +706,7 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
             ),
           if (esercizio.note.isNotEmpty)
             Text(testi.tueNote(esercizio.note), style: tema.bodySmall),
+          if (video != null) VideoEsercizio(link: video, visibile: aperto),
           const SizedBox(height: 8),
           _colonne(
             numero: Text(testi.serie, style: tema.labelSmall),
@@ -683,6 +724,7 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
             _serie(
               indice,
               serie,
+              precedenti.elementAtOrNull(indice),
               conRipetizioni: conRipetizioni,
               conDurata: conDurata,
             ),
@@ -732,12 +774,17 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
     );
   }
 
+  /// Una serie da registrare. In grigio, nei campi vuoti, i valori della
+  /// stessa serie l'ultima volta ([prima]) o la prescrizione del coach.
   Widget _serie(
     int indice,
-    SerieInCorso serie, {
+    SerieInCorso serie,
+    SerieFatta? prima, {
     required bool conRipetizioni,
     required bool conDurata,
   }) {
+    String? precedente(num? valore) => valore == null ? null : numero(valore);
+
     Widget casella(
       _Campo campo,
       num? valore,
@@ -761,7 +808,7 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
             ? casella(
                 _Campo.ripetizioni,
                 serie.ripetizioni,
-                serie.obiettivoRipetizioni,
+                precedente(prima?.ripetizioni) ?? serie.obiettivoRipetizioni,
                 (testo) => leggiIntero(testo, massimo: 10000),
               )
             : null,
@@ -769,14 +816,15 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
             ? casella(
                 _Campo.durata,
                 serie.durataS,
-                conRipetizioni ? null : serie.obiettivoRipetizioni,
+                precedente(prima?.durataS) ??
+                    (conRipetizioni ? null : serie.obiettivoRipetizioni),
                 (testo) => leggiIntero(testo, massimo: 86400),
               )
             : null,
         carico: casella(
           _Campo.carico,
           serie.caricoKg,
-          serie.obiettivoCarico,
+          precedente(prima?.caricoKg) ?? serie.obiettivoCarico,
           (testo) => leggiDecimale(testo, massimo: 10000),
           decimale: true,
         ),
@@ -790,7 +838,7 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
         fatta: Checkbox(
           value: serie.completata,
           semanticLabel: Testi.of(context).serieFatta(indice + 1),
-          onChanged: (fatta) => _completa(serie, fatta ?? false),
+          onChanged: (fatta) => _completa(serie, prima, fatta ?? false),
         ),
       ),
     );
@@ -930,6 +978,17 @@ class _CampoNumeroState extends State<_CampoNumero> {
       null => '',
     },
   );
+
+  /// Un valore arrivato da fuori, come quelli dell'ultima volta quando
+  /// l'atleta segna la serie fatta, riempie il campo se è vuoto.
+  @override
+  void didUpdateWidget(_CampoNumero vecchio) {
+    super.didUpdateWidget(vecchio);
+    final valore = widget.valore;
+    if (valore != null && valore != vecchio.valore && _testo.text.isEmpty) {
+      _testo.text = numero(valore);
+    }
+  }
 
   @override
   void dispose() {

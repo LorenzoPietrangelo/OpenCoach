@@ -53,6 +53,8 @@ class CoachCollegato {
     required this.problemaIl,
     required this.logInAttesa,
     required this.logRifiutati,
+    this.condividePesi = true,
+    this.pesiSupportati,
   });
 
   factory CoachCollegato.daRiga(Row r) => CoachCollegato(
@@ -75,6 +77,11 @@ class CoachCollegato {
     problemaIl: leggiIstanteFacoltativo(r['problema_il']),
     logInAttesa: r['log_in_attesa'] as int,
     logRifiutati: r['log_rifiutati'] as int,
+    condividePesi: r['condividi_pesi'] == 1,
+    pesiSupportati: switch (r['pesi_supportati']) {
+      final int valore => valore == 1,
+      _ => null,
+    },
   );
 
   /// Id locale del collegamento.
@@ -107,6 +114,13 @@ class CoachCollegato {
 
   /// Log rifiutati dal coach, da segnalare all'atleta.
   final int logRifiutati;
+
+  /// L'atleta condivide il proprio peso con questo coach (§8.5).
+  final bool condividePesi;
+
+  /// Se il programma del coach riceve i pesi: falso se è di una versione
+  /// che non li conosce, null finché nessuna sync lo ha detto.
+  final bool? pesiSupportati;
 }
 
 /// Scheda ricevuta da un coach, in sola lettura (§8.1).
@@ -229,6 +243,7 @@ class EsitoSync {
     this.logRifiutati = 0,
     this.logRimessiInCoda = 0,
     this.schedeNuove = const [],
+    this.questionariNuovi = const [],
   });
 
   final int coachId;
@@ -249,6 +264,10 @@ class EsitoSync {
   /// Schede nuove o con una nuova revisione, non archiviate. Dopo una sync
   /// in background l'app le annuncia con una notifica locale (§7.4).
   final List<SchedaRicevuta> schedeNuove;
+
+  /// Id dei questionari arrivati con questa sync, da annunciare come le
+  /// schede.
+  final List<String> questionariNuovi;
 
   bool get riuscita => problema == null;
 }

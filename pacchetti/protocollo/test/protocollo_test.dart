@@ -330,6 +330,80 @@ void main() {
       ]);
     });
 
+    test('il video di un esercizio è un link https', () {
+      final contenuto = contenutoSchedaDiEsempio();
+      final seduta =
+          (contenuto['sedute'] as List<Object?>).first as Map<String, Object?>;
+      final esercizio =
+          (seduta['esercizi'] as List<Object?>).first as Map<String, Object?>;
+      esercizio['video'] = 'https://www.youtube.com/watch?v=abc';
+      expect(validaContenutoScheda(contenuto), isEmpty);
+      const errore =
+          'sedute[0].esercizi[0].video: deve essere un link https di al massimo 500 caratteri';
+      for (final sbagliato in <Object>[
+        'http://www.youtube.com/watch?v=abc',
+        'javascript:alert(1)',
+        'https://',
+        'https://utente:pw@esempio.it/video',
+        'https://esempio.it/${'x' * 500}',
+        3,
+      ]) {
+        esercizio['video'] = sbagliato;
+        expect(validaContenutoScheda(contenuto), [errore], reason: '$sbagliato');
+      }
+    });
+
+    test('un peso: giorno e kg tra 20 e 400, o solo la lapide', () {
+      final peso = <String, Object?>{
+        'id': nuovoUuid(),
+        'rev': 1,
+        'eliminato': false,
+        'giorno': '2026-10-27',
+        'kg': 72.4,
+        'modificato_il': '2026-10-27T07:30:00+01:00',
+      };
+      expect(validaPeso(peso), isEmpty);
+      expect(validaPeso({...peso, 'kg': 12}), ['kg: deve essere tra 20 e 400']);
+      expect(validaPeso({...peso}..remove('giorno')), ['giorno: obbligatorio']);
+      expect(validaPeso({'id': peso['id'], 'rev': 2, 'eliminato': true}), isEmpty);
+    });
+
+    test('pesi nella sync: facoltativi, e assenti da un programma che non li conosce', () {
+      final vecchia = RispostaSync.fromJson({
+        'epoca': 'e',
+        'completo': false,
+        'log_accettati': <Object?>[],
+        'log_rifiutati': <Object?>[],
+        'schede': <Object?>[],
+        'schede_eliminate': <Object?>[],
+        'log': <Object?>[],
+        'cursore': 'c',
+        'altro': false,
+      });
+      expect(vecchia.pesiAccettati, isNull);
+      expect(vecchia.pesi, isEmpty);
+      final nuova = RispostaSync.fromJson({
+        ...vecchia.toJson(),
+        'pesi_accettati': [
+          {'id': 'a', 'rev': 2},
+        ],
+      });
+      expect(nuova.pesiAccettati!.single.rev, 2);
+
+      final richiesta = RichiestaSync.fromJson({
+        'epoca': null,
+        'cursore': null,
+        'log': <Object?>[],
+        'versione_app': '1.0.0',
+      });
+      expect(richiesta.pesi, isEmpty);
+      expect(richiesta.pesiCondivisi, isNull);
+      expect(
+        RichiestaSync.fromJson({...richiesta.toJson(), 'pesi_condivisi': false}).pesiCondivisi,
+        isFalse,
+      );
+    });
+
     test('una scheda senza sedute non si può pubblicare', () {
       expect(
         validaContenutoScheda({'titolo': 'Vuota', 'sedute': <Object?>[]}),

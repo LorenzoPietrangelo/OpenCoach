@@ -1,0 +1,209 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<meta name="color-scheme" content="light dark">
+<link rel="icon" type="image/png" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<title>Novità – Open Coach</title>
+<!-- Generata da strumenti/rilascio.ps1 nella repo del codice: non modificarla qui.
+     Ogni rilascio aggiunge in cima la sua versione; le precedenti restano sotto. -->
+<style>
+  :root {
+    --sfondo: #f5f8f7;
+    --carta: #ffffff;
+    --testo: #14201d;
+    --tenue: #50605c;
+    --bordo: #dbe5e2;
+    --primario: #00695c;
+    --su-primario: #ffffff;
+    --accento: #e6f2ef;
+    --ombra: 0 10px 30px rgba(10, 40, 35, 0.08);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --sfondo: #0d1312;
+      --carta: #151d1c;
+      --testo: #e6eeec;
+      --tenue: #a4b4b0;
+      --bordo: #273432;
+      --primario: #4db6a6;
+      --su-primario: #052a25;
+      --accento: #17302c;
+      --ombra: 0 10px 30px rgba(0, 0, 0, 0.35);
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--sfondo); color: var(--testo);
+    font: 17px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  a { color: var(--primario); }
+  .contenitore { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+  .barra { background: #0b1f1b; }
+  .barra .contenitore {
+    display: flex; align-items: center; justify-content: space-between; padding-top: 18px;
+    padding-bottom: 18px;
+  }
+  .logo {
+    color: #fff; font-weight: 800; font-size: 1.3rem; text-decoration: none;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .logo svg { width: 30px; height: 30px; }
+  .barra .indietro { color: rgba(255, 255, 255, 0.88); font-weight: 600; text-decoration: none; }
+  .barra .indietro:hover { color: #fff; }
+  main { padding: 56px 0 72px; }
+  .etichetta {
+    display: inline-block; font-size: 0.8rem; font-weight: 800; letter-spacing: 0.12em;
+    text-transform: uppercase; color: var(--primario); margin-bottom: 10px;
+  }
+  h1 { font-size: clamp(2rem, 4.4vw, 2.8rem); line-height: 1.1; letter-spacing: -0.02em; margin: 0 0 12px; }
+  .intro { color: var(--tenue); font-size: 1.1rem; max-width: 40em; margin: 0; }
+
+  .versione { margin-top: 56px; }
+  .versione + .versione { padding-top: 48px; border-top: 1px solid var(--bordo); }
+  .versione h2 {
+    font-size: clamp(1.5rem, 3vw, 1.9rem); line-height: 1.2; letter-spacing: -0.01em; margin: 0 0 4px;
+  }
+  .data { color: var(--tenue); margin: 0 0 8px; }
+  .titolo-versione { font-size: 1.15rem; margin: 0 0 28px; }
+
+  .punti { display: grid; grid-template-columns: repeat(3, 1fr); gap: 22px; }
+  .punto {
+    background: var(--carta); border: 1px solid var(--bordo); border-radius: 20px;
+    padding: 28px 26px; box-shadow: var(--ombra); display: flex; flex-direction: column;
+  }
+  .per-chi {
+    align-self: flex-start; font-size: 0.74rem; font-weight: 800; letter-spacing: 0.08em;
+    text-transform: uppercase; padding: 4px 11px; border-radius: 999px; margin-bottom: 16px;
+    background: var(--primario); color: var(--su-primario);
+  }
+  .per-chi.atleta { background: var(--accento); color: var(--primario); }
+  .icona {
+    width: 50px; height: 50px; border-radius: 14px; background: var(--accento);
+    color: var(--primario); display: grid; place-items: center; margin-bottom: 18px;
+  }
+  .icona svg { width: 26px; height: 26px; }
+  .punto h3 { margin: 0 0 8px; font-size: 1.2rem; }
+  .punto p { margin: 0; color: var(--tenue); }
+  .punto p + p { margin-top: 10px; font-size: 0.93rem; }
+
+  .aggiornare {
+    margin-top: 24px; background: var(--accento); border-radius: 16px; padding: 18px 22px;
+  }
+  .aggiornare p { margin: 0; }
+  .aggiornare p + p { margin-top: 6px; color: var(--tenue); font-size: 0.95rem; }
+
+  .elenco { margin: 0; padding-left: 1.2em; color: var(--tenue); }
+  .elenco li { margin: 6px 0; }
+
+  .scarica {
+    display: inline-flex; align-items: center; gap: 10px; margin-top: 48px; padding: 15px 26px;
+    border-radius: 999px; font-weight: 700; text-decoration: none;
+    background: var(--primario); color: var(--su-primario);
+  }
+  footer { padding: 0 0 48px; color: var(--tenue); font-size: 0.92rem; text-align: center; }
+  footer p { margin: 4px 0; }
+  @media (max-width: 760px) {
+    main { padding: 36px 0 48px; }
+    .punti { grid-template-columns: 1fr; }
+    .scarica { width: 100%; justify-content: center; }
+  }
+</style>
+</head>
+<body>
+
+<header class="barra">
+  <div class="contenitore">
+    <a class="logo" href="index.html">
+      <!-- Il logo di Open Coach, con le proporzioni di strumenti/genera_icone.dart. -->
+      <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="15.04" fill="#00897b"/>
+        <circle cx="16" cy="16" r="7.84" fill="none" stroke="#fff" stroke-width="3.52"/></svg>
+      Open Coach
+    </a>
+    <a class="indietro" href="index.html#download">← Download</a>
+  </div>
+</header>
+
+<main>
+  <div class="contenitore">
+    <span class="etichetta">Novità</span>
+    <h1>Cosa cambia in ogni versione</h1>
+    <p class="intro">Le versioni del programma del coach e dell'app dell'atleta funzionano tra loro:
+      ognuno può aggiornare quando vuole, e nessuno resta scollegato.</p>
+
+    <section class="versione" aria-labelledby="v1-1-0">
+      <h2 id="v1-1-0">Versione 1.1.0</h2>
+      <p class="data">25 ottobre 2026</p>
+      <p class="titolo-versione">Ogni esercizio con il suo video, e l'ultima volta sempre
+        sott'occhio.</p>
+      <div class="punti">
+        <article class="punto">
+          <span class="per-chi">Per il coach</span>
+          <div class="icona"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M4 5h4v14H4zM10 5h4v14h-4z"/><path d="M16.5 5.5l3.5 1-3.5 13-3.5-1z"/></svg></div>
+          <h3>La libreria degli esercizi</h3>
+          <p>Salva una volta gli esercizi che usi, con le note e il link al video che mostra come si
+            eseguono. Nelle schede li ritrovi scrivendo il nome.</p>
+          <p>Se cambi un video, il programma lo aggiorna nelle schede già inviate, senza pubblicare
+            le modifiche che hai ancora in bozza.</p>
+        </article>
+        <article class="punto">
+          <span class="per-chi atleta">Per l'atleta</span>
+          <div class="icona"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="2" y="5" width="20" height="14" rx="3"/><path d="M10 9l5 3-5 3z"/></svg></div>
+          <h3>Il video dentro l'allenamento</h3>
+          <p>Apri l'esercizio e tocca «Guarda il video»: parte lì, senza uscire dall'app, anche a
+            schermo intero.</p>
+          <p>Il video arriva da YouTube, non da Tor, e si carica solo se lo tocchi.</p>
+        </article>
+        <article class="punto">
+          <span class="per-chi atleta">Per l'atleta</span>
+          <div class="icona"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 8v4l3 2"/></svg></div>
+          <h3>L'ultima volta, in grigio</h3>
+          <p>Nelle caselle di ogni serie vedi ripetizioni e chili dell'allenamento precedente. Scrivi
+            sopra se cambi, oppure segna la serie fatta e li prende lei.</p>
+        </article>
+      </div>
+      <div class="aggiornare">
+        <p><strong>Come aggiornare:</strong> installa la nuova versione sopra quella vecchia. Atleti,
+          schede, allenamenti e collegamenti restano.</p>
+        <p>I video arrivano agli atleti quando sia il coach sia l'atleta hanno la 1.1.0. Dopo
+          l'aggiornamento il programma del coach non torna alla 1.0.0.</p>
+      </div>
+    </section>
+
+    <section class="versione" aria-labelledby="v1-0-0">
+      <h2 id="v1-0-0">Versione 1.0.0</h2>
+      <p class="data">24 ottobre 2026</p>
+      <p class="titolo-versione">La prima versione.</p>
+      <ul class="elenco">
+        <li>Programma del coach per Windows: atleti, schede con revisioni, storico degli
+          allenamenti, backup cifrato ed esportazioni.</li>
+        <li>App dell'atleta per Android: schede sempre sul telefono, registrazione delle serie con
+          timer di recupero, storico e sincronizzazione automatica.</li>
+        <li>Collegamento con un QR, senza account, attraverso la rete Tor.</li>
+      </ul>
+    </section>
+
+    <a class="scarica" href="index.html#download">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.4"
+        stroke-linecap="round" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>
+      Scarica la versione {{VERSIONE}}</a>
+  </div>
+</main>
+
+<footer>
+  <div class="contenitore">
+    <p>Open Coach · Versione {{VERSIONE}} · {{DATA}} · <a href="condizioni.html">Condizioni d'uso</a></p>
+  </div>
+</footer>
+</body>
+</html>

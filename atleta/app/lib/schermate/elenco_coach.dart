@@ -8,7 +8,9 @@ import '../piattaforma/inviti_in_arrivo.dart';
 import '../piattaforma/sync_in_background.dart';
 import 'aggiungi_coach.dart';
 import 'impostazioni.dart';
+import 'formati.dart';
 import 'pagina_coach.dart';
+import 'peso.dart';
 import 'stato_sync.dart';
 
 /// Coach collegati, ciascuno con le schede da vedere, l'ultima sync
@@ -155,7 +157,13 @@ class _ElencoCoachState extends State<ElencoCoach> {
             .where((scheda) => scheda.daVedere)
             .length,
     };
+    _daCompilare = {
+      for (final coach in _coach) coach.id: widget.nucleo.questionari.daCompilare(coach.id),
+    };
   }
+
+  /// Questionari ancora da compilare, per coach.
+  late Map<int, int> _daCompilare;
 
   void _aggiorna() {
     if (mounted) setState(_leggi);
@@ -191,6 +199,8 @@ class _ElencoCoachState extends State<ElencoCoach> {
         onRefresh: _sincronizza,
         child: ListView(
           children: [
+            _VocePeso(widget.nucleo, aperta: () => setState(() {})),
+            const Divider(height: 1),
             if (_coach.isEmpty)
               Padding(
                 padding: const EdgeInsets.all(24),
@@ -200,6 +210,7 @@ class _ElencoCoachState extends State<ElencoCoach> {
               _VoceCoach(
                 coach,
                 daVedere: _daVedere[coach.id] ?? 0,
+                daCompilare: _daCompilare[coach.id] ?? 0,
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (_) =>
@@ -219,11 +230,45 @@ class _ElencoCoachState extends State<ElencoCoach> {
   }
 }
 
+/// Il peso di oggi, o l'invito a registrarlo; apre la schermata del peso.
+class _VocePeso extends StatelessWidget {
+  const _VocePeso(this.nucleo, {required this.aperta});
+
+  final NucleoAtleta nucleo;
+
+  /// Al ritorno dalla schermata del peso, per mostrare quello nuovo.
+  final VoidCallback aperta;
+
+  @override
+  Widget build(BuildContext context) {
+    final testi = Testi.of(context);
+    final oggi = nucleo.pesi.delGiorno(nucleo.contesto.orologio.adesso().toLocal());
+    return ListTile(
+      leading: const Icon(Icons.monitor_weight_outlined),
+      title: Text(testi.peso),
+      subtitle: Text(oggi == null ? testi.registraPesoOggi : testi.pesoDiOggi(numero(oggi.kg))),
+      trailing: const Icon(Icons.chevron_right),
+      onTap: () async {
+        await Navigator.of(context).push(
+          MaterialPageRoute<void>(builder: (_) => SchermataPeso(nucleo: nucleo)),
+        );
+        aperta();
+      },
+    );
+  }
+}
+
 class _VoceCoach extends StatelessWidget {
-  const _VoceCoach(this.coach, {required this.daVedere, required this.onTap});
+  const _VoceCoach(
+    this.coach, {
+    required this.daVedere,
+    required this.daCompilare,
+    required this.onTap,
+  });
 
   final CoachCollegato coach;
   final int daVedere;
+  final int daCompilare;
   final VoidCallback onTap;
 
   @override
@@ -231,6 +276,7 @@ class _VoceCoach extends StatelessWidget {
     final testi = Testi.of(context);
     final righe = [
       if (daVedere > 0) testi.schedeDaVedere(daVedere),
+      if (daCompilare > 0) testi.questionariDaCompilare(daCompilare),
       ...righeStatoSync(context, coach),
     ];
     return ListTile(
@@ -238,8 +284,8 @@ class _VoceCoach extends StatelessWidget {
       subtitle: Text(righe.join('\n')),
       isThreeLine: righe.length > 2,
       leading: Badge(
-        isLabelVisible: daVedere > 0,
-        label: Text('$daVedere'),
+        isLabelVisible: daVedere + daCompilare > 0,
+        label: Text('${daVedere + daCompilare}'),
         child: Icon(
           coach.problema == null ? Icons.sync : Icons.sync_problem,
           color: coach.problema == null

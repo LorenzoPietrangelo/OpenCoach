@@ -19,6 +19,9 @@ const _percorsi = {
   '/v1/dispositivo',
 };
 
+/// `PUT /v1/foto/<id>` (§8.6).
+const _prefissoFoto = '/v1/foto/';
+
 /// Server dell'API (§6). Ascolta solo su 127.0.0.1 e accetta solo richieste
 /// per `<indirizzo>.onion`: arrivano soltanto attraverso l'onion service.
 class ServerCoach {
@@ -149,6 +152,16 @@ class ServerCoach {
           _syncInCorso--;
         }
 
+      case ('PUT', final percorso) when percorso.startsWith(_prefissoFoto):
+        final dispositivo = _autentica(richiesta);
+        final jpeg = await _leggiCorpo(richiesta, massimo: Limiti.fotoMassima);
+        _nucleo.questionari.salvaFoto(
+          dispositivo.atletaId,
+          percorso.substring(_prefissoFoto.length),
+          jpeg,
+        );
+        await _rispondi(richiesta, 204, null);
+
       case ('DELETE', '/v1/dispositivo'):
         final dispositivo = _autentica(richiesta);
         await _leggiCorpo(richiesta);
@@ -177,14 +190,17 @@ class ServerCoach {
     return dispositivo;
   }
 
-  Future<Uint8List> _leggiCorpo(HttpRequest richiesta) async {
-    if (richiesta.contentLength > Limiti.corpoMassimo) {
+  Future<Uint8List> _leggiCorpo(
+    HttpRequest richiesta, {
+    int massimo = Limiti.corpoMassimo,
+  }) async {
+    if (richiesta.contentLength > massimo) {
       throw const ErroreHttp(413, CodiceErrore.troppoGrande);
     }
     final byte = BytesBuilder(copy: false);
     await for (final parte in richiesta) {
       byte.add(parte);
-      if (byte.length > Limiti.corpoMassimo) {
+      if (byte.length > massimo) {
         throw const ErroreHttp(413, CodiceErrore.troppoGrande);
       }
     }

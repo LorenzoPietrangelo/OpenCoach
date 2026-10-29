@@ -80,6 +80,12 @@ class TestiIt extends Testi {
   String get sezioneAtleti => 'Atleti';
 
   @override
+  String get sezioneLibreria => 'Libreria';
+
+  @override
+  String get sezioneQuestionariMenu => 'Questionari';
+
+  @override
   String get sezioneStato => 'Stato';
 
   @override
@@ -267,6 +273,231 @@ class TestiIt extends Testi {
 
   @override
   String get schedaAllenamenti => 'Allenamenti';
+
+  @override
+  String get schedaPeso => 'Peso';
+
+  @override
+  String get nessunPeso =>
+      'L\'atleta non ti ha ancora condiviso il suo peso. Lo registra nell\'app, dalla versione 1.2.0, e sceglie con quali coach condividerlo.';
+
+  @override
+  String ultimoPeso(String giorno) {
+    return 'Ultimo peso, $giorno';
+  }
+
+  @override
+  String get mediaSettimana => 'Media degli ultimi 7 giorni';
+
+  @override
+  String get rispettoSettimanaPrima => 'Rispetto ai 7 giorni prima';
+
+  @override
+  String get legendaGraficoPeso =>
+      'I punti sono i pesi di ogni giorno, la linea è la media degli ultimi 7 giorni.';
+
+  @override
+  String get tuttiIPesi => 'Tutti i pesi';
+
+  @override
+  String get schedaQuestionari => 'Questionari';
+
+  @override
+  String get sezioneQuestionari => 'Questionari';
+
+  @override
+  String get nuovoQuestionario => 'Nuovo questionario';
+
+  @override
+  String get modificaQuestionario => 'Modifica il questionario';
+
+  @override
+  String get questionariSpiegazione =>
+      'Anamnesi iniziale, check mensili, tutto quello che vuoi chiedere ai tuoi atleti, anche con delle foto. Si mandano dalla pagina dell\'atleta, nella scheda «Questionari».';
+
+  @override
+  String get nessunQuestionario => 'Non hai ancora scritto questionari.';
+
+  @override
+  String numeroDomande(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n domande',
+      one: '1 domanda',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String numeroFoto(int n) {
+    String _temp0 = intl.Intl.pluralLogic(
+      n,
+      locale: localeName,
+      other: '$n foto',
+      one: '1 foto',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String eliminaQuestionarioTitolo(String titolo) {
+    return 'Eliminare «$titolo»?';
+  }
+
+  @override
+  String get eliminaQuestionarioTesto =>
+      'I questionari già mandati agli atleti, con le loro risposte, restano.';
+
+  @override
+  String get tipoTestoBreve => 'Testo breve';
+
+  @override
+  String get tipoTestoLungo => 'Testo lungo';
+
+  @override
+  String get tipoNumero => 'Numero';
+
+  @override
+  String get tipoSceltaSingola => 'Scelta singola';
+
+  @override
+  String get tipoSceltaMultipla => 'Scelta multipla';
+
+  @override
+  String get tipoScala => 'Scala da 1 a 10';
+
+  @override
+  String get titoloQuestionario => 'Titolo';
+
+  @override
+  String get descrizioneQuestionario => 'Descrizione';
+
+  @override
+  String get descrizioneAiuto =>
+      'L\'atleta la legge prima delle domande: a cosa serve il questionario, come compilarlo';
+
+  @override
+  String domandaNumero(int n) {
+    return 'Domanda $n';
+  }
+
+  @override
+  String get aggiungiDomanda => 'Aggiungi una domanda';
+
+  @override
+  String get togliDomanda => 'Togli la domanda';
+
+  @override
+  String get opzioni => 'Opzioni';
+
+  @override
+  String get opzioniAiuto => 'Una per riga';
+
+  @override
+  String get consentiAltro => 'Consenti «Altro:» con una risposta scritta';
+
+  @override
+  String get unita => 'Unità';
+
+  @override
+  String get pesoCorporeo => 'È il peso corporeo';
+
+  @override
+  String get pesoCorporeoAiuto =>
+      'L\'app la precompila con l\'ultimo peso registrato dall\'atleta';
+
+  @override
+  String get obbligatoria => 'Obbligatoria';
+
+  @override
+  String get chiediFoto => 'Chiedi delle foto';
+
+  @override
+  String get chiediFotoAiuto =>
+      'L\'atleta le scatta o le sceglie dalla galleria; l\'app le comprime e toglie la posizione GPS';
+
+  @override
+  String get quanteFoto => 'Quante foto';
+
+  @override
+  String get daUnoADieci => 'Da 1 a 10';
+
+  @override
+  String get istruzioniFoto => 'Istruzioni per le foto';
+
+  @override
+  String get istruzioniFotoAiuto =>
+      'Per esempio le pose, la luce, il corpo intero';
+
+  @override
+  String get questionarioSalvato => 'Questionario salvato';
+
+  @override
+  String get questionarioIncompleto => 'Il questionario non è completo';
+
+  @override
+  String get mandaQuestionario => 'Manda un questionario';
+
+  @override
+  String mandaQuestionarioA(String nome) {
+    return 'Mandare a $nome';
+  }
+
+  @override
+  String get primaCreaUnQuestionario =>
+      'Prima scrivi un questionario nella sezione «Questionari»';
+
+  @override
+  String get questionarioMandato =>
+      'Mandato: l\'atleta lo riceve alla prossima sincronizzazione';
+
+  @override
+  String get nessunQuestionarioMandato =>
+      'Non hai ancora mandato questionari a questo atleta.';
+
+  @override
+  String inAttesaDiRisposta(String quando) {
+    return 'Mandato il $quando, in attesa di risposta';
+  }
+
+  @override
+  String rispostoIl(String quando) {
+    return 'Risposte arrivate il $quando';
+  }
+
+  @override
+  String get questionarioAnnullato => 'Annullato';
+
+  @override
+  String get annullaQuestionario => 'Annulla';
+
+  @override
+  String get annullaQuestionarioTitolo => 'Annullare il questionario?';
+
+  @override
+  String get annullaQuestionarioTesto =>
+      'Sparisce dal telefono dell\'atleta alla prossima sincronizzazione. Se l\'ha già compilato e inviato, le risposte arrivano lo stesso.';
+
+  @override
+  String get fotoAllegate => 'Foto';
+
+  @override
+  String altroValore(String valore) {
+    return 'Altro: $valore';
+  }
+
+  @override
+  String get risposteAtleta => 'Risposte ai questionari';
+
+  @override
+  String get nessunaRisposta =>
+      'L\'atleta non ha ancora risposto a nessun questionario.';
+
+  @override
+  String notificaQuestionarioRisposto(String nome, String titolo) {
+    return '$nome ha risposto a «$titolo»';
+  }
 
   @override
   String get telefono => 'Telefono collegato';
@@ -505,6 +736,87 @@ class TestiIt extends Testi {
 
   @override
   String get togliEsercizio => 'Togli l\'esercizio';
+
+  @override
+  String get salvaNellaLibreria => 'Salva nella libreria';
+
+  @override
+  String videoDallaLibreria(String link) {
+    return 'Video dalla libreria: $link';
+  }
+
+  @override
+  String get nellaLibreriaSenzaVideo =>
+      'Nella libreria, senza video: aggiungilo';
+
+  @override
+  String get nuovoEsercizio => 'Nuovo esercizio';
+
+  @override
+  String get modificaEsercizio => 'Modifica l\'esercizio';
+
+  @override
+  String get libreriaSpiegazione =>
+      'Gli esercizi che usi più spesso, con le note e il link a un video che mostra come si eseguono. Nelle schede li trovi scrivendo il nome; ogni esercizio con lo stesso nome riceve il video quando pubblichi la scheda.';
+
+  @override
+  String get libreriaVuota => 'La libreria è vuota.';
+
+  @override
+  String get linkVideo => 'Link al video';
+
+  @override
+  String get linkVideoAiuto => 'YouTube, Vimeo o un altro sito, con https://';
+
+  @override
+  String get videoNonValido => 'Serve un link che inizia con https://';
+
+  @override
+  String get noteLibreriaAiuto =>
+      'Si copiano nella scheda quando scegli l\'esercizio';
+
+  @override
+  String eliminaEsercizioTitolo(String nome) {
+    return 'Eliminare $nome dalla libreria?';
+  }
+
+  @override
+  String get eliminaEsercizioTesto =>
+      'Le schede già scritte non cambiano, ma alla prossima pubblicazione l\'esercizio non avrà più il video.';
+
+  @override
+  String videoDaAggiornare(int schede) {
+    String _temp0 = intl.Intl.pluralLogic(
+      schede,
+      locale: localeName,
+      other:
+          '$schede schede pubblicate hanno un video diverso da quello della libreria.',
+      one:
+          'Una scheda pubblicata ha un video diverso da quello della libreria.',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get aggiornaVideo => 'Aggiorna i video';
+
+  @override
+  String get aggiornaVideoTitolo => 'Aggiornare i video nelle schede?';
+
+  @override
+  String get aggiornaVideoTesto =>
+      'Gli atleti ricevono i video nuovi alla prossima sync. Le modifiche in bozza non vengono pubblicate.';
+
+  @override
+  String videoAggiornati(int schede) {
+    String _temp0 = intl.Intl.pluralLogic(
+      schede,
+      locale: localeName,
+      other: 'Video aggiornati in $schede schede',
+      one: 'Video aggiornato in una scheda',
+    );
+    return '$_temp0';
+  }
 
   @override
   String get serie => 'Serie';

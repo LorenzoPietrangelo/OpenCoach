@@ -8,7 +8,9 @@ import 'contesto.dart';
 import 'diario.dart';
 import 'modelli.dart';
 import 'orologio.dart';
+import 'pesi.dart';
 import 'pianificatore.dart';
+import 'questionari.dart';
 import 'schede.dart';
 import 'sincronizzazione.dart';
 import 'trasporto.dart';
@@ -48,6 +50,14 @@ class NucleoAtleta {
 
   late final schede = SchedeRicevute(contesto);
   late final diario = DiarioAllenamenti(
+    contesto,
+    cambiato: (coachId) => pianificatore.logCambiato(coachId),
+  );
+  late final pesi = RegistroPesi(
+    contesto,
+    cambiato: (coachId) => pianificatore.logCambiato(coachId),
+  );
+  late final questionari = QuestionariRicevuti(
     contesto,
     cambiato: (coachId) => pianificatore.logCambiato(coachId),
   );
@@ -101,6 +111,12 @@ class NucleoAtleta {
       for (final coach in collegamenti.elenco())
         if (coachId == null || coach.id == coachId) _esportaCoach(coach),
     ],
+    // Il peso è dell'atleta, non di un coach: c'è solo nell'esportazione
+    // completa.
+    if (coachId == null)
+      'pesi': [
+        for (final p in pesi.elenco()) {'giorno': formattaData(p.giorno), 'kg': p.kg},
+      ],
   };
 
   Map<String, Object?> _esportaCoach(CoachCollegato coach) => {

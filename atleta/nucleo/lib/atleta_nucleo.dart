@@ -25,8 +25,10 @@ export 'src/modelli.dart'
         StatoCollegamento;
 export 'src/nucleo.dart';
 export 'src/orologio.dart';
+export 'src/pesi.dart' show PesoDelGiorno, RegistroPesi;
 export 'src/pianificatore.dart';
 export 'src/problemi.dart';
+export 'src/questionari.dart';
 export 'src/schede.dart';
 export 'src/sincronizzazione.dart';
 export 'src/tor/avviatore_processo.dart';

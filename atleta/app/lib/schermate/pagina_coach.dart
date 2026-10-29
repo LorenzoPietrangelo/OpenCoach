@@ -10,6 +10,7 @@ import 'contenuto_scheda.dart';
 import 'dettaglio_log.dart';
 import 'dettaglio_scheda.dart';
 import 'formati.dart';
+import 'questionario.dart';
 import 'scollegamento.dart';
 import 'stato_sync.dart';
 
@@ -28,12 +29,13 @@ class PaginaCoach extends StatefulWidget {
 
 class _PaginaCoachState extends State<PaginaCoach>
     with SingleTickerProviderStateMixin {
-  late final _tab = TabController(length: 2, vsync: this);
+  late final _tab = TabController(length: 3, vsync: this);
   late final StreamSubscription<int> _cambiamenti;
   CoachCollegato? _coach;
   var _attuali = <SchedaRicevuta>[];
   var _archiviate = <SchedaRicevuta>[];
   var _log = <LogAllenamento>[];
+  var _questionari = <QuestionarioRicevuto>[];
 
   /// La sync chiesta da qui non è ancora finita.
   var _sincronizzando = false;
@@ -62,6 +64,54 @@ class _PaginaCoachState extends State<PaginaCoach>
     _attuali = _nucleo.schede.elenco(id);
     _archiviate = _nucleo.schede.elenco(id, archiviate: true);
     _log = _nucleo.diario.elenco(id);
+    _questionari = _nucleo.questionari.elenco(id);
+  }
+
+  Future<void> _apriQuestionario(QuestionarioRicevuto q) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => SchermataQuestionario(
+          nucleo: _nucleo,
+          coachId: widget.coachId,
+          questionarioId: q.id,
+        ),
+      ),
+    );
+    if (mounted) setState(_leggi);
+  }
+
+  /// I questionari del coach: prima quelli da compilare.
+  Widget _elencoQuestionari(Testi testi) {
+    if (_questionari.isEmpty) {
+      return ListView(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(testi.nessunQuestionario, textAlign: TextAlign.center),
+          ),
+        ],
+      );
+    }
+    return ListView(
+      children: [
+        for (final q in _questionari)
+          ListTile(
+            leading: Icon(switch (q.stato) {
+              StatoQuestionario.daCompilare => Icons.edit_note,
+              StatoQuestionario.inInvio => Icons.schedule_send,
+              StatoQuestionario.inviato => Icons.assignment_turned_in_outlined,
+            }),
+            title: Text(q.titolo),
+            subtitle: Text(switch (q.stato) {
+              StatoQuestionario.daCompilare => q.rifiuto == null ? testi.daCompilare : testi.questionarioRifiutato,
+              StatoQuestionario.inInvio => testi.inCodaPerIlCoach,
+              StatoQuestionario.inviato => testi.arrivatoAlCoach,
+            }),
+            trailing: const Icon(Icons.chevron_right),
+            onTap: () => _apriQuestionario(q),
+          ),
+      ],
+    );
   }
 
   /// «Sincronizza ora» o trascinamento per aggiornare (§7.4).
@@ -128,6 +178,7 @@ class _PaginaCoachState extends State<PaginaCoach>
     }
     final attivo = coach.stato == StatoCollegamento.attivo;
     final daVedere = _attuali.where((s) => s.daVedere).length;
+    final daCompilare = _questionari.where((q) => q.stato == StatoQuestionario.daCompilare).length;
     Widget aggiornabile(Widget elenco) => attivo
         ? RefreshIndicator(onRefresh: _sincronizza, child: elenco)
         : elenco;
@@ -161,19 +212,25 @@ class _PaginaCoachState extends State<PaginaCoach>
           TabBar(
             controller: _tab,
             tabs: [
+              // Con tre schede il numero sta sopra il testo, non accanto: sui
+              // telefoni stretti non ci sarebbe posto.
               Tab(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(testi.schede),
-                    if (daVedere > 0) ...[
-                      const SizedBox(width: 8),
-                      Badge(label: Text('$daVedere')),
-                    ],
-                  ],
+                child: Badge(
+                  isLabelVisible: daVedere > 0,
+                  label: Text('$daVedere'),
+                  offset: const Offset(12, -8),
+                  child: Text(testi.schede),
                 ),
               ),
               Tab(text: testi.storico),
+              Tab(
+                child: Badge(
+                  isLabelVisible: daCompilare > 0,
+                  label: Text('$daCompilare'),
+                  offset: const Offset(12, -8),
+                  child: Text(testi.questionari, overflow: TextOverflow.fade, softWrap: false),
+                ),
+              ),
             ],
           ),
           Expanded(
@@ -182,6 +239,7 @@ class _PaginaCoachState extends State<PaginaCoach>
               children: [
                 aggiornabile(_elencoSchede(testi)),
                 aggiornabile(_storico(testi)),
+                aggiornabile(_elencoQuestionari(testi)),
               ],
             ),
           ),

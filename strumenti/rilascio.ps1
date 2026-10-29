@@ -172,7 +172,7 @@ $valori = @{
   '{{SHA256_EXE}}'     = (Get-FileHash $fileExe.FullName -Algorithm SHA256).Hash.ToLower()
   '{{SHA256_APK}}'     = (Get-FileHash $fileApk.FullName -Algorithm SHA256).Hash.ToLower()
 }
-foreach ($nomePagina in @('index.html', 'condizioni.html')) {
+foreach ($nomePagina in @('index.html', 'novita.html', 'condizioni.html')) {
   $pagina = [IO.File]::ReadAllText((Join-Path $modello $nomePagina))
   foreach ($chiave in $valori.Keys) { $pagina = $pagina.Replace($chiave, $valori[$chiave]) }
   if ($pagina -match '\{\{[A-Z0-9_]+\}\}') { Ferma "Segnaposto non sostituito in ${nomePagina}: $($Matches[0])" }

@@ -5,6 +5,7 @@ import 'package:sqlite3/sqlite3.dart';
 
 import 'contesto.dart';
 import 'errori.dart';
+import 'libreria.dart';
 import 'modelli.dart';
 import 'tempo.dart';
 
@@ -49,19 +50,15 @@ class GestioneSchede {
     final bozza = jsonEncode(_bozzaValida(contenuto));
     _c.archivio.transazione(() {
       final riga = _riga(schedaId);
-      final revisione = riga['revisione'] as int;
-      var modificata = true;
-      if (revisione > 0) {
-        final pubblicata = _db.select(
-          'SELECT contenuto FROM revisioni WHERE scheda_id = ? AND revisione = ?',
-          [schedaId, revisione],
-        ).first;
-        modificata = pubblicata['contenuto'] != bozza;
-      }
       _db.execute(
         'UPDATE schede SET bozza = ?, bozza_modificata = ?, modificata_il = ? '
         'WHERE id = ?',
-        [bozza, modificata ? 1 : 0, istante(_c.adesso()), schedaId],
+        [
+          bozza,
+          _bozzaModificata(schedaId, riga['revisione'] as int, bozza) ? 1 : 0,
+          istante(_c.adesso()),
+          schedaId,
+        ],
       );
     });
   }
@@ -71,29 +68,142 @@ class GestioneSchede {
   int pubblica(String schedaId) {
     return _c.archivio.transazione(() {
       final riga = _riga(schedaId);
-      final bozza = jsonDecode(riga['bozza'] as String);
-      final errori = validaContenutoScheda(bozza);
+      final contenuto = _conVideo(
+        jsonDecode(riga['bozza'] as String) as Map<String, Object?>,
+      );
+      final errori = validaContenutoScheda(contenuto);
       if (errori.isNotEmpty) throw SchedaNonValida(errori);
-      final revisione = (riga['revisione'] as int) + 1;
-      final sequenza = _c.archivio.prossimaSequenza();
-      _db.execute(
-        'INSERT INTO revisioni (scheda_id, revisione, contenuto, pubblicata_il, '
-        'sequenza) VALUES (?, ?, ?, ?, ?)',
-        [
-          schedaId,
-          revisione,
-          riga['bozza'],
-          formattaDataOra(_c.adesso()),
-          sequenza,
-        ],
-      );
-      _db.execute(
-        "UPDATE schede SET stato = 'pubblicata', revisione = ?, sequenza = ?, "
-        'bozza_modificata = 0, modificata_il = ? WHERE id = ?',
-        [revisione, sequenza, istante(_c.adesso()), schedaId],
-      );
-      return revisione;
+      return _nuovaRevisione(riga, jsonEncode(contenuto), bozzaModificata: false);
     });
+  }
+
+  /// Schede pubblicate i cui video non sono più quelli della libreria.
+  List<Scheda> conVideoDaAggiornare() => [
+    for (final riga in _db.select(
+      'SELECT schede.*, revisioni.contenuto AS pubblicata FROM schede '
+      'JOIN revisioni ON revisioni.scheda_id = schede.id '
+      'AND revisioni.revisione = schede.revisione '
+      "WHERE schede.stato = 'pubblicata' ORDER BY schede.modificata_il DESC",
+    ))
+      if (_videoCambiati(riga['pubblicata'] as String) != null) _daRiga(riga),
+  ];
+
+  /// Ripubblica la scheda con i video attuali della libreria, senza le
+  /// modifiche della bozza non ancora pubblicate. Restituisce la nuova
+  /// revisione, o null se i video sono già quelli giusti.
+  int? aggiornaVideo(String schedaId) {
+    return _c.archivio.transazione(() {
+      final riga = _riga(schedaId);
+      if (riga['stato'] != 'pubblicata') return null;
+      final pubblicata = _db.select(
+        'SELECT contenuto FROM revisioni WHERE scheda_id = ? AND revisione = ?',
+        [schedaId, riga['revisione']],
+      ).first['contenuto'] as String;
+      final nuova = _videoCambiati(pubblicata);
+      if (nuova == null) return null;
+      final bozza = jsonEncode(
+        _conVideo(jsonDecode(riga['bozza'] as String) as Map<String, Object?>),
+      );
+      return _nuovaRevisione(riga, nuova, bozzaModificata: bozza != nuova);
+    });
+  }
+
+  /// Aggiorna lo stato «modifiche non pubblicate» dopo un cambiamento della
+  /// libreria, che cambia i video che la bozza pubblicherebbe.
+  void ricalcolaModifiche() {
+    _c.archivio.transazione(() {
+      for (final riga in _db.select(
+        'SELECT id, bozza, revisione, bozza_modificata FROM schede '
+        "WHERE revisione > 0 AND stato IN ('pubblicata', 'archiviata')",
+      )) {
+        final id = riga['id'] as String;
+        final modificata = _bozzaModificata(
+          id,
+          riga['revisione'] as int,
+          riga['bozza'] as String,
+        );
+        if (modificata != (riga['bozza_modificata'] == 1)) {
+          _db.execute('UPDATE schede SET bozza_modificata = ? WHERE id = ?', [
+            modificata ? 1 : 0,
+            id,
+          ]);
+        }
+      }
+    });
+  }
+
+  int _nuovaRevisione(
+    Row riga,
+    String contenuto, {
+    required bool bozzaModificata,
+  }) {
+    final schedaId = riga['id'] as String;
+    final revisione = (riga['revisione'] as int) + 1;
+    final sequenza = _c.archivio.prossimaSequenza();
+    _db.execute(
+      'INSERT INTO revisioni (scheda_id, revisione, contenuto, pubblicata_il, '
+      'sequenza) VALUES (?, ?, ?, ?, ?)',
+      [schedaId, revisione, contenuto, formattaDataOra(_c.adesso()), sequenza],
+    );
+    _db.execute(
+      "UPDATE schede SET stato = 'pubblicata', revisione = ?, sequenza = ?, "
+      'bozza_modificata = ?, modificata_il = ? WHERE id = ?',
+      [
+        revisione,
+        sequenza,
+        bozzaModificata ? 1 : 0,
+        istante(_c.adesso()),
+        schedaId,
+      ],
+    );
+    return revisione;
+  }
+
+  /// Se pubblicare [bozza] cambierebbe la revisione [revisione].
+  bool _bozzaModificata(String schedaId, int revisione, String bozza) {
+    if (revisione == 0) return true;
+    final pubblicata = _db.select(
+      'SELECT contenuto FROM revisioni WHERE scheda_id = ? AND revisione = ?',
+      [schedaId, revisione],
+    ).first;
+    return pubblicata['contenuto'] !=
+        jsonEncode(_conVideo(jsonDecode(bozza) as Map<String, Object?>));
+  }
+
+  /// Il contenuto [pubblicata] con i video attuali della libreria, o null se
+  /// non cambia.
+  String? _videoCambiati(String pubblicata) {
+    final aggiornata = jsonEncode(
+      _conVideo(jsonDecode(pubblicata) as Map<String, Object?>),
+    );
+    return aggiornata == pubblicata ? null : aggiornata;
+  }
+
+  /// Copia di [contenuto] in cui ogni esercizio ha il video dell'esercizio
+  /// con lo stesso nome nella libreria, o nessun video (§8.1, §9.3).
+  Map<String, Object?> _conVideo(Map<String, Object?> contenuto) {
+    final video = {
+      for (final riga in _db.select(
+        'SELECT chiave, video FROM libreria WHERE video IS NOT NULL',
+      ))
+        riga['chiave'] as String: riga['video'] as String,
+    };
+    final copia = jsonDecode(jsonEncode(contenuto)) as Map<String, Object?>;
+    if (copia['sedute'] case final List<Object?> sedute) {
+      for (final seduta in sedute) {
+        if (seduta case {'esercizi': final List<Object?> esercizi}) {
+          for (final esercizio in esercizi) {
+            if (esercizio is! Map<String, Object?>) continue;
+            esercizio.remove('video');
+            if (esercizio['nome'] case final String nome) {
+              final link = video[chiaveEsercizio(nome)];
+              if (link != null) esercizio['video'] = link;
+            }
+          }
+        }
+      }
+    }
+    return copia;
   }
 
   /// Sposta la scheda nell'archivio dell'atleta, in sola lettura.

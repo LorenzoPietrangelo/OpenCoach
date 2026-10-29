@@ -9,10 +9,13 @@ import '../l10n/testi.dart';
 import '../piattaforma/desktop.dart';
 import '../servizi.dart';
 import 'allenamenti.dart';
+import 'peso.dart';
+import 'questionari.dart';
 import 'schede.dart';
 import 'telefono.dart';
 
-/// Dettaglio di un atleta: telefono e invito, schede, allenamenti.
+/// Dettaglio di un atleta: telefono e invito, schede, allenamenti, peso,
+/// questionari.
 class DettaglioAtleta extends StatelessWidget {
   const DettaglioAtleta({
     super.key,
@@ -35,7 +38,7 @@ class DettaglioAtleta extends StatelessWidget {
     final atleta = _nucleo.atleti.cerca(atletaId);
     if (atleta == null) return const SizedBox.shrink();
     return DefaultTabController(
-      length: 3,
+      length: 5,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -70,6 +73,15 @@ class DettaglioAtleta extends StatelessWidget {
               Tab(text: t.schedaTelefono),
               Tab(text: t.schedaSchede),
               Tab(text: t.schedaAllenamenti),
+              Tab(text: t.schedaPeso),
+              Tab(
+                child: Badge(
+                  isLabelVisible: _nucleo.questionari.nonLette(atletaId) > 0,
+                  label: Text('${_nucleo.questionari.nonLette(atletaId)}'),
+                  offset: const Offset(14, -6),
+                  child: Text(t.schedaQuestionari),
+                ),
+              ),
             ],
           ),
           Expanded(
@@ -78,6 +90,8 @@ class DettaglioAtleta extends StatelessWidget {
                 PannelloTelefono(atleta: atleta, coach: coach, aggiornamenti: aggiornamenti),
                 PannelloSchede(atleta: atleta, coach: coach, aggiornamenti: aggiornamenti),
                 PannelloAllenamenti(atleta: atleta, coach: coach, aggiornamenti: aggiornamenti),
+                PannelloPeso(atleta: atleta, coach: coach, aggiornamenti: aggiornamenti),
+                PannelloQuestionari(atleta: atleta, coach: coach, aggiornamenti: aggiornamenti),
               ],
             ),
           ),

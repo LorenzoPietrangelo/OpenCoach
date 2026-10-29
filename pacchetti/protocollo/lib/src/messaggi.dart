@@ -203,6 +203,9 @@ class RichiestaSync {
     required this.cursore,
     required this.log,
     required this.versioneApp,
+    this.pesi = const [],
+    this.pesiCondivisi,
+    this.risposte = const [],
   });
 
   factory RichiestaSync.fromJson(Object? json) {
@@ -217,6 +220,9 @@ class RichiestaSync {
       cursore: cursore,
       log: _lista<Object?>(m, 'log'),
       versioneApp: _versione(m, 'versione_app'),
+      pesi: m.containsKey('pesi') ? _lista<Object?>(m, 'pesi') : const [],
+      pesiCondivisi: _campo<bool?>(m, 'pesi_condivisi'),
+      risposte: m.containsKey('risposte') ? _lista<Object?>(m, 'risposte') : const [],
     );
   }
 
@@ -225,11 +231,24 @@ class RichiestaSync {
   final List<Object?> log;
   final String versioneApp;
 
+  /// Pesi da salvare (§8.5), validati uno per uno come i log.
+  final List<Object?> pesi;
+
+  /// Falso se l'atleta non condivide il peso con questo coach: il coach
+  /// cancella quelli che ha. Null da un'app che non conosce i pesi.
+  final bool? pesiCondivisi;
+
+  /// Risposte ai questionari (§8.6), validate una per una.
+  final List<Object?> risposte;
+
   Map<String, Object?> toJson() => {
     'epoca': epoca,
     'cursore': cursore,
     'log': log,
     'versione_app': versioneApp,
+    'pesi': pesi,
+    'pesi_condivisi': ?pesiCondivisi,
+    'risposte': risposte,
   };
 }
 
@@ -275,6 +294,12 @@ class RispostaSync {
     required this.log,
     required this.cursore,
     required this.altro,
+    this.pesiAccettati,
+    this.pesi = const [],
+    this.risposteAccettate = const [],
+    this.risposteRifiutate = const [],
+    this.questionari = const [],
+    this.questionariAnnullati = const [],
   });
 
   factory RispostaSync.fromJson(Object? json) {
@@ -295,6 +320,27 @@ class RispostaSync {
       log: _lista<Map<String, Object?>>(m, 'log'),
       cursore: _campo<String>(m, 'cursore'),
       altro: _campo<bool>(m, 'altro'),
+      pesiAccettati: m.containsKey('pesi_accettati')
+          ? _lista<Object?>(
+              m,
+              'pesi_accettati',
+            ).map(LogConfermato.fromJson).toList()
+          : null,
+      pesi: m.containsKey('pesi')
+          ? _lista<Object?>(m, 'pesi').map(LogConfermato.fromJson).toList()
+          : const [],
+      risposteAccettate: m.containsKey('risposte_accettate')
+          ? _lista<String>(m, 'risposte_accettate')
+          : const [],
+      risposteRifiutate: m.containsKey('risposte_rifiutate')
+          ? _lista<Object?>(m, 'risposte_rifiutate').map(LogRifiutato.fromJson).toList()
+          : const [],
+      questionari: m.containsKey('questionari')
+          ? _lista<Map<String, Object?>>(m, 'questionari')
+          : const [],
+      questionariAnnullati: m.containsKey('questionari_annullati')
+          ? _lista<String>(m, 'questionari_annullati')
+          : const [],
     );
   }
 
@@ -308,6 +354,27 @@ class RispostaSync {
   final String cursore;
   final bool altro;
 
+  /// Pesi salvati, con la `rev`. Null da un programma che non conosce i pesi:
+  /// l'app smette di mandarglieli.
+  final List<LogConfermato>? pesiAccettati;
+
+  /// Solo nello stato completo: `id` e `rev` di tutti i pesi che il coach ha
+  /// dell'atleta, per rimandare quelli che mancano (§7.3).
+  final List<LogConfermato> pesi;
+
+  /// Id dei questionari di cui il coach ha salvato le risposte.
+  final List<String> risposteAccettate;
+
+  /// Risposte scartate, con il motivo (vedi `RifiutoRisposta`).
+  final List<LogRifiutato> risposteRifiutate;
+
+  /// Questionari da compilare: nella risposta incrementale quelli nuovi,
+  /// nella completa tutti quelli ancora senza risposta (§8.6).
+  final List<Map<String, Object?>> questionari;
+
+  /// Questionari annullati dal coach dopo l'invio.
+  final List<String> questionariAnnullati;
+
   Map<String, Object?> toJson() => {
     'epoca': epoca,
     'completo': completo,
@@ -318,5 +385,12 @@ class RispostaSync {
     'log': log,
     'cursore': cursore,
     'altro': altro,
+    if (pesiAccettati case final accettati?)
+      'pesi_accettati': [for (final p in accettati) p.toJson()],
+    'pesi': [for (final p in pesi) p.toJson()],
+    'risposte_accettate': risposteAccettate,
+    'risposte_rifiutate': [for (final r in risposteRifiutate) r.toJson()],
+    'questionari': questionari,
+    'questionari_annullati': questionariAnnullati,
   };
 }

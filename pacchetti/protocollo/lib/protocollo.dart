@@ -12,6 +12,7 @@ export 'src/invito.dart';
 export 'src/limiti.dart';
 export 'src/messaggi.dart';
 export 'src/onion.dart';
+export 'src/questionari.dart';
 export 'src/socks5.dart';
 export 'src/validazione.dart';
 export 'src/versione.dart';

@@ -108,4 +108,49 @@ CREATE TABLE log (
 );
 CREATE INDEX log_eseguiti ON log (coach_id, eseguito_il);
 ''',
+  '''
+CREATE TABLE pesi (
+  giorno TEXT PRIMARY KEY,
+  id TEXT NOT NULL UNIQUE,
+  rev INTEGER NOT NULL,
+  eliminato INTEGER NOT NULL,
+  kg REAL,
+  modificato_il TEXT NOT NULL
+);
+
+CREATE TABLE pesi_inviati (
+  coach_id INTEGER NOT NULL REFERENCES coach (id) ON DELETE CASCADE,
+  peso_id TEXT NOT NULL,
+  rev INTEGER NOT NULL,
+  PRIMARY KEY (coach_id, peso_id)
+);
+
+ALTER TABLE coach ADD COLUMN condividi_pesi INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE coach ADD COLUMN pesi_supportati INTEGER;
+''',
+  '''
+CREATE TABLE questionari (
+  coach_id INTEGER NOT NULL REFERENCES coach (id) ON DELETE CASCADE,
+  id TEXT NOT NULL,
+  contenuto TEXT NOT NULL,
+  ricevuto_il TEXT NOT NULL,
+  stato TEXT NOT NULL CHECK (stato IN ('da_compilare', 'in_invio', 'inviato')),
+  bozza TEXT,
+  risposta TEXT,
+  rifiuto TEXT,
+  PRIMARY KEY (coach_id, id)
+);
+
+CREATE TABLE foto (
+  id TEXT PRIMARY KEY,
+  coach_id INTEGER NOT NULL,
+  questionario_id TEXT NOT NULL,
+  posizione INTEGER NOT NULL,
+  dati BLOB NOT NULL,
+  caricata INTEGER NOT NULL DEFAULT 0,
+  FOREIGN KEY (coach_id, questionario_id) REFERENCES questionari (coach_id, id)
+    ON DELETE CASCADE,
+  UNIQUE (coach_id, questionario_id, posizione)
+);
+''',
 ];

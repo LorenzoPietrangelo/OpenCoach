@@ -10,6 +10,8 @@ import '../piattaforma/desktop.dart';
 import '../servizi.dart';
 import 'atleti.dart';
 import 'impostazioni.dart';
+import 'libreria.dart';
+import 'questionari.dart';
 import 'stato.dart';
 
 /// Chiede conferma e chiude il programma: gli atleti non potranno più
@@ -92,6 +94,7 @@ class _PrincipaleState extends State<Principale> {
       InvitoContestato() => (t.notificaInvitoContestatoTitolo, t.notificaInvitoContestato(nome)),
       _ when !_preferenze.notifiche => null,
       LogRicevuto(eliminato: false) => (t.nomeApp, t.notificaLogRicevuto(nome)),
+      QuestionarioRisposto(:final titolo) => (t.nomeApp, t.notificaQuestionarioRisposto(nome, titolo)),
       DispositivoAbbinato(:final nomeDispositivo) => (
         t.nomeApp,
         t.notificaAbbinato(nome, nomeDispositivo),
@@ -112,7 +115,7 @@ class _PrincipaleState extends State<Principale> {
           testo: t.avvisoBackup,
           icona: Icons.backup_outlined,
           azione: t.vaiAlBackup,
-          premuto: () => setState(() => _sezione = 2),
+          premuto: () => setState(() => _sezione = 4),
         ),
     ];
     final corpo = switch (_sezione) {
@@ -121,7 +124,9 @@ class _PrincipaleState extends State<Principale> {
         desktop: widget.desktop,
         aggiornamenti: widget.aggiornamenti,
       ),
-      1 => SchermataStato(coach: widget.coach, aggiornamenti: widget.aggiornamenti),
+      1 => SchermataLibreria(coach: widget.coach, aggiornamenti: widget.aggiornamenti),
+      2 => SchermataQuestionari(coach: widget.coach, aggiornamenti: widget.aggiornamenti),
+      3 => SchermataStato(coach: widget.coach, aggiornamenti: widget.aggiornamenti),
       _ => SchermataImpostazioni(
         coach: widget.coach,
         desktop: widget.desktop,
@@ -146,6 +151,16 @@ class _PrincipaleState extends State<Principale> {
                 icon: const Icon(Icons.people_outline),
                 selectedIcon: const Icon(Icons.people),
                 label: Text(t.sezioneAtleti),
+              ),
+              NavigationRailDestination(
+                icon: const Icon(Icons.video_library_outlined),
+                selectedIcon: const Icon(Icons.video_library),
+                label: Text(t.sezioneLibreria),
+              ),
+              NavigationRailDestination(
+                icon: const Icon(Icons.assignment_outlined),
+                selectedIcon: const Icon(Icons.assignment),
+                label: Text(t.sezioneQuestionariMenu),
               ),
               NavigationRailDestination(
                 icon: const Icon(Icons.wifi_tethering_outlined),

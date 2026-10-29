@@ -47,8 +47,14 @@ class CoachDiProva implements Coach {
   @override
   Future<void> chiudi() async {}
 
-  /// Un telefono si abbina all'atleta e invia [log], come farebbe l'app.
-  Future<void> riceviLog(String atletaId, List<Map<String, Object?>> log) async {
+  /// Un telefono si abbina all'atleta e invia [log], [pesi] e [risposte] ai
+  /// questionari, come farebbe l'app.
+  Future<void> riceviLog(
+    String atletaId,
+    List<Map<String, Object?>> log, {
+    List<Map<String, Object?>> pesi = const [],
+    List<Map<String, Object?>> risposte = const [],
+  }) async {
     final invito = await nucleo.inviti.crea(atletaId);
     final uri = invito.uri!;
     nucleo.abbinamento.abbina(
@@ -63,7 +69,14 @@ class CoachDiProva implements Coach {
     nucleo.abbinamento.conferma(dispositivo);
     nucleo.sincronizzazione.sincronizza(
       dispositivo,
-      RichiestaSync(epoca: null, cursore: null, log: log, versioneApp: '1.0.0'),
+      RichiestaSync(
+        epoca: null,
+        cursore: null,
+        log: log,
+        pesi: pesi,
+        risposte: risposte,
+        versioneApp: '1.0.0',
+      ),
     );
   }
 }

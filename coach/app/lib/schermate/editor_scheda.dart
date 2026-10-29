@@ -8,6 +8,8 @@ import 'package:protocollo/protocollo.dart';
 import '../comuni.dart';
 import '../l10n/testi.dart';
 import '../servizi.dart';
+import 'libreria.dart';
+import 'questionari.dart';
 
 /// Editor di una scheda (§8.1, §9.3). Si lavora sulla bozza; «Pubblica» la
 /// rende una nuova revisione, che l'atleta riceve alla sync successiva.
@@ -186,6 +188,13 @@ class _EditorSchedaState extends State<EditorScheda> {
         appBar: AppBar(
           title: Text(t.schedaDi(widget.atleta.nome)),
           actions: [
+            IconButton(
+              tooltip: t.risposteAtleta,
+              isSelected: _risposteAperte,
+              icon: const Icon(Icons.assignment_outlined),
+              selectedIcon: const Icon(Icons.assignment),
+              onPressed: () => setState(() => _risposteAperte = !_risposteAperte),
+            ),
             if (scheda != null && scheda.revisione > 0)
               TextButton.icon(
                 onPressed: () => _mostraRevisioni(scheda),
@@ -205,7 +214,26 @@ class _EditorSchedaState extends State<EditorScheda> {
             const SizedBox(width: 16),
           ],
         ),
-        body: ListView(
+        body: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(child: _contenuto(t, sedute)),
+            if (_risposteAperte) ...[
+              const VerticalDivider(width: 1),
+              SizedBox(width: 400, child: _PannelloRisposte(atleta: widget.atleta, nucleo: widget.nucleo)),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Le ultime risposte dell'atleta ai questionari, accanto all'editor:
+  /// aperte se ce ne sono.
+  late var _risposteAperte = widget.nucleo.questionari.risposte(widget.atleta.id).isNotEmpty;
+
+  Widget _contenuto(Testi t, List<Map<String, Object?>> sedute) {
+    return ListView(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 48),
           children: [
             TextFormField(
@@ -259,9 +287,7 @@ class _EditorSchedaState extends State<EditorScheda> {
               ),
             ),
           ],
-        ),
-      ),
-    );
+        );
   }
 
   Widget _seduta(Testi t, Map<String, Object?> seduta, int indice, int totale) {
@@ -350,13 +376,22 @@ class _EditorSchedaState extends State<EditorScheda> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Expanded(
-                child: TextFormField(
-                  initialValue: esercizio['nome'] as String? ?? '',
-                  decoration: InputDecoration(labelText: t.nomeEsercizio, isDense: true),
-                  onChanged: (v) => _cambia(() => esercizio['nome'] = v),
+                child: _NomeEsercizio(
+                  iniziale: esercizio['nome'] as String? ?? '',
+                  etichetta: t.nomeEsercizio,
+                  libreria: widget.nucleo.libreria,
+                  cambia: (v) => _cambia(() => esercizio['nome'] = v),
+                  scegli: (scelto) => _cambia(() {
+                    esercizio['nome'] = scelto.nome;
+                    if (note.isEmpty && scelto.note.isNotEmpty) {
+                      esercizio['note'] = scelto.note;
+                      _noteAperte[esercizio] = true;
+                      _versioneNote[esercizio] = (_versioneNote[esercizio] ?? 0) + 1;
+                    }
+                  }),
                 ),
               ),
-              const SizedBox(width: 8),
+              _bottoneLibreria(t, esercizio),
               _campoRiga(riga, 'serie', t.serie, 72, intero: true),
               _campoRiga(riga, 'ripetizioni', t.ripetizioni, 110, suggerimento: '6-8'),
               _CampoRecupero(
@@ -388,6 +423,7 @@ class _EditorSchedaState extends State<EditorScheda> {
           ),
           if (noteAperte)
             TextFormField(
+              key: ValueKey(_versioneNote[esercizio] ?? 0),
               initialValue: note,
               decoration: InputDecoration(labelText: t.noteEsercizio, isDense: true),
               minLines: 1,
@@ -417,6 +453,45 @@ class _EditorSchedaState extends State<EditorScheda> {
   /// Note mostrate o nascoste per ogni esercizio; senza scelta del coach si
   /// vedono solo quelle già scritte.
   final _noteAperte = Expando<bool>();
+
+  /// Cambia quando le note arrivano dalla libreria, per ricreare il campo.
+  final _versioneNote = Expando<int>();
+
+  /// Salva l'esercizio nella libreria, o lo apre se c'è già. L'icona dice se
+  /// le schede riceveranno un video per questo esercizio.
+  Widget _bottoneLibreria(Testi t, Map<String, Object?> esercizio) {
+    final nome = (esercizio['nome'] as String? ?? '').trim();
+    if (nome.isEmpty) return const SizedBox(width: 48);
+    final presente = widget.nucleo.libreria.perNome(nome);
+    final video = presente?.video;
+    return IconButton(
+      tooltip: presente == null
+          ? t.salvaNellaLibreria
+          : video == null
+          ? t.nellaLibreriaSenzaVideo
+          : t.videoDallaLibreria(video),
+      color: video == null ? null : Theme.of(context).colorScheme.primary,
+      icon: Icon(
+        presente == null
+            ? Icons.library_add_outlined
+            : video == null
+            ? Icons.video_call_outlined
+            : Icons.smart_display,
+      ),
+      onPressed: () async {
+        final salvato = await modificaEsercizioLibreria(
+          context,
+          widget.nucleo,
+          esercizio: presente,
+          nome: nome,
+        );
+        if (!salvato || !mounted) return;
+        widget.aggiornamenti.segnala();
+        setState(() {});
+        await proponiAggiornamentoVideo(context, widget.nucleo, widget.aggiornamenti);
+      },
+    );
+  }
 
   String _riassunto(Map<String, Object?> riga) => [
     '${riga['serie'] ?? '?'} × ${riga['ripetizioni'] ?? '?'}',
@@ -465,6 +540,82 @@ class _EditorSchedaState extends State<EditorScheda> {
       ..removeAt(i)
       ..insert(i + verso, elemento);
   });
+}
+
+/// Le risposte dell'atleta ai questionari, dalla più recente: la prima
+/// aperta, le altre da aprire.
+class _PannelloRisposte extends StatelessWidget {
+  const _PannelloRisposte({required this.atleta, required this.nucleo});
+
+  final Atleta atleta;
+  final NucleoCoach nucleo;
+
+  @override
+  Widget build(BuildContext context) {
+    final t = Testi.of(context);
+    final risposte = nucleo.questionari.risposte(atleta.id);
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        Text(t.risposteAtleta, style: Theme.of(context).textTheme.titleMedium),
+        const SizedBox(height: 8),
+        if (risposte.isEmpty) Text(t.nessunaRisposta),
+        for (final (i, q) in risposte.indexed)
+          ExpansionTile(
+            initiallyExpanded: i == 0,
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: const EdgeInsets.only(bottom: 16),
+            title: Text(q.titolo),
+            subtitle: Text(soloData(q.rispostoIl!)),
+            children: [RisposteQuestionario(questionario: q, nucleo: nucleo)],
+          ),
+      ],
+    );
+  }
+}
+
+/// Nome dell'esercizio, con i suggerimenti dalla libreria mentre si scrive.
+class _NomeEsercizio extends StatelessWidget {
+  const _NomeEsercizio({
+    required this.iniziale,
+    required this.etichetta,
+    required this.libreria,
+    required this.cambia,
+    required this.scegli,
+  });
+
+  final String iniziale;
+  final String etichetta;
+  final GestioneLibreria libreria;
+  final ValueChanged<String> cambia;
+  final ValueChanged<EsercizioLibreria> scegli;
+
+  @override
+  Widget build(BuildContext context) {
+    return Autocomplete<EsercizioLibreria>(
+      initialValue: TextEditingValue(text: iniziale),
+      displayStringForOption: (esercizio) => esercizio.nome,
+      optionsBuilder: (valore) {
+        final cercato = chiaveEsercizio(valore.text);
+        if (cercato.isEmpty) return const [];
+        return libreria
+            .elenco()
+            .where((e) {
+              final chiave = chiaveEsercizio(e.nome);
+              return chiave.contains(cercato) && chiave != cercato;
+            })
+            .take(8);
+      },
+      onSelected: scegli,
+      fieldViewBuilder: (context, controllo, fuoco, invia) => TextFormField(
+        controller: controllo,
+        focusNode: fuoco,
+        decoration: InputDecoration(labelText: etichetta, isDense: true),
+        onChanged: cambia,
+        onFieldSubmitted: (_) => invia(),
+      ),
+    );
+  }
 }
 
 class _CampoData extends StatelessWidget {

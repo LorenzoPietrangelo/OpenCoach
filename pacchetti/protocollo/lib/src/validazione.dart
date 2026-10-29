@@ -6,6 +6,38 @@ import 'date.dart';
 /// Dimensione in byte della codifica JSON UTF-8 di [valore].
 int dimensioneJson(Object? valore) => utf8.encode(jsonEncode(valore)).length;
 
+/// Lunghezza massima del link al video di un esercizio (§8.1).
+const linkVideoMassimo = 500;
+
+/// Il link al video di un esercizio se [testo] è un indirizzo https con un
+/// host e senza credenziali, altrimenti null (§8.1).
+Uri? analizzaLinkVideo(String testo) {
+  if (testo.length > linkVideoMassimo) return null;
+  final uri = Uri.tryParse(testo);
+  if (uri == null || uri.scheme != 'https' || uri.host.isEmpty) return null;
+  if (uri.userInfo.isNotEmpty) return null;
+  return uri;
+}
+
+/// Peso corporeo minimo e massimo accettato, in kg (§8.5).
+const pesoMinimoKg = 20;
+const pesoMassimoKg = 400;
+
+/// Problemi di un peso inviato dall'app (§8.5). Lista vuota se è valido.
+List<String> validaPeso(Object? peso) {
+  final v = _Verifica();
+  final m = v.oggetto(peso, 'peso');
+  if (m == null) return v.errori;
+  v.uuid(m, 'id', '', obbligatorio: true);
+  v.intero(m, 'rev', '', obbligatorio: true, minimo: 1, massimo: 0x7fffffff);
+  v.booleano(m, 'eliminato', '', obbligatorio: true);
+  if (m['eliminato'] == true) return v.errori;
+  v.data(m, 'giorno', '', obbligatorio: true);
+  v.numero(m, 'kg', '', obbligatorio: true, minimo: pesoMinimoKg, massimo: pesoMassimoKg);
+  v.dataOra(m, 'modificato_il', '');
+  return v.errori;
+}
+
 /// Problemi di un log inviato dall'app (§8.2). Lista vuota se è valido.
 List<String> validaLog(Object? log) {
   final v = _Verifica();
@@ -102,6 +134,7 @@ void _contenutoScheda(_Verifica v, Map<String, Object?> m) {
       unico(esercizio['id'], '$pe.id');
       v.testo(esercizio, 'nome', pe, obbligatorio: true, nonVuoto: true, massimo: 200);
       v.testo(esercizio, 'note', pe, massimo: 5000);
+      v.linkVideo(esercizio, 'video', pe);
       final prescrizione = v.lista(esercizio, 'prescrizione', pe, massimo: 50);
       for (final (k, elementoRiga) in (prescrizione ?? const <Object?>[]).indexed) {
         final pr = '$pe.prescrizione[$k]';
@@ -262,6 +295,17 @@ class _Verifica {
     final valore = _valore(m, chiave, percorso, obbligatorio);
     if (valore != null && !uuidValido(valore)) {
       errore(_nome(percorso, chiave), 'deve essere un UUID in minuscolo');
+    }
+  }
+
+  void linkVideo(Map<String, Object?> m, String chiave, String percorso) {
+    final valore = _valore(m, chiave, percorso, false);
+    if (valore == null) return;
+    if (valore is! String || analizzaLinkVideo(valore) == null) {
+      errore(
+        _nome(percorso, chiave),
+        'deve essere un link https di al massimo $linkVideoMassimo caratteri',
+      );
     }
   }
 

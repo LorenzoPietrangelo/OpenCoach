@@ -1,4 +1,5 @@
 import 'package:coach_app/comuni.dart';
+import 'package:coach_app/schermate/peso.dart';
 import 'package:coach_app/servizi.dart';
 import 'package:coach_nucleo/coach_nucleo.dart';
 import 'package:flutter/material.dart';
@@ -132,6 +133,37 @@ void main() {
     expect(find.textContaining('Revisione 1 · in attesa di consegna'), findsOneWidget);
   });
 
+  testWidgets('la libreria manda il video agli esercizi con lo stesso nome', (tester) async {
+    final atleta = coach.nucleo.atleti.crea('Giulia');
+    final schedaId = coach.nucleo.schede.crea(atleta.id, contenuto: contenutoScheda('Forza'));
+    coach.nucleo.schede.pubblica(schedaId);
+    await avviaApp(tester, coach, desktop);
+    await tester.tap(find.text('Libreria'));
+    await tester.pumpAndSettle();
+    expect(find.text('La libreria è vuota.'), findsOneWidget);
+
+    await tester.tap(find.text('Nuovo esercizio'));
+    await tester.pumpAndSettle();
+    await tester.enterText(find.widgetWithText(TextField, 'Esercizio'), 'squat');
+    await tester.enterText(find.widgetWithText(TextField, 'Link al video'), 'http://esempio.it/v');
+    await tester.tap(find.text('Salva'));
+    await tester.pumpAndSettle();
+    expect(find.text('Serve un link che inizia con https://'), findsOneWidget);
+
+    // Senza https:// il programma lo aggiunge.
+    await tester.enterText(find.widgetWithText(TextField, 'Link al video'), 'youtu.be/abc');
+    await tester.tap(find.text('Salva'));
+    await tester.pumpAndSettle();
+    expect(find.text('Aggiornare i video nelle schede?'), findsOneWidget);
+    await tester.tap(find.widgetWithText(FilledButton, 'Aggiorna i video'));
+    await tester.pumpAndSettle();
+
+    final contenuto = coach.nucleo.schede.contenutoRevisione(schedaId, 2)!;
+    final esercizio = ((contenuto['sedute'] as List).single as Map)['esercizi'] as List;
+    expect((esercizio.single as Map)['video'], 'https://youtu.be/abc');
+    expect(find.text('squat'), findsOneWidget);
+  });
+
   test('il recupero si legge in secondi o in minuti e secondi', () {
     expect(analizzaRecupero('90'), 90);
     expect(analizzaRecupero(' 1:30 '), 90);
@@ -230,6 +262,36 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Serie 1: 8 ripetizioni, 80 kg'), findsOneWidget);
     expect(find.text('Prescritto: 4 × 6-8, 75% 1RM, 2:30 min'), findsOneWidget);
+  });
+
+  testWidgets('mostra i pesi che l\'atleta condivide, con la media della settimana', (tester) async {
+    final atleta = coach.nucleo.atleti.crea('Giulia');
+    Map<String, Object?> peso(String giorno, num kg) => {
+      'id': nuovoUuid(),
+      'rev': 1,
+      'eliminato': false,
+      'giorno': giorno,
+      'kg': kg,
+    };
+    await avviaApp(tester, coach, desktop);
+    await tester.tap(find.text('Giulia'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Peso'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('non ti ha ancora condiviso'), findsOneWidget);
+
+    await coach.riceviLog(atleta.id, const [], pesi: [
+      peso('2026-10-14', 74),
+      peso('2026-10-20', 73),
+      peso('2026-10-21', 72),
+      peso('2026-10-27', 71.5),
+    ]);
+    await tester.pumpAndSettle();
+    expect(find.text('Ultimo peso, 27/10/2026'), findsOneWidget);
+    // Media dal 21 al 27: (72 + 71,5) / 2; dal 14 al 20: (74 + 73) / 2.
+    expect(find.text('71,8 kg'), findsOneWidget);
+    expect(find.text('−1,8 kg'), findsOneWidget);
+    expect(find.byType(GraficoPeso), findsOneWidget);
   });
 
   testWidgets('notifica sul desktop gli allenamenti in arrivo', (tester) async {

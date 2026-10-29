@@ -23,6 +23,7 @@ class EsercizioPrevisto {
     required this.nome,
     required this.note,
     required this.prescrizione,
+    this.video,
   });
 
   /// Stabile tra le revisioni: i log lo citano (§8.1).
@@ -30,6 +31,9 @@ class EsercizioPrevisto {
   final String nome;
   final String note;
   final List<RigaPrescrizione> prescrizione;
+
+  /// Link https al video che mostra l'esercizio, dalla libreria del coach.
+  final Uri? video;
 }
 
 /// Una riga della prescrizione. Tutti i campi sono facoltativi; ripetizioni,
@@ -73,6 +77,10 @@ extension ContenutoScheda on SchedaRicevuta {
               id: _testo(esercizio['id']) ?? '',
               nome: _testo(esercizio['nome']) ?? '',
               note: _testo(esercizio['note']) ?? '',
+              video: switch (_testo(esercizio['video'])) {
+                final String link => analizzaLinkVideo(link),
+                null => null,
+              },
               prescrizione: [
                 for (final riga in _oggetti(esercizio['prescrizione']))
                   RigaPrescrizione(

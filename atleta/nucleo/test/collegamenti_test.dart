@@ -292,7 +292,7 @@ void main() {
     archivio.chiudi();
 
     archivio = ArchivioAtleta.apri(percorso);
-    expect(archivio.db.userVersion, 1);
+    expect(archivio.db.userVersion, 3);
     expect(
       archivio.db.select('SELECT nome_coach FROM coach').single['nome_coach'],
       'Marco',

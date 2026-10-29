@@ -5,6 +5,7 @@ import 'package:sqlite3/sqlite3.dart';
 
 import 'contesto.dart';
 import 'errori.dart';
+import 'esecuzione.dart';
 import 'modelli.dart';
 import 'tempo.dart';
 
@@ -125,6 +126,48 @@ class DiarioAllenamenti {
     ))
       LogAllenamento.daRiga(riga),
   ];
+
+  /// Le serie fatte l'ultima volta con un esercizio, per suggerirle durante
+  /// l'esecuzione (§10.2): dall'allenamento più recente prima di [prima]
+  /// con lo stesso esercizio della scheda ([esercizioId]) o con un
+  /// esercizio dello stesso nome, con qualsiasi coach. Lista vuota se non
+  /// c'è.
+  List<SerieFatta> ultimaVolta({
+    String? esercizioId,
+    required String nome,
+    required DateTime prima,
+  }) {
+    final chiave = nome.trim().toLowerCase();
+    for (final riga in _db.select(
+      'SELECT contenuto FROM log WHERE eliminato = 0 AND eseguito_il < ? '
+      'ORDER BY eseguito_il DESC LIMIT 500',
+      [istante(prima)],
+    )) {
+      final contenuto = jsonDecode(riga['contenuto'] as String);
+      if (contenuto is! Map<String, Object?>) continue;
+      final esercizi = [
+        if (contenuto['esercizi'] case final List<Object?> lista)
+          for (final e in lista)
+            if (e is Map<String, Object?>) e,
+      ];
+      final trovato =
+          esercizi
+              .where((e) => esercizioId != null && e['esercizio_id'] == esercizioId)
+              .firstOrNull ??
+          esercizi.where((e) {
+            final altro = e['nome'];
+            return altro is String && altro.trim().toLowerCase() == chiave;
+          }).firstOrNull;
+      if (trovato == null) continue;
+      final serie = [
+        if (trovato['serie'] case final List<Object?> lista)
+          for (final s in lista)
+            if (s case {'completata': true}) SerieFatta.daLog(s as Map<String, Object?>),
+      ].where((s) => !s.vuota).toList();
+      if (serie.isNotEmpty) return serie;
+    }
+    return const [];
+  }
 
   /// Numero di log in attesa di invio (§7.5).
   int inAttesa(int coachId) =>

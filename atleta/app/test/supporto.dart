@@ -116,6 +116,15 @@ class TelefonoDiProva {
     );
   }
 
+  /// Un questionario arrivato dal coach con una sync.
+  void aggiungiQuestionario(int coachId, Map<String, Object?> questionario) {
+    archivio.db.execute(
+      'INSERT INTO questionari (coach_id, id, contenuto, ricevuto_il, stato) '
+      "VALUES (?, ?, ?, ?, 'da_compilare')",
+      [coachId, questionario['id'], jsonEncode({...questionario}..remove('id')), _istante(orologio.ora)],
+    );
+  }
+
   /// Il coach ha confermato di avere il log.
   void confermaLog(String id) => archivio.db.execute(
     'UPDATE log SET rev_confermata = rev WHERE id = ?',

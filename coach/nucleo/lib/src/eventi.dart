@@ -50,3 +50,11 @@ class DispositivoSincronizzato extends EventoCoach {
 
   final String dispositivoId;
 }
+
+/// L'atleta ha risposto a un questionario.
+class QuestionarioRisposto extends EventoCoach {
+  const QuestionarioRisposto(super.atletaId, this.questionarioId, this.titolo);
+
+  final String questionarioId;
+  final String titolo;
+}

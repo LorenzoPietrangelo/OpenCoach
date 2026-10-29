@@ -96,10 +96,16 @@ class ClienteApi {
   Future<void> scollega() =>
       _chiama('DELETE', '/v1/dispositivo', autenticata: true);
 
+  /// `PUT /v1/foto/<id>`: una foto di un questionario, in JPEG (§8.6).
+  /// Idempotente: ricaricare la stessa foto non cambia nulla.
+  Future<void> caricaFoto(String id, Uint8List jpeg) =>
+      _chiama('PUT', '/v1/foto/$id', jpeg: jpeg, autenticata: true);
+
   Future<Object?> _chiama(
     String metodo,
     String percorso, {
     Object? corpo,
+    Uint8List? jpeg,
     bool autenticata = false,
   }) async {
     final uri = Uri(scheme: 'http', host: '$indirizzo.onion', path: percorso);
@@ -109,7 +115,11 @@ class ClienteApi {
       if (token == null) throw StateError('Dispositivo non abbinato');
       richiesta.headers.set(HttpHeaders.authorizationHeader, 'Bearer $token');
     }
-    if (corpo != null) {
+    if (jpeg != null) {
+      richiesta.headers.contentType = ContentType('image', 'jpeg');
+      richiesta.contentLength = jpeg.length;
+      richiesta.add(jpeg);
+    } else if (corpo != null) {
       final byte = utf8.encode(jsonEncode(corpo));
       richiesta.headers.contentType = ContentType.json;
       richiesta.contentLength = byte.length;

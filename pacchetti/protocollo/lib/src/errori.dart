@@ -21,3 +21,14 @@ abstract final class RifiutoLog {
   static const troppoGrande = 'troppo_grande';
   static const altroAtleta = 'altro_atleta';
 }
+
+/// Motivi di rifiuto delle risposte a un questionario in
+/// `risposte_rifiutate` (§6.3, §8.6).
+abstract final class RifiutoRisposta {
+  /// Il coach non ha (più) questo questionario per l'atleta.
+  static const sconosciuto = 'sconosciuto';
+  static const nonValida = 'non_valida';
+
+  /// Manca almeno una foto: l'app la ricarica e ritenta.
+  static const fotoMancanti = 'foto_mancanti';
+}

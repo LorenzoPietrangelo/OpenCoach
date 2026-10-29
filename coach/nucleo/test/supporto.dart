@@ -96,10 +96,15 @@ class TelefonoFinto {
   Future<List<RispostaSync>> sincronizza({
     List<Object?> daInviare = const [],
     String versioneApp = '1.0.0',
+    List<Object?> pesi = const [],
+    bool? pesiCondivisi,
+    List<Object?> risposteQuestionari = const [],
   }) async {
     final risposte = <RispostaSync>[];
     var cursoreRichiesta = cursore;
     var inviare = daInviare;
+    var pesiDaInviare = pesi;
+    var risposteDaInviare = risposteQuestionari;
     final schedeComplete = <String, Map<String, Object?>>{};
     final logCompleti = <String, Map<String, Object?>>{};
     while (true) {
@@ -110,12 +115,17 @@ class TelefonoFinto {
           epoca: epoca,
           cursore: cursoreRichiesta,
           log: inviare,
+          pesi: pesiDaInviare,
+          pesiCondivisi: pesiCondivisi,
+          risposte: risposteDaInviare,
           versioneApp: versioneApp,
         ),
       );
       richieste++;
       risposte.add(risposta);
       inviare = const [];
+      risposteDaInviare = const [];
+      pesiDaInviare = const [];
       cursoreRichiesta = risposta.cursore;
       if (risposta.completo) {
         for (final s in risposta.schede) {

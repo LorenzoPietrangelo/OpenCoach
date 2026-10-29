@@ -166,6 +166,86 @@ class Scheda {
   String get titolo => bozza['titolo'] is String ? bozza['titolo'] as String : '';
 }
 
+/// Modello di questionario scritto dal coach (§8.6, §9.3).
+class ModelloQuestionario {
+  const ModelloQuestionario({required this.id, required this.contenuto, required this.modificatoIl});
+
+  final String id;
+
+  /// Titolo, descrizione, domande e foto, nel formato del protocollo.
+  final Map<String, Object?> contenuto;
+  final DateTime modificatoIl;
+
+  String get titolo => contenuto['titolo'] is String ? contenuto['titolo'] as String : '';
+}
+
+enum StatoQuestionario { inviato, risposto, annullato }
+
+/// Questionario mandato a un atleta, con le risposte se sono arrivate.
+class QuestionarioInviato {
+  const QuestionarioInviato({
+    required this.id,
+    required this.atletaId,
+    required this.contenuto,
+    required this.inviatoIl,
+    required this.stato,
+    required this.risposta,
+    required this.rispostoIl,
+    required this.letto,
+  });
+
+  final String id;
+  final String atletaId;
+
+  /// Il questionario com'era al momento dell'invio.
+  final Map<String, Object?> contenuto;
+  final DateTime inviatoIl;
+  final StatoQuestionario stato;
+
+  /// Le risposte come le ha mandate l'app (§8.6).
+  final Map<String, Object?>? risposta;
+  final DateTime? rispostoIl;
+
+  /// Il coach ha aperto le risposte.
+  final bool letto;
+
+  String get titolo => contenuto['titolo'] is String ? contenuto['titolo'] as String : '';
+
+  /// Id delle foto allegate, nell'ordine dell'atleta.
+  List<String> get foto => [
+    if (risposta?['foto'] case final List<Object?> lista)
+      for (final id in lista)
+        if (id is String) id,
+  ];
+}
+
+/// Peso corporeo di un giorno, registrato dall'atleta (§8.5).
+class PesoDelGiorno {
+  const PesoDelGiorno({required this.giorno, required this.kg});
+
+  final DateTime giorno;
+  final double kg;
+}
+
+/// Esercizio della libreria del coach (§9.3).
+class EsercizioLibreria {
+  const EsercizioLibreria({
+    required this.id,
+    required this.nome,
+    required this.note,
+    required this.video,
+  });
+
+  final String id;
+  final String nome;
+
+  /// Note proposte quando il coach sceglie l'esercizio in una scheda.
+  final String note;
+
+  /// Link https al video, che le schede ricevono alla pubblicazione.
+  final String? video;
+}
+
 /// Allenamento registrato dall'atleta (log), in sola lettura per il coach.
 class Allenamento {
   const Allenamento({

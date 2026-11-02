@@ -8,7 +8,7 @@ import 'package:protocollo/protocollo.dart';
 class Ambiente {
   Ambiente._();
 
-  static Future<Ambiente> avvia({int? budgetPagina}) async {
+  static Future<Ambiente> avvia({int? budgetPagina, String? cartellaVideo}) async {
     final a = Ambiente._();
     a.archivio = Archivio.inMemoria();
     final identita = await caricaOCreaIdentita(a.archivio, PortachiaviMemoria());
@@ -17,6 +17,7 @@ class Ambiente {
       indirizzo: identita.indirizzo,
       adesso: () => a.ora,
       budgetPagina: budgetPagina,
+      cartellaVideo: cartellaVideo,
     )..nomeCoach = 'Marco Bianchi';
     a.nucleo.eventi.listen(a.eventi.add);
     a.nucleo.chiaviCambiate.listen((_) => a.segnalazioniChiavi++);
@@ -99,12 +100,14 @@ class TelefonoFinto {
     List<Object?> pesi = const [],
     bool? pesiCondivisi,
     List<Object?> risposteQuestionari = const [],
+    List<Object?> messaggi = const [],
   }) async {
     final risposte = <RispostaSync>[];
     var cursoreRichiesta = cursore;
     var inviare = daInviare;
     var pesiDaInviare = pesi;
     var risposteDaInviare = risposteQuestionari;
+    var messaggiDaInviare = messaggi;
     final schedeComplete = <String, Map<String, Object?>>{};
     final logCompleti = <String, Map<String, Object?>>{};
     while (true) {
@@ -118,6 +121,7 @@ class TelefonoFinto {
           pesi: pesiDaInviare,
           pesiCondivisi: pesiCondivisi,
           risposte: risposteDaInviare,
+          messaggi: messaggiDaInviare,
           versioneApp: versioneApp,
         ),
       );
@@ -125,6 +129,7 @@ class TelefonoFinto {
       risposte.add(risposta);
       inviare = const [];
       risposteDaInviare = const [];
+      messaggiDaInviare = const [];
       pesiDaInviare = const [];
       cursoreRichiesta = risposta.cursore;
       if (risposta.completo) {

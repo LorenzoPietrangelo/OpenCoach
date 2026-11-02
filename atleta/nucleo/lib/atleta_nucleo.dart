@@ -12,6 +12,7 @@ export 'src/abbinamento.dart'
         attesaMassimaCoach;
 export 'src/archivio.dart';
 export 'src/cassaforte.dart';
+export 'src/chat.dart' show ChatCoach, MessaggioChat, StatoMessaggio, cancellaMetadatiMp4, compattaMp4;
 export 'src/collegamenti.dart';
 export 'src/diario.dart';
 export 'src/errori.dart';

@@ -32,3 +32,13 @@ abstract final class RifiutoRisposta {
   /// Manca almeno una foto: l'app la ricarica e ritenta.
   static const fotoMancanti = 'foto_mancanti';
 }
+
+/// Motivi di rifiuto di un messaggio in `messaggi_rifiutati` (§8.7).
+abstract final class RifiutoMessaggio {
+  static const nonValido = 'non_valido';
+  static const altroAtleta = 'altro_atleta';
+
+  /// Il coach non ha tutte le parti del video, o non corrispondono
+  /// all'impronta: l'app le ricarica e ritenta.
+  static const videoMancante = 'video_mancante';
+}

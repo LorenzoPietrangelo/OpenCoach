@@ -206,6 +206,7 @@ class RichiestaSync {
     this.pesi = const [],
     this.pesiCondivisi,
     this.risposte = const [],
+    this.messaggi = const [],
   });
 
   factory RichiestaSync.fromJson(Object? json) {
@@ -223,6 +224,7 @@ class RichiestaSync {
       pesi: m.containsKey('pesi') ? _lista<Object?>(m, 'pesi') : const [],
       pesiCondivisi: _campo<bool?>(m, 'pesi_condivisi'),
       risposte: m.containsKey('risposte') ? _lista<Object?>(m, 'risposte') : const [],
+      messaggi: m.containsKey('messaggi') ? _lista<Object?>(m, 'messaggi') : const [],
     );
   }
 
@@ -241,6 +243,9 @@ class RichiestaSync {
   /// Risposte ai questionari (§8.6), validate una per una.
   final List<Object?> risposte;
 
+  /// Messaggi della chat scritti dall'atleta (§8.7).
+  final List<Object?> messaggi;
+
   Map<String, Object?> toJson() => {
     'epoca': epoca,
     'cursore': cursore,
@@ -249,6 +254,7 @@ class RichiestaSync {
     'pesi': pesi,
     'pesi_condivisi': ?pesiCondivisi,
     'risposte': risposte,
+    'messaggi': messaggi,
   };
 }
 
@@ -300,6 +306,9 @@ class RispostaSync {
     this.risposteRifiutate = const [],
     this.questionari = const [],
     this.questionariAnnullati = const [],
+    this.messaggiAccettati,
+    this.messaggiRifiutati = const [],
+    this.messaggi = const [],
   });
 
   factory RispostaSync.fromJson(Object? json) {
@@ -341,6 +350,13 @@ class RispostaSync {
       questionariAnnullati: m.containsKey('questionari_annullati')
           ? _lista<String>(m, 'questionari_annullati')
           : const [],
+      messaggiAccettati: m.containsKey('messaggi_accettati')
+          ? _lista<String>(m, 'messaggi_accettati')
+          : null,
+      messaggiRifiutati: m.containsKey('messaggi_rifiutati')
+          ? _lista<Object?>(m, 'messaggi_rifiutati').map(LogRifiutato.fromJson).toList()
+          : const [],
+      messaggi: m.containsKey('messaggi') ? _lista<Map<String, Object?>>(m, 'messaggi') : const [],
     );
   }
 
@@ -375,6 +391,17 @@ class RispostaSync {
   /// Questionari annullati dal coach dopo l'invio.
   final List<String> questionariAnnullati;
 
+  /// Id dei messaggi dell'atleta che il coach ha salvato. Null da un
+  /// programma che non conosce la chat: l'app smette di mandarglieli.
+  final List<String>? messaggiAccettati;
+
+  /// Messaggi scartati, con il motivo (vedi `RifiutoMessaggio`).
+  final List<LogRifiutato> messaggiRifiutati;
+
+  /// Messaggi della chat: nella risposta incrementale quelli nuovi del coach,
+  /// nella completa tutti, anche quelli dell'atleta (§8.7).
+  final List<Map<String, Object?>> messaggi;
+
   Map<String, Object?> toJson() => {
     'epoca': epoca,
     'completo': completo,
@@ -392,5 +419,8 @@ class RispostaSync {
     'risposte_rifiutate': [for (final r in risposteRifiutate) r.toJson()],
     'questionari': questionari,
     'questionari_annullati': questionariAnnullati,
+    'messaggi_accettati': ?messaggiAccettati,
+    'messaggi_rifiutati': [for (final r in messaggiRifiutati) r.toJson()],
+    'messaggi': messaggi,
   };
 }

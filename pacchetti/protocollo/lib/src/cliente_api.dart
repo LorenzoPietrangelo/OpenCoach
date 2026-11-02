@@ -98,14 +98,27 @@ class ClienteApi {
 
   /// `PUT /v1/foto/<id>`: una foto di un questionario, in JPEG (§8.6).
   /// Idempotente: ricaricare la stessa foto non cambia nulla.
-  Future<void> caricaFoto(String id, Uint8List jpeg) =>
-      _chiama('PUT', '/v1/foto/$id', jpeg: jpeg, autenticata: true);
+  Future<void> caricaFoto(String id, Uint8List jpeg) => _chiama(
+    'PUT',
+    '/v1/foto/$id',
+    binario: (ContentType('image', 'jpeg'), jpeg),
+    autenticata: true,
+  );
+
+  /// `PUT /v1/video/<id>/<parte>`: una parte di un video della chat, a
+  /// partire da 0 (§8.7). Idempotente.
+  Future<void> caricaParteVideo(String id, int parte, Uint8List dati) => _chiama(
+    'PUT',
+    '/v1/video/$id/$parte',
+    binario: (ContentType('application', 'octet-stream'), dati),
+    autenticata: true,
+  );
 
   Future<Object?> _chiama(
     String metodo,
     String percorso, {
     Object? corpo,
-    Uint8List? jpeg,
+    (ContentType, Uint8List)? binario,
     bool autenticata = false,
   }) async {
     final uri = Uri(scheme: 'http', host: '$indirizzo.onion', path: percorso);
@@ -115,10 +128,10 @@ class ClienteApi {
       if (token == null) throw StateError('Dispositivo non abbinato');
       richiesta.headers.set(HttpHeaders.authorizationHeader, 'Bearer $token');
     }
-    if (jpeg != null) {
-      richiesta.headers.contentType = ContentType('image', 'jpeg');
-      richiesta.contentLength = jpeg.length;
-      richiesta.add(jpeg);
+    if (binario case (final tipo, final byte)) {
+      richiesta.headers.contentType = tipo;
+      richiesta.contentLength = byte.length;
+      richiesta.add(byte);
     } else if (corpo != null) {
       final byte = utf8.encode(jsonEncode(corpo));
       richiesta.headers.contentType = ContentType.json;

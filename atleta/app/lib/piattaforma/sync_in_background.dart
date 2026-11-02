@@ -27,24 +27,28 @@ class NotificaSchede {
   };
 }
 
-/// Una notifica per ogni coach che ha mandato schede nuove, nuove revisioni
-/// o questionari, con i loro titoli.
+/// Una notifica per ogni coach che ha mandato schede nuove, nuove revisioni,
+/// questionari o messaggi, con i titoli e l'ultimo messaggio.
 List<NotificaSchede> notificheSchede(
   List<EsitoSync> esiti,
   String Function(int coachId) nomeCoach,
   Testi testi, {
   String Function(int coachId, String questionarioId)? titoloQuestionario,
+  String Function(int coachId, String messaggioId)? testoMessaggio,
 }) => [
   for (final esito in esiti)
-    if (esito.schedeNuove.isNotEmpty || esito.questionariNuovi.isNotEmpty)
+    if (esito.schedeNuove.isNotEmpty || esito.questionariNuovi.isNotEmpty || esito.messaggiNuovi.isNotEmpty)
       NotificaSchede(
         coachId: esito.coachId,
         titolo: esito.schedeNuove.isNotEmpty
             ? testi.notificaSchede(esito.schedeNuove.length, nomeCoach(esito.coachId))
-            : testi.notificaQuestionari(esito.questionariNuovi.length, nomeCoach(esito.coachId)),
+            : esito.questionariNuovi.isNotEmpty
+            ? testi.notificaQuestionari(esito.questionariNuovi.length, nomeCoach(esito.coachId))
+            : testi.notificaMessaggi(esito.messaggiNuovi.length, nomeCoach(esito.coachId)),
         testo: [
           for (final scheda in esito.schedeNuove) scheda.titolo,
           for (final id in esito.questionariNuovi) ?titoloQuestionario?.call(esito.coachId, id),
+          if (esito.messaggiNuovi.isNotEmpty) ?testoMessaggio?.call(esito.coachId, esito.messaggiNuovi.last),
         ].join(', '),
       ),
 ];
@@ -124,6 +128,10 @@ class SyncInBackground {
       (id) => _nucleo.collegamenti.cerca(id)?.nomeCoach ?? '',
       lookupTesti(const Locale('it')),
       titoloQuestionario: (coachId, id) => _nucleo.questionari.cerca(coachId, id)?.titolo ?? '',
+      testoMessaggio: (coachId, id) {
+        final testo = _nucleo.chat.cerca(coachId, id)?.testo ?? '';
+        return testo.length > 120 ? '${testo.substring(0, 119)}…' : testo;
+      },
     );
   }
 

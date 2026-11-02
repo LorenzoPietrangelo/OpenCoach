@@ -1,5 +1,11 @@
+import 'dart:io';
+
 import 'package:atleta_app/app.dart';
+import 'package:atleta_app/piattaforma/video.dart';
+import 'package:atleta_app/schermate/allenamento.dart';
+import 'package:atleta_app/schermate/contenuto_scheda.dart';
 import 'package:atleta_app/schermate/dettaglio_scheda.dart';
+import 'package:atleta_nucleo/atleta_nucleo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:protocollo/protocollo.dart';
@@ -93,8 +99,9 @@ void main() {
     expect(contenuto['scheda_id'], scheda['id']);
     expect(contenuto['scheda_revisione'], 1);
     expect(contenuto['seduta_id'], idGiornoA(scheda));
-    // Dall'inizio al salvataggio: due minuti e mezzo.
-    expect(contenuto['durata_min'], 3);
+    // Durata e sforzo dell'allenamento non si chiedono più.
+    expect(contenuto.containsKey('durata_min'), isFalse);
+    expect(contenuto.containsKey('rpe'), isFalse);
     final eseguiti = esercizi(contenuto);
     expect([for (final e in eseguiti) e['nome']], ['Squat', 'Panca', 'Plank']);
     final squat = eseguiti[0]['serie']! as List<Object?>;
@@ -158,8 +165,8 @@ void main() {
     final campi = find.descendant(of: find.byType(Card), matching: find.byType(TextField));
     String? suggerimento(int i) => tester.widget<TextField>(campi.at(i)).decoration?.hintText;
     String testo(int i) => tester.widget<TextField>(campi.at(i)).controller!.text;
-    // Serie 1: ripetizioni, carico, RPE; serie 2 lo stesso.
-    expect([suggerimento(0), suggerimento(1), suggerimento(3), suggerimento(4)], [
+    // Serie 1: ripetizioni e carico; serie 2 lo stesso.
+    expect([suggerimento(0), suggerimento(1), suggerimento(2), suggerimento(3)], [
       '8',
       '62,5',
       '7',
@@ -202,18 +209,9 @@ void main() {
     expect(find.widgetWithText(TextField, 'otto'), findsOneWidget);
     expect(telefono.nucleo.diario.elenco(coach), isEmpty);
 
-    // L'RPE di una serie va a passi di 0,5.
+    // Corretto il valore, si salva. Le serie non chiedono l'RPE.
     await tester.enterText(find.byType(TextField).first, '8');
-    final rpe = find.descendant(
-      of: find.byType(Card).first,
-      matching: find.byType(TextField),
-    );
-    await tester.enterText(rpe.at(2), '7,3');
-    await tester.tap(find.text('Salva'));
-    await tester.pump();
-    expect(telefono.nucleo.diario.elenco(coach), isEmpty);
-
-    await tester.enterText(rpe.at(2), '7,5');
+    expect(find.text('RPE'), findsNothing);
     await tester.tap(find.text('Salva'));
     await tester.pumpAndSettle();
     final squat =
@@ -221,10 +219,10 @@ void main() {
               telefono.nucleo.diario.elenco(coach).single.contenuto!,
             ).first['serie']!
             as List<Object?>;
-    expect(squat.first, {'ripetizioni': 8, 'rpe': 7.5, 'completata': false});
+    expect(squat.first, {'ripetizioni': 8, 'completata': false});
   });
 
-  testWidgets('allenamento libero con un esercizio aggiunto, RPE e note', (
+  testWidgets('allenamento libero con un esercizio aggiunto e note', (
     tester,
   ) async {
     final coach = telefono.aggiungiCoach('Marco Bianchi');
@@ -249,20 +247,21 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Trazioni'), findsOneWidget);
 
-    // Ripetizioni, carico e RPE della serie.
+    // Ripetizioni e carico della serie.
     final campi = find.descendant(
       of: find.byType(Card),
       matching: find.byType(TextField),
     );
+    expect(campi, findsNWidgets(2));
     await tester.enterText(campi.at(0), '10');
-    await tester.enterText(campi.at(2), '8,5');
     // Senza un recupero previsto il timer non parte.
     await tester.tap(find.byType(Checkbox));
     await tester.pump();
     expect(find.text('Recupero'), findsNothing);
 
-    await tester.ensureVisible(find.widgetWithText(ChoiceChip, '7'));
-    await tester.tap(find.widgetWithText(ChoiceChip, '7'));
+    // Né lo sforzo né la durata dell'allenamento si chiedono.
+    expect(find.text('Sforzo percepito della seduta (RPE)'), findsNothing);
+    expect(find.text('Durata in minuti'), findsNothing);
     await tester.enterText(
       find.widgetWithText(TextField, "Note sull'allenamento"),
       'Presa prona',
@@ -284,8 +283,6 @@ void main() {
       'scheda_revisione': null,
       'seduta_id': null,
       'eseguito_il': adesso,
-      'durata_min': 0,
-      'rpe': 7,
       'note': 'Presa prona',
       'esercizi': [
         {
@@ -293,7 +290,7 @@ void main() {
           'nome': 'Trazioni',
           'note': '',
           'serie': [
-            {'ripetizioni': 10, 'rpe': 8.5, 'completata': true},
+            {'ripetizioni': 10, 'completata': true},
           ],
         },
       ],
@@ -340,5 +337,47 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Giorno B'), findsOneWidget);
     expect(telefono.nucleo.diario.elenco(coach), isEmpty);
+  });
+
+  testWidgets('il video di una serie parte nella chat con l\'allenamento', (tester) async {
+    final coach = telefono.aggiungiCoach('Marco Bianchi');
+    final dati = schedaForza();
+    telefono.aggiungiScheda(coach, dati, vista: true);
+    final scheda = telefono.nucleo.schede.cerca(coach, dati['id']! as String)!;
+    final seduta = scheda.sedute.first;
+    final scelte = <OrigineVideo>[];
+    await tester.pumpWidget(
+      conTesti(
+        SchermataAllenamento(
+          nucleo: telefono.nucleo,
+          allenamento: AllenamentoInCorso.daSeduta(scheda, seduta.id, inizio: telefono.orologio.adesso()),
+          titolo: seduta.nome,
+          seduta: seduta,
+          preparaVideo: (origine) async {
+            scelte.add(origine);
+            final file = File('${telefono.cartellaVideo.path}/registrato.mp4')
+              ..writeAsBytesSync(List.filled(3000, 7));
+            return VideoPreparato(file.path, 9);
+          },
+        ),
+      ),
+    );
+    await tester.tap(find.text('Squat'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Video della serie 2').first);
+    await tester.pumpAndSettle();
+    expect(find.textContaining('senza audio e senza la posizione'), findsOneWidget);
+    await tester.tap(find.text('Registra un video'));
+    await tester.pumpAndSettle();
+    expect(scelte, [OrigineVideo.fotocamera]);
+
+    await tester.tap(find.text('Salva'));
+    await tester.pumpAndSettle();
+    final log = telefono.nucleo.diario.elenco(coach).single;
+    final video = telefono.nucleo.chat.elenco(coach).single;
+    expect(video.riferimento, {'log_id': log.id, 'esercizio': 'Squat', 'serie': 2});
+    expect(video.durataVideoS, 9);
+    expect(video.stato, StatoMessaggio.inInvio);
+    expect(File(video.fileVideo!).lengthSync(), 3000);
   });
 }

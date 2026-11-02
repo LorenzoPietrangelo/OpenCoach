@@ -95,6 +95,10 @@ class _PrincipaleState extends State<Principale> {
       _ when !_preferenze.notifiche => null,
       LogRicevuto(eliminato: false) => (t.nomeApp, t.notificaLogRicevuto(nome)),
       QuestionarioRisposto(:final titolo) => (t.nomeApp, t.notificaQuestionarioRisposto(nome, titolo)),
+      MessaggioRicevuto(:final conVideo) => (
+        t.nomeApp,
+        conVideo ? t.notificaVideo(nome) : t.notificaMessaggio(nome),
+      ),
       DispositivoAbbinato(:final nomeDispositivo) => (
         t.nomeApp,
         t.notificaAbbinato(nome, nomeDispositivo),

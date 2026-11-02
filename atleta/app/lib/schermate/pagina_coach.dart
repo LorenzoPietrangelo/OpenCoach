@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import '../l10n/testi.dart';
 import 'avvisi.dart';
 import 'allenamento.dart';
+import 'chat.dart';
 import 'contenuto_scheda.dart';
 import 'dettaglio_log.dart';
 import 'dettaglio_scheda.dart';
@@ -36,6 +37,7 @@ class _PaginaCoachState extends State<PaginaCoach>
   var _archiviate = <SchedaRicevuta>[];
   var _log = <LogAllenamento>[];
   var _questionari = <QuestionarioRicevuto>[];
+  var _nonLetti = 0;
 
   /// La sync chiesta da qui non è ancora finita.
   var _sincronizzando = false;
@@ -65,6 +67,7 @@ class _PaginaCoachState extends State<PaginaCoach>
     _archiviate = _nucleo.schede.elenco(id, archiviate: true);
     _log = _nucleo.diario.elenco(id);
     _questionari = _nucleo.questionari.elenco(id);
+    _nonLetti = _nucleo.chat.nonLetti(id);
   }
 
   Future<void> _apriQuestionario(QuestionarioRicevuto q) async {
@@ -186,6 +189,19 @@ class _PaginaCoachState extends State<PaginaCoach>
       appBar: AppBar(
         title: Text(coach.nomeCoach),
         actions: [
+          IconButton(
+            tooltip: testi.chat,
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => SchermataChat(nucleo: _nucleo, coachId: widget.coachId),
+              ),
+            ),
+            icon: Badge(
+              isLabelVisible: _nonLetti > 0,
+              label: Text('$_nonLetti'),
+              child: const Icon(Icons.chat_bubble_outline),
+            ),
+          ),
           PopupMenuButton<void>(
             itemBuilder: (_) => [
               if (attivo)

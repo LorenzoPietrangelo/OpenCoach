@@ -13,7 +13,7 @@ import 'piattaforma/sync_in_background.dart';
 import 'piattaforma/tor_non_integrato.dart';
 
 /// Versione inviata al coach (§6.3): la stessa del pubspec.
-const versioneApp = '1.2.0';
+const versioneApp = '1.3.0';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -70,5 +70,7 @@ Future<NucleoAtleta> creaNucleo() async {
       piattaforma: Platform.isIOS ? 'ios' : 'android',
       versioneApp: versioneApp,
     ),
+    // I video della chat, accanto all'archivio: privati e fuori dai backup.
+    cartellaVideo: '${cartella.path}${Platform.pathSeparator}video',
   );
 }

@@ -54,4 +54,8 @@ dependencies {
     implementation("info.guardianproject:tor-android:0.4.9.14")
     // Sync in background (§7.4).
     implementation("androidx.work:work-runtime-ktx:2.11.2")
+    // Compressione dei video della chat (§8.7).
+    implementation("androidx.media3:media3-transformer:1.8.0")
+    implementation("androidx.media3:media3-effect:1.8.0")
+    implementation("androidx.media3:media3-common:1.8.0")
 }

@@ -4,6 +4,7 @@ library;
 
 export 'src/allenamenti.dart' show GestioneAllenamenti;
 export 'src/archivio.dart' show Archivio, Impostazioni;
+export 'src/chat.dart' show GestioneMessaggi;
 export 'src/atleti.dart' show GestioneAtleti;
 export 'src/backup.dart';
 export 'src/dispositivi.dart' show GestioneDispositivi;

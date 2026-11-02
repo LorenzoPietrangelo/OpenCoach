@@ -153,4 +153,26 @@ CREATE TABLE foto (
   UNIQUE (coach_id, questionario_id, posizione)
 );
 ''',
+  '''
+CREATE TABLE messaggi (
+  coach_id INTEGER NOT NULL REFERENCES coach (id) ON DELETE CASCADE,
+  id TEXT NOT NULL,
+  dal_coach INTEGER NOT NULL,
+  testo TEXT NOT NULL,
+  inviato_il TEXT NOT NULL,
+  ordine TEXT NOT NULL,
+  video TEXT,
+  riferimento TEXT,
+  file_video TEXT,
+  parti_caricate INTEGER NOT NULL DEFAULT 0,
+  ricaricamenti INTEGER NOT NULL DEFAULT 0,
+  stato TEXT NOT NULL CHECK (stato IN ('in_invio', 'inviato', 'rifiutato')),
+  rifiuto TEXT,
+  letto INTEGER NOT NULL,
+  PRIMARY KEY (coach_id, id)
+);
+CREATE INDEX messaggi_ordine ON messaggi (coach_id, ordine);
+
+ALTER TABLE coach ADD COLUMN chat_supportata INTEGER;
+''',
 ];

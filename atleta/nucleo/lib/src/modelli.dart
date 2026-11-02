@@ -55,6 +55,7 @@ class CoachCollegato {
     required this.logRifiutati,
     this.condividePesi = true,
     this.pesiSupportati,
+    this.chatSupportata,
   });
 
   factory CoachCollegato.daRiga(Row r) => CoachCollegato(
@@ -79,6 +80,10 @@ class CoachCollegato {
     logRifiutati: r['log_rifiutati'] as int,
     condividePesi: r['condividi_pesi'] == 1,
     pesiSupportati: switch (r['pesi_supportati']) {
+      final int valore => valore == 1,
+      _ => null,
+    },
+    chatSupportata: switch (r['chat_supportata']) {
       final int valore => valore == 1,
       _ => null,
     },
@@ -121,6 +126,10 @@ class CoachCollegato {
   /// Se il programma del coach riceve i pesi: falso se è di una versione
   /// che non li conosce, null finché nessuna sync lo ha detto.
   final bool? pesiSupportati;
+
+  /// Se il programma del coach riceve i messaggi della chat (§8.7), come
+  /// [pesiSupportati].
+  final bool? chatSupportata;
 }
 
 /// Scheda ricevuta da un coach, in sola lettura (§8.1).
@@ -244,6 +253,7 @@ class EsitoSync {
     this.logRimessiInCoda = 0,
     this.schedeNuove = const [],
     this.questionariNuovi = const [],
+    this.messaggiNuovi = const [],
   });
 
   final int coachId;
@@ -268,6 +278,10 @@ class EsitoSync {
   /// Id dei questionari arrivati con questa sync, da annunciare come le
   /// schede.
   final List<String> questionariNuovi;
+
+  /// Id dei messaggi del coach arrivati con questa sync, da annunciare con
+  /// una notifica.
+  final List<String> messaggiNuovi;
 
   bool get riuscita => problema == null;
 }

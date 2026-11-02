@@ -5,6 +5,7 @@ import 'package:protocollo/protocollo.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 import 'contesto.dart';
+import 'chat.dart';
 import 'cursore.dart';
 import 'errori.dart';
 import 'eventi.dart';
@@ -19,13 +20,15 @@ class ServizioSincronizzazione {
   ServizioSincronizzazione(
     this._c,
     this._schede,
-    this._questionari, {
+    this._questionari,
+    this._messaggi, {
     this.budgetPagina = 1536 * 1024,
   });
 
   final ContestoCoach _c;
   final GestioneSchede _schede;
   final GestioneQuestionari _questionari;
+  final GestioneMessaggi _messaggi;
 
   /// Byte di schede e log per risposta, sotto il limite di 2 MiB (§6.2).
   final int budgetPagina;
@@ -41,11 +44,12 @@ class ServizioSincronizzazione {
     }
     if (richiesta.log.length > Limiti.logPerRichiesta ||
         richiesta.pesi.length > Limiti.pesiPerRichiesta ||
-        richiesta.risposte.length > Limiti.rispostePerRichiesta) {
+        richiesta.risposte.length > Limiti.rispostePerRichiesta ||
+        richiesta.messaggi.length > LimitiChat.messaggiPerRichiesta) {
       throw const ErroreHttp(
         413,
         CodiceErrore.troppoGrande,
-        messaggio: 'Troppi log, pesi o risposte in una richiesta',
+        messaggio: 'Troppi log, pesi, risposte o messaggi in una richiesta',
       );
     }
     final atletaId = dispositivo.atletaId;
@@ -70,6 +74,11 @@ class ServizioSincronizzazione {
       final risposteRifiutate = <LogRifiutato>[];
       for (final r in richiesta.risposte) {
         _questionari.riceviRisposta(dispositivo, r, risposteAccettate, risposteRifiutate, eventi);
+      }
+      final messaggiAccettati = <String>[];
+      final messaggiRifiutati = <LogRifiutato>[];
+      for (final m in richiesta.messaggi) {
+        _messaggi.riceviMessaggio(dispositivo, m, messaggiAccettati, messaggiRifiutati, eventi);
       }
 
       final epoca = _c.archivio.epoca;
@@ -119,6 +128,9 @@ class ServizioSincronizzazione {
         risposteRifiutate: risposteRifiutate,
         questionari: pagina.questionari,
         questionariAnnullati: pagina.annullati,
+        messaggiAccettati: messaggiAccettati,
+        messaggiRifiutati: messaggiRifiutati,
+        messaggi: pagina.messaggi,
       );
     });
 
@@ -256,47 +268,53 @@ class ServizioSincronizzazione {
     }
   }
 
-  /// Schede e questionari cambiati dopo [sequenza], in ordine di sequenza.
+  /// Schede, questionari e messaggi del coach cambiati dopo [sequenza], in
+  /// ordine di sequenza.
   _Pagina _paginaIncrementale(String atletaId, String epoca, int sequenza) {
     final pagina = _Pagina(budgetPagina, completa: false);
     var ultima = sequenza;
-    final schede = _db.select(
-      'SELECT * FROM schede WHERE atleta_id = ? AND sequenza > ? '
+    List<Row> dopo(String tabella) => _db.select(
+      'SELECT * FROM $tabella WHERE atleta_id = ? AND sequenza > ? '
       'ORDER BY sequenza LIMIT ?',
       [atletaId, sequenza, _righePerQuery],
     );
-    final questionari = _db.select(
-      'SELECT * FROM questionari_inviati WHERE atleta_id = ? AND sequenza > ? '
-      'ORDER BY sequenza LIMIT ?',
-      [atletaId, sequenza, _righePerQuery],
-    );
-    // Le due liste si fondono per sequenza. Se una è stata troncata, oltre la
-    // sua ultima riga potrebbero mancarne altre: ci si ferma lì.
+    final schede = dopo('schede');
+    final questionari = dopo('questionari_inviati');
+    final messaggi = dopo('messaggi');
+    // Le liste si fondono per sequenza. Se una è stata troncata, oltre la sua
+    // ultima riga potrebbero mancarne altre: ci si ferma lì.
     var limite = 1 << 62;
-    for (final righe in [schede, questionari]) {
+    for (final righe in [schede, questionari, messaggi]) {
       if (righe.length == _righePerQuery) {
         pagina.altro = true;
         limite = limite < (righe.last['sequenza'] as int) ? limite : righe.last['sequenza'] as int;
       }
     }
     final modifiche = [
-      for (final riga in schede) (riga, true),
-      for (final riga in questionari) (riga, false),
+      for (final riga in schede) (riga, _Tipo.scheda),
+      for (final riga in questionari) (riga, _Tipo.questionario),
+      for (final riga in messaggi) (riga, _Tipo.messaggio),
     ]..sort((a, b) => (a.$1['sequenza'] as int).compareTo(b.$1['sequenza'] as int));
-    for (final (riga, scheda) in modifiche) {
+    for (final (riga, tipo) in modifiche) {
       if ((riga['sequenza'] as int) > limite) break;
-      if (scheda) {
-        if (riga['stato'] == 'eliminata') {
+      final aggiunta = switch (tipo) {
+        _Tipo.scheda when riga['stato'] == 'eliminata' => () {
           pagina.eliminate.add(riga['id'] as String);
-        } else if (!pagina.aggiungi(pagina.schede, _schede.perProtocollo(riga))) {
-          break;
-        }
-      } else if (riga['stato'] == 'annullato') {
-        pagina.annullati.add(riga['id'] as String);
-      } else if (riga['stato'] == 'inviato' &&
-          !pagina.aggiungi(pagina.questionari, _questionari.perProtocollo(riga))) {
-        break;
-      }
+          return true;
+        }(),
+        _Tipo.scheda => pagina.aggiungi(pagina.schede, _schede.perProtocollo(riga)),
+        _Tipo.questionario when riga['stato'] == 'annullato' => () {
+          pagina.annullati.add(riga['id'] as String);
+          return true;
+        }(),
+        _Tipo.questionario when riga['stato'] == 'inviato' => pagina.aggiungi(
+          pagina.questionari,
+          _questionari.perProtocollo(riga),
+        ),
+        _Tipo.questionario => true,
+        _Tipo.messaggio => pagina.aggiungi(pagina.messaggi, _messaggi.perProtocollo(riga)),
+      };
+      if (!aggiunta) break;
       ultima = riga['sequenza'] as int;
     }
     pagina.cursore = pagina.altro
@@ -306,8 +324,8 @@ class ServizioSincronizzazione {
   }
 
   /// Stato completo: prima tutte le schede pubblicate e archiviate, poi tutti
-  /// i log, compresi gli eliminati, poi `id` e `rev` dei pesi, infine i
-  /// questionari senza risposta (§6.3).
+  /// i log, compresi gli eliminati, poi `id` e `rev` dei pesi, i
+  /// questionari senza risposta e infine tutta la chat (§6.3).
   _Pagina _paginaCompleta(String atletaId, CursoreCompleto da) {
     final pagina = _Pagina(budgetPagina, completa: true);
     var fase = da.fase;
@@ -386,6 +404,23 @@ class ServizioSincronizzazione {
         dopo = riga['id'] as String;
       }
       if (righe.length == _righePerQuery) pagina.altro = true;
+      if (!pagina.altro) {
+        fase = 4;
+        dopo = null;
+      }
+    }
+
+    // Tutta la chat, anche i messaggi dell'atleta, senza i video.
+    if (fase == 4 && !pagina.altro) {
+      final righe = _db.select(
+        'SELECT * FROM messaggi WHERE atleta_id = ? AND id > ? ORDER BY id LIMIT ?',
+        [atletaId, dopo ?? '', _righePerQuery],
+      );
+      for (final riga in righe) {
+        if (!pagina.aggiungi(pagina.messaggi, _messaggi.perProtocollo(riga))) break;
+        dopo = riga['id'] as String;
+      }
+      if (righe.length == _righePerQuery) pagina.altro = true;
     }
 
     pagina.cursore = pagina.altro
@@ -394,6 +429,8 @@ class ServizioSincronizzazione {
     return pagina;
   }
 }
+
+enum _Tipo { scheda, questionario, messaggio }
 
 class _Pagina {
   _Pagina(this._budget, {required this.completa});
@@ -406,6 +443,7 @@ class _Pagina {
   final pesi = <LogConfermato>[];
   final questionari = <Map<String, Object?>>[];
   final annullati = <String>[];
+  final messaggi = <Map<String, Object?>>[];
   late Cursore cursore;
   var altro = false;
   var _usati = 0;
@@ -425,7 +463,8 @@ class _Pagina {
   }
 
   bool _spazio(int dimensione) {
-    final vuota = schede.isEmpty && log.isEmpty && pesi.isEmpty && questionari.isEmpty;
+    final vuota =
+        schede.isEmpty && log.isEmpty && pesi.isEmpty && questionari.isEmpty && messaggi.isEmpty;
     if (!vuota && _usati + dimensione > _budget) {
       altro = true;
       return false;

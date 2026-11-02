@@ -1115,4 +1115,77 @@ class TestiIt extends Testi {
 
   @override
   String get chiudiProgramma => 'Chiudi il programma';
+
+  @override
+  String get schedaChat => 'Chat';
+
+  @override
+  String get chatVuota =>
+      'Nessun messaggio. L\'atleta riceve i tuoi messaggi alla sua prossima sincronizzazione e può risponderti, anche con il video di una serie.';
+
+  @override
+  String chatAppVecchia(String versione) {
+    return 'L\'app dell\'atleta è la $versione: per vedere la chat deve aggiornarla alla 1.3.0.';
+  }
+
+  @override
+  String get scriviMessaggio => 'Scrivi un messaggio';
+
+  @override
+  String get inviaMessaggio => 'Invia';
+
+  @override
+  String videoSerie(String esercizio, int serie) {
+    return '$esercizio, serie $serie';
+  }
+
+  @override
+  String videoDurata(int secondi) {
+    return 'Video di $secondi s';
+  }
+
+  @override
+  String get guardaVideo => 'Guarda';
+
+  @override
+  String get eliminaVideo => 'Elimina il video';
+
+  @override
+  String get eliminaVideoDomanda =>
+      'Eliminare il video dal PC? Il messaggio resta, ma il video non si potrà più guardare.';
+
+  @override
+  String get videoEliminato => 'Video eliminato';
+
+  @override
+  String get videoNonDisponibile => 'Video non disponibile';
+
+  @override
+  String videoNonAperto(String errore) {
+    return 'Non riesco ad aprire il video: $errore';
+  }
+
+  @override
+  String notificaMessaggio(String nome) {
+    return '$nome ti ha scritto';
+  }
+
+  @override
+  String notificaVideo(String nome) {
+    return '$nome ti ha mandato un video';
+  }
+
+  @override
+  String get apriConAltroProgramma => 'Apri con un altro programma';
+
+  @override
+  String videoNonRiproducibile(String errore) {
+    return 'Non riesco a riprodurre il video qui ($errore). Puoi aprirlo con un altro programma, con il tasto in alto.';
+  }
+
+  @override
+  String get pausa => 'Pausa';
+
+  @override
+  String get riproduci => 'Riproduci';
 }

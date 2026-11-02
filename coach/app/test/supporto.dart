@@ -54,6 +54,7 @@ class CoachDiProva implements Coach {
     List<Map<String, Object?>> log, {
     List<Map<String, Object?>> pesi = const [],
     List<Map<String, Object?>> risposte = const [],
+    List<Map<String, Object?>> messaggi = const [],
   }) async {
     final invito = await nucleo.inviti.crea(atletaId);
     final uri = invito.uri!;
@@ -62,7 +63,7 @@ class CoachDiProva implements Coach {
         invitoId: uri.id,
         segreto: uri.segreto,
         chiaveDispositivo: (await CoppiaX25519.genera()).pubblicaBase32,
-        dispositivo: const DatiDispositivo(nome: 'Pixel 8', piattaforma: 'android', versioneApp: '1.0.0'),
+        dispositivo: const DatiDispositivo(nome: 'Pixel 8', piattaforma: 'android', versioneApp: '1.3.0'),
       ),
     );
     final dispositivo = nucleo.dispositivi.attivo(atletaId)!;
@@ -75,7 +76,8 @@ class CoachDiProva implements Coach {
         log: log,
         pesi: pesi,
         risposte: risposte,
-        versioneApp: '1.0.0',
+        messaggi: messaggi,
+        versioneApp: '1.3.0',
       ),
     );
   }
@@ -122,6 +124,9 @@ class DesktopFinto implements Desktop {
 
   @override
   Future<String?> scegliFile(String estensione) async => null;
+
+  @override
+  Future<void> apriFile(String percorso) async => chiamate.add('apri: $percorso');
 
   @override
   Future<void> esci() async => chiamate.add('esci');

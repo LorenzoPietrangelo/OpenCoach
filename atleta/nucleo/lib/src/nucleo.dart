@@ -1,8 +1,12 @@
+import 'dart:io';
+
+import 'package:path/path.dart' as p;
 import 'package:protocollo/protocollo.dart';
 
 import 'abbinamento.dart' as abbinamento;
 import 'archivio.dart';
 import 'cassaforte.dart';
+import 'chat.dart';
 import 'collegamenti.dart';
 import 'contesto.dart';
 import 'diario.dart';
@@ -32,6 +36,7 @@ class NucleoAtleta {
     void Function(String)? registra,
     int logPerRichiesta = Limiti.logPerRichiesta,
     int budgetRichiesta = MotoreSync.budgetPredefinito,
+    String? cartellaVideo,
   }) : contesto = ContestoAtleta(
          archivio: archivio,
          cassaforte: cassaforte,
@@ -42,11 +47,16 @@ class NucleoAtleta {
          registra: registra ?? (_) {},
        ),
        _logPerRichiesta = logPerRichiesta,
-       _budgetRichiesta = budgetRichiesta;
+       _budgetRichiesta = budgetRichiesta,
+       _cartellaVideo = cartellaVideo ?? p.join(Directory.systemTemp.path, 'opencoach-video');
 
   final ContestoAtleta contesto;
   final int _logPerRichiesta;
   final int _budgetRichiesta;
+
+  /// Dove stanno i video allegati ai messaggi: l'app indica una cartella
+  /// privata.
+  final String _cartellaVideo;
 
   late final schede = SchedeRicevute(contesto);
   late final diario = DiarioAllenamenti(
@@ -61,13 +71,18 @@ class NucleoAtleta {
     contesto,
     cambiato: (coachId) => pianificatore.logCambiato(coachId),
   );
+  late final chat = ChatCoach(
+    contesto,
+    _cartellaVideo,
+    cambiato: (coachId) => pianificatore.logCambiato(coachId),
+  );
   late final sync = MotoreSync(
     contesto,
     schede,
     logPerRichiesta: _logPerRichiesta,
     budgetRichiesta: _budgetRichiesta,
   );
-  late final collegamenti = Collegamenti(contesto, sync);
+  late final collegamenti = Collegamenti(contesto, sync, datiCancellati: chat.eliminaVideoCoach);
   late final pianificatore = PianificatoreSync(contesto, sync);
 
   /// Legge il QR o il link d'invito, incollato anche a mano, e chiede al

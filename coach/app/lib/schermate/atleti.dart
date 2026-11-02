@@ -92,8 +92,12 @@ class _SchermataAtletiState extends State<SchermataAtleti> {
                               for (final r in elenco)
                                 ListTile(
                                   selected: r.atleta.id == _scelto,
-                                  leading: CircleAvatar(
-                                    child: Text(r.atleta.nome.characters.first.toUpperCase()),
+                                  leading: Badge(
+                                    // Messaggi della chat non ancora letti.
+                                    isLabelVisible: _nucleo.messaggi.nonLetti(r.atleta.id) > 0,
+                                    child: CircleAvatar(
+                                      child: Text(r.atleta.nome.characters.first.toUpperCase()),
+                                    ),
                                   ),
                                   title: Text(r.atleta.nome),
                                   subtitle: Text(_riassunto(t, r)),

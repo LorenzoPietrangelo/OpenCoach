@@ -123,6 +123,18 @@ object MotoreFlutter {
                 else -> risultato.notImplemented()
             }
         }
+        MethodChannel(messaggi, CompressioneVideo.CANALE).setMethodCallHandler { chiamata, risultato ->
+            when (chiamata.method) {
+                "comprimi" -> CompressioneVideo.gestisci(
+                    app,
+                    chiamata.argument<String>("sorgente")!!,
+                    chiamata.argument<String>("destinazione")!!,
+                    chiamata.argument<Int>("massimo_s")!!,
+                    risultato,
+                )
+                else -> risultato.notImplemented()
+            }
+        }
         val background = MethodChannel(messaggi, CANALE_BACKGROUND)
         background.setMethodCallHandler { chiamata, risultato ->
             when (chiamata.method) {

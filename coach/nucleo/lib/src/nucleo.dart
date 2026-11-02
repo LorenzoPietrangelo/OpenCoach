@@ -1,9 +1,13 @@
+import 'dart:io';
+
+import 'package:path/path.dart' as p;
 import 'package:protocollo/protocollo.dart';
 
 import 'abbinamento.dart';
 import 'allenamenti.dart';
 import 'archivio.dart';
 import 'atleti.dart';
+import 'chat.dart';
 import 'contesto.dart';
 import 'dispositivi.dart';
 import 'errori.dart';
@@ -27,19 +31,30 @@ class NucleoCoach {
     String versioneProgramma = '1.0.0',
     DateTime Function()? adesso,
     int? budgetPagina,
+    String? cartellaVideo,
   }) : contesto = ContestoCoach(
          archivio: archivio,
          indirizzo: indirizzo,
          versioneProgramma: versioneProgramma,
          adesso: adesso,
        ),
-       _budgetPagina = budgetPagina;
+       _budgetPagina = budgetPagina,
+       _cartellaVideo = cartellaVideo ?? p.join(Directory.systemTemp.path, 'opencoach-video');
 
   final ContestoCoach contesto;
   final int? _budgetPagina;
 
+  /// Dove stanno i video della chat (§8.7): accanto all'archivio, fuori dal
+  /// backup.
+  final String _cartellaVideo;
+
   late final inviti = GestioneInviti(contesto);
-  late final atleti = GestioneAtleti(contesto, inviti);
+  late final atleti = GestioneAtleti(
+    contesto,
+    inviti,
+    eliminato: (id) => messaggi.eliminaVideoAtleta(id),
+  );
+  late final messaggi = GestioneMessaggi(contesto, _cartellaVideo);
   late final dispositivi = GestioneDispositivi(contesto);
   late final schede = GestioneSchede(contesto);
   late final libreria = GestioneLibreria(contesto, schede);
@@ -48,8 +63,8 @@ class NucleoCoach {
   late final allenamenti = GestioneAllenamenti(contesto, schede);
   late final abbinamento = ServizioAbbinamento(contesto);
   late final sincronizzazione = _budgetPagina == null
-      ? ServizioSincronizzazione(contesto, schede, questionari)
-      : ServizioSincronizzazione(contesto, schede, questionari, budgetPagina: _budgetPagina);
+      ? ServizioSincronizzazione(contesto, schede, questionari, messaggi)
+      : ServizioSincronizzazione(contesto, schede, questionari, messaggi, budgetPagina: _budgetPagina);
   late final esportazioni = GestioneEsportazioni(
     contesto,
     atleti,

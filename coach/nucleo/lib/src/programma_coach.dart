@@ -78,6 +78,7 @@ class ProgrammaCoach {
         archivio: archivio,
         indirizzo: identita.indirizzo,
         versioneProgramma: versioneProgramma,
+        cartellaVideo: p.join(cartellaDati, 'video'),
       );
       final server = ServerCoach(nucleo, registra: scrivi);
       await server.avvia();

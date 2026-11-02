@@ -4,6 +4,7 @@ library;
 
 export 'src/base32.dart';
 export 'src/casuale.dart';
+export 'src/chat.dart';
 export 'src/chiavi.dart';
 export 'src/cliente_api.dart';
 export 'src/date.dart';

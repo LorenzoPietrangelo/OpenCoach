@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'package:protocollo/protocollo.dart';
 import 'package:sqlite3/sqlite3.dart';
 
+import 'chat.dart';
 import 'contesto.dart';
 import 'guasti.dart';
 import 'modelli.dart';
@@ -298,6 +299,13 @@ class MotoreSync {
       // Le risposte ai questionari partono dopo le loro foto (§8.6).
       await _caricaFoto(coach.id, canale);
       final risposte = _risposteInCoda(coach.id);
+      // I messaggi con un video partono dopo le sue parti (§8.7), e solo
+      // verso un programma che ha già dimostrato di conoscere la chat.
+      final chat = _chatSupportata(coach.id);
+      if (chat == true) await _caricaVideo(coach.id, canale);
+      final messaggi = chat == false
+          ? const <Map<String, Object?>>[]
+          : _messaggiInCoda(coach.id, conVideo: chat == true);
       final RispostaSync prima;
       try {
         // Punto 3.
@@ -310,6 +318,7 @@ class MotoreSync {
           pesi: pesi,
           pesiCondivisi: condivide,
           risposte: risposte,
+          messaggi: messaggi,
         );
       } on ErroreApi catch (e) {
         if (e.stato != 413 || lotto.isEmpty) rethrow;
@@ -327,7 +336,8 @@ class MotoreSync {
       var progressi = _c.archivio.transazione(
         () =>
             _applicaEsitiPesi(coach.id, prima, pesi) +
-            _applicaEsitiRisposte(coach.id, prima, risposte),
+            _applicaEsitiRisposte(coach.id, prima, risposte) +
+            _applicaEsitiMessaggi(coach.id, prima, messaggi),
       );
       _Accumulo? accumulo;
       var risposta = prima;
@@ -371,9 +381,11 @@ class MotoreSync {
       }
       _c.segnala(coach.id);
 
-      // Punto 5: se restano log, pesi o risposte in coda si torna al punto 2.
+      // Punto 5: se restano log, pesi, risposte o messaggi in coda si torna
+      // al punto 2.
       if (!_ciSonoInCoda(coach.id)) return;
-      if ((lotto.isNotEmpty || pesi.isNotEmpty || risposte.isNotEmpty) && progressi == 0) {
+      if ((lotto.isNotEmpty || pesi.isNotEmpty || risposte.isNotEmpty || messaggi.isNotEmpty) &&
+          progressi == 0) {
         _c.registra('Il coach non ha confermato né rifiutato quello che gli è stato inviato');
         return;
       }
@@ -389,6 +401,7 @@ class MotoreSync {
     List<Map<String, Object?>> pesi = const [],
     bool? pesiCondivisi,
     List<Map<String, Object?>> risposte = const [],
+    List<Map<String, Object?>> messaggi = const [],
   }) => _conRitentativi(
     coachId,
     () => canale.api.sincronizza(
@@ -400,9 +413,120 @@ class MotoreSync {
         pesi: pesi,
         pesiCondivisi: pesiCondivisi,
         risposte: risposte,
+        messaggi: messaggi,
       ),
     ),
   );
+
+  bool? _chatSupportata(int coachId) {
+    final valore = _db.select('SELECT chat_supportata FROM coach WHERE id = ?', [
+      coachId,
+    ]).firstOrNull?['chat_supportata'];
+    return valore is int ? valore == 1 : null;
+  }
+
+  /// Carica le parti dei video che il coach non ha ancora, riprendendo da
+  /// dove si era fermata la sync precedente.
+  Future<void> _caricaVideo(int coachId, _Canale canale) async {
+    for (final riga in _db.select(
+      "SELECT id, video, file_video, parti_caricate FROM messaggi WHERE coach_id = ? AND stato = 'in_invio' "
+      'AND video IS NOT NULL ORDER BY ordine',
+      [coachId],
+    )) {
+      final video = jsonDecode(riga['video'] as String) as Map<String, Object?>;
+      final parti = video['parti']! as int;
+      var caricate = riga['parti_caricate'] as int;
+      if (caricate >= parti) continue;
+      final file = File(riga['file_video'] as String? ?? '');
+      if (!file.existsSync() || file.lengthSync() != video['dimensione']) {
+        _db.execute(
+          "UPDATE messaggi SET stato = 'rifiutato', rifiuto = 'file_mancante' WHERE coach_id = ? AND id = ?",
+          [coachId, riga['id']],
+        );
+        continue;
+      }
+      final dati = await file.readAsBytes();
+      for (; caricate < parti; caricate++) {
+        final inizio = caricate * LimitiChat.parteVideo;
+        final fine = inizio + LimitiChat.parteVideo < dati.length ? inizio + LimitiChat.parteVideo : dati.length;
+        final parte = caricate;
+        await _conRitentativi(
+          coachId,
+          () => canale.api.caricaParteVideo(video['id']! as String, parte, Uint8List.sublistView(dati, inizio, fine)),
+        );
+        _db.execute('UPDATE messaggi SET parti_caricate = ? WHERE coach_id = ? AND id = ?', [
+          caricate + 1,
+          coachId,
+          riga['id'],
+        ]);
+      }
+    }
+  }
+
+  /// Messaggi dell'atleta da mandare: con [conVideo] anche quelli con un
+  /// video già caricato.
+  List<Map<String, Object?>> _messaggiInCoda(int coachId, {required bool conVideo}) => [
+    for (final riga in _db.select(
+      "SELECT * FROM messaggi WHERE coach_id = ? AND dal_coach = 0 AND stato = 'in_invio' "
+      '${conVideo ? '' : 'AND video IS NULL '}ORDER BY ordine LIMIT ?',
+      [coachId, LimitiChat.messaggiPerRichiesta],
+    ))
+      if (riga['video'] == null ||
+          (riga['parti_caricate'] as int) >=
+              ((jsonDecode(riga['video'] as String) as Map<String, Object?>)['parti']! as int))
+        MessaggioChat.daRiga(riga).perProtocollo,
+  ];
+
+  /// Messaggi confermati o rifiutati dal coach; restituisce quanti degli
+  /// inviati hanno avuto un esito. Una risposta senza `messaggi_accettati`
+  /// viene da un programma che non conosce la chat: i messaggi restano in
+  /// coda finché non si aggiorna. Se il video non è arrivato intero si
+  /// ricarica, fino a tre volte.
+  int _applicaEsitiMessaggi(
+    int coachId,
+    RispostaSync r,
+    List<Map<String, Object?>> inviati,
+  ) {
+    final accettati = r.messaggiAccettati;
+    _db.execute('UPDATE coach SET chat_supportata = ? WHERE id = ?', [
+      accettati == null ? 0 : 1,
+      coachId,
+    ]);
+    if (accettati == null) return 0;
+    final id = {for (final m in inviati) m['id']};
+    var progressi = 0;
+    for (final accettato in accettati) {
+      if (!id.contains(accettato)) continue;
+      progressi++;
+      _db.execute(
+        "UPDATE messaggi SET stato = 'inviato', rifiuto = NULL WHERE coach_id = ? AND id = ? AND stato = 'in_invio'",
+        [coachId, accettato],
+      );
+    }
+    for (final rifiutato in r.messaggiRifiutati) {
+      if (!id.contains(rifiutato.id)) continue;
+      progressi++;
+      if (rifiutato.errore == RifiutoMessaggio.videoMancante) {
+        _db.execute(
+          'UPDATE messaggi SET parti_caricate = 0, ricaricamenti = ricaricamenti + 1 '
+          "WHERE coach_id = ? AND id = ? AND stato = 'in_invio'",
+          [coachId, rifiutato.id],
+        );
+        _db.execute(
+          "UPDATE messaggi SET stato = 'rifiutato', rifiuto = ? "
+          "WHERE coach_id = ? AND id = ? AND stato = 'in_invio' AND ricaricamenti >= 3",
+          [RifiutoMessaggio.videoMancante, coachId, rifiutato.id],
+        );
+      } else {
+        final motivo = rifiutato.errore.length > 50 ? rifiutato.errore.substring(0, 50) : rifiutato.errore;
+        _db.execute(
+          "UPDATE messaggi SET stato = 'rifiutato', rifiuto = ? WHERE coach_id = ? AND id = ? AND stato = 'in_invio'",
+          [motivo, coachId, rifiutato.id],
+        );
+      }
+    }
+    return progressi;
+  }
 
   /// Carica le foto dei questionari inviati che il coach non ha ancora.
   Future<void> _caricaFoto(int coachId, _Canale canale) async {
@@ -566,6 +690,11 @@ class MotoreSync {
         "SELECT 1 FROM questionari WHERE coach_id = ? AND stato = 'in_invio' LIMIT 1",
         [coachId],
       ).isNotEmpty ||
+      (_chatSupportata(coachId) != false &&
+          _db.select(
+            "SELECT 1 FROM messaggi WHERE coach_id = ? AND dal_coach = 0 AND stato = 'in_invio' LIMIT 1",
+            [coachId],
+          ).isNotEmpty) ||
       (_condividePesi(coachId) &&
           _pesiSupportati(coachId) != false &&
           pesiInCoda(_db, coachId, massimo: 1).isNotEmpty);
@@ -603,6 +732,12 @@ class MotoreSync {
     }
     if (!r.questionariAnnullati.every(uuidValido)) {
       throw const FormatException('Id di questionario annullato non valido');
+    }
+    for (final messaggio in r.messaggi) {
+      final errori = validaMessaggio(messaggio);
+      if (errori.isNotEmpty) {
+        throw FormatException('Messaggio non valido: ${errori.first}');
+      }
     }
   }
 
@@ -676,6 +811,11 @@ class MotoreSync {
         [coachId, id],
       );
       esito.questionariNuovi.remove(id);
+    }
+    for (final messaggio in r.messaggi) {
+      if (salvaMessaggioRicevuto(_db, coachId, messaggio)) {
+        esito.messaggiNuovi.add(messaggio['id']! as String);
+      }
     }
     _salvaPosizione(coachId, r.epoca, r.cursore);
   }
@@ -758,6 +898,28 @@ class MotoreSync {
     }
     for (final questionario in completo.questionari.values) {
       _salvaQuestionario(coachId, questionario, ora, esito);
+    }
+
+    // La chat: si aggiungono i messaggi che mancano. I messaggi dell'atleta
+    // che il coach non ha più, per esempio dopo un ripristino da backup,
+    // tornano in coda con il loro video.
+    if (_chatSupportata(coachId) ?? false) {
+      for (final messaggio in completo.messaggi.values) {
+        if (salvaMessaggioRicevuto(_db, coachId, messaggio)) {
+          esito.messaggiNuovi.add(messaggio['id']! as String);
+        }
+      }
+      for (final riga in _db.select(
+        "SELECT id FROM messaggi WHERE coach_id = ? AND dal_coach = 0 AND stato = 'inviato'",
+        [coachId],
+      )) {
+        if (completo.messaggi.containsKey(riga['id'])) continue;
+        _db.execute(
+          "UPDATE messaggi SET stato = 'in_invio', parti_caricate = 0, ricaricamenti = 0 "
+          'WHERE coach_id = ? AND id = ?',
+          [coachId, riga['id']],
+        );
+      }
     }
 
     // I pesi che il coach non ha, o ha in una rev più vecchia, tornano in
@@ -969,6 +1131,9 @@ class _Accumulo {
   /// Questionari senza risposta, per id.
   final questionari = <String, Map<String, Object?>>{};
 
+  /// Tutta la chat, per id.
+  final messaggi = <String, Map<String, Object?>>{};
+
   void aggiungi(RispostaSync pagina) {
     for (final scheda in pagina.schede) {
       schede[scheda['id'] as String] = scheda;
@@ -981,6 +1146,9 @@ class _Accumulo {
     }
     for (final questionario in pagina.questionari) {
       questionari[questionario['id'] as String] = questionario;
+    }
+    for (final messaggio in pagina.messaggi) {
+      messaggi[messaggio['id'] as String] = messaggio;
     }
   }
 }
@@ -996,6 +1164,7 @@ class _Esito {
   var rimessiInCoda = 0;
   final schedeNuove = <String>{};
   final questionariNuovi = <String>{};
+  final messaggiNuovi = <String>{};
 
   EsitoSync risultato(SchedeRicevute schede) => EsitoSync(
     coachId: coachId,
@@ -1006,5 +1175,6 @@ class _Esito {
     logRimessiInCoda: rimessiInCoda,
     schedeNuove: [for (final id in schedeNuove) ?schede.cerca(coachId, id)],
     questionariNuovi: questionariNuovi.toList(),
+    messaggiNuovi: messaggiNuovi.toList(),
   );
 }

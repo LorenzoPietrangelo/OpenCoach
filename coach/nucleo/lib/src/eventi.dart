@@ -58,3 +58,11 @@ class QuestionarioRisposto extends EventoCoach {
   final String questionarioId;
   final String titolo;
 }
+
+/// È arrivato un messaggio dell'atleta nella chat.
+class MessaggioRicevuto extends EventoCoach {
+  const MessaggioRicevuto(super.atletaId, this.messaggioId, {required this.conVideo});
+
+  final String messaggioId;
+  final bool conVideo;
+}

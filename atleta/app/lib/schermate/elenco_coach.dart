@@ -160,10 +160,14 @@ class _ElencoCoachState extends State<ElencoCoach> {
     _daCompilare = {
       for (final coach in _coach) coach.id: widget.nucleo.questionari.daCompilare(coach.id),
     };
+    _nonLetti = {for (final coach in _coach) coach.id: widget.nucleo.chat.nonLetti(coach.id)};
   }
 
   /// Questionari ancora da compilare, per coach.
   late Map<int, int> _daCompilare;
+
+  /// Messaggi dei coach non ancora letti.
+  late Map<int, int> _nonLetti;
 
   void _aggiorna() {
     if (mounted) setState(_leggi);
@@ -211,6 +215,7 @@ class _ElencoCoachState extends State<ElencoCoach> {
                 coach,
                 daVedere: _daVedere[coach.id] ?? 0,
                 daCompilare: _daCompilare[coach.id] ?? 0,
+                nonLetti: _nonLetti[coach.id] ?? 0,
                 onTap: () => Navigator.of(context).push(
                   MaterialPageRoute<void>(
                     builder: (_) =>
@@ -263,12 +268,14 @@ class _VoceCoach extends StatelessWidget {
     this.coach, {
     required this.daVedere,
     required this.daCompilare,
+    required this.nonLetti,
     required this.onTap,
   });
 
   final CoachCollegato coach;
   final int daVedere;
   final int daCompilare;
+  final int nonLetti;
   final VoidCallback onTap;
 
   @override
@@ -277,6 +284,7 @@ class _VoceCoach extends StatelessWidget {
     final righe = [
       if (daVedere > 0) testi.schedeDaVedere(daVedere),
       if (daCompilare > 0) testi.questionariDaCompilare(daCompilare),
+      if (nonLetti > 0) testi.nuoviMessaggi(nonLetti),
       ...righeStatoSync(context, coach),
     ];
     return ListTile(
@@ -284,8 +292,8 @@ class _VoceCoach extends StatelessWidget {
       subtitle: Text(righe.join('\n')),
       isThreeLine: righe.length > 2,
       leading: Badge(
-        isLabelVisible: daVedere + daCompilare > 0,
-        label: Text('${daVedere + daCompilare}'),
+        isLabelVisible: daVedere + daCompilare + nonLetti > 0,
+        label: Text('${daVedere + daCompilare + nonLetti}'),
         child: Icon(
           coach.problema == null ? Icons.sync : Icons.sync_problem,
           color: coach.problema == null

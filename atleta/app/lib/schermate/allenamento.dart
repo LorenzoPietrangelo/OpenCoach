@@ -1,18 +1,22 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:atleta_nucleo/atleta_nucleo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../l10n/testi.dart';
+import '../piattaforma/video.dart';
 import 'avvisi.dart';
 import 'contenuto_scheda.dart';
 import 'formati.dart';
 import 'video_esercizio.dart';
 
 /// Esecuzione di un allenamento (§10.2): le serie partono dalla
-/// prescrizione; l'atleta scrive ripetizioni, carico, durata e RPE
-/// effettivi, segna le serie fatte, usa il timer di recupero e scrive note.
+/// prescrizione; l'atleta scrive ripetizioni, carico e, per gli esercizi a
+/// tempo, la durata della serie, segna le serie fatte, usa il timer di
+/// recupero e scrive note. Sforzo percepito e durata dell'allenamento non si
+/// chiedono più: restano solo nei log che li avevano già.
 /// Può aggiungere esercizi non previsti. Al salvataggio il log entra in coda
 /// e parte una sync (§7.4).
 ///
@@ -26,6 +30,7 @@ class SchermataAllenamento extends StatefulWidget {
     this.titolo,
     this.seduta,
     this.logId,
+    this.preparaVideo = preparaVideoDalTelefono,
   });
 
   final NucleoAtleta nucleo;
@@ -41,18 +46,18 @@ class SchermataAllenamento extends StatefulWidget {
   /// Il log dello storico da modificare; null per un allenamento nuovo.
   final String? logId;
 
+  /// Registra o sceglie il video di una serie (§8.7).
+  final PreparaVideo preparaVideo;
+
   @override
   State<SchermataAllenamento> createState() => _SchermataAllenamentoState();
 }
 
 /// Valori di una serie che l'atleta scrive.
-enum _Campo { ripetizioni, durata, carico, rpe }
+enum _Campo { ripetizioni, durata, carico }
 
 class _SchermataAllenamentoState extends State<SchermataAllenamento> {
   late final _note = TextEditingController(text: widget.allenamento.note);
-  late final _durata = TextEditingController(
-    text: widget.allenamento.durataMin?.toString() ?? '',
-  );
   late final _coachAttivi = widget.nucleo.collegamenti.attivi();
 
   /// Esercizi misurati a tempo invece che a ripetizioni.
@@ -68,14 +73,14 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
 
   /// Campi con un valore non valido: finché ce ne sono non si salva.
   final _nonValidi = <(SerieInCorso, _Campo)>{};
-  var _durataValida = true;
 
   /// Ci sono modifiche da salvare: per uscire serve una conferma.
   var _modificato = false;
 
-  /// L'atleta ha cambiato l'inizio, per esempio per registrare un
-  /// allenamento di ieri: la durata non va più dall'inizio al salvataggio.
-  var _inizioCambiato = false;
+  /// Video delle serie, già compressi: al salvataggio partono per il coach
+  /// nella chat, ciascuno con l'esercizio e il numero della serie.
+  final _video = <SerieInCorso, VideoPreparato>{};
+  var _preparoVideo = false;
 
   /// Timer di recupero: fine del recupero in corso, oppure recupero appena
   /// finito.
@@ -130,8 +135,98 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
   void dispose() {
     _tic?.cancel();
     _note.dispose();
-    _durata.dispose();
+    // I video non partiti: allenamento non salvato, serie tolte.
+    for (final video in _video.values) {
+      _cancella(video.percorso);
+    }
     super.dispose();
+  }
+
+  void _cancella(String percorso) {
+    try {
+      File(percorso).deleteSync();
+    } on FileSystemException {
+      // Già passato alla chat, o già cancellato.
+    }
+  }
+
+  /// Registra, sceglie, sostituisce o toglie il video della serie.
+  Future<void> _videoSerie(int indice, SerieInCorso serie) async {
+    final testi = Testi.of(context);
+    final messaggi = ScaffoldMessenger.of(context);
+    final presente = _video[serie];
+    final scelta = await showModalBottomSheet<OrigineVideo?>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 0, 24, 8),
+              child: Text(testi.videoSerieSpiegazione(indice + 1, durataMassimaVideoS)),
+            ),
+            ListTile(
+              leading: const Icon(Icons.videocam_outlined),
+              title: Text(testi.registraVideo),
+              onTap: () => Navigator.of(context).pop(OrigineVideo.fotocamera),
+            ),
+            ListTile(
+              leading: const Icon(Icons.video_library_outlined),
+              title: Text(testi.videoDallaGalleria),
+              onTap: () => Navigator.of(context).pop(OrigineVideo.galleria),
+            ),
+            if (presente != null)
+              ListTile(
+                leading: const Icon(Icons.delete_outline),
+                title: Text(testi.togliVideo),
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _cancella(presente.percorso);
+                  _cambia(() => _video.remove(serie));
+                },
+              ),
+          ],
+        ),
+      ),
+    );
+    if (scelta == null || !mounted) return;
+    setState(() => _preparoVideo = true);
+    try {
+      final video = await widget.preparaVideo(scelta);
+      if (video == null || !mounted) return;
+      if (_video[serie] case final vecchio?) _cancella(vecchio.percorso);
+      _cambia(() => _video[serie] = video);
+    } on VideoTroppoLungo catch (e) {
+      messaggi.avvisa(testi.videoTroppoLungo(e.massimoS));
+    } catch (e) {
+      messaggi.avvisa(testi.videoNonPreparato('$e'));
+    } finally {
+      if (mounted) setState(() => _preparoVideo = false);
+    }
+  }
+
+  /// Manda alla chat i video delle serie del log appena salvato.
+  void _mandaVideo(int coachId, String logId) {
+    for (final esercizio in _a.esercizi) {
+      for (final (indice, serie) in esercizio.serie.indexed) {
+        final video = _video.remove(serie);
+        if (video == null) continue;
+        try {
+          widget.nucleo.chat.allegaVideo(
+            coachId,
+            file: video.percorso,
+            durataS: video.durataS,
+            logId: logId,
+            esercizio: esercizio.nome,
+            serie: indice + 1,
+          );
+        } on Object catch (e) {
+          widget.nucleo.contesto.registra('Video della serie non allegato: $e');
+          _cancella(video.percorso);
+        }
+      }
+    }
   }
 
   void _cambia(VoidCallback modifica) => setState(() {
@@ -157,8 +252,6 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
             serie.durataS = valore?.toInt();
           case _Campo.carico:
             serie.caricoKg = valore;
-          case _Campo.rpe:
-            serie.rpe = valore;
         }
       });
 
@@ -363,7 +456,6 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
         ora.hour,
         ora.minute,
       );
-      _inizioCambiato = true;
     });
   }
 
@@ -373,7 +465,7 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
     final testi = Testi.of(context);
     final messaggi = ScaffoldMessenger.of(context);
     final coachId = _a.coachId;
-    if (_nonValidi.isNotEmpty || !_durataValida || coachId == null) {
+    if (_nonValidi.isNotEmpty || coachId == null) {
       // I valori da correggere devono vedersi: si aprono i loro esercizi.
       setState(() {
         for (final esercizio in _a.esercizi) {
@@ -390,15 +482,10 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
     _a.note = _note.text.trim();
     final logId = widget.logId;
     try {
-      if (logId == null) {
-        // Senza una durata scritta dall'atleta, va dall'inizio a adesso.
-        widget.nucleo.diario.salva(
-          coachId,
-          _a.contenuto(fine: _inizioCambiato ? null : _orologio.adesso()),
-        );
-      } else {
-        widget.nucleo.diario.modifica(coachId, logId, _a.contenuto());
-      }
+      final salvato = logId == null
+          ? widget.nucleo.diario.salva(coachId, _a.contenuto())
+          : widget.nucleo.diario.modifica(coachId, logId, _a.contenuto());
+      _mandaVideo(coachId, salvato.id);
     } on LogNonValido catch (e) {
       messaggi.avvisa(testi.allenamentoNonValido(e.errori.join('\n')));
       return;
@@ -455,8 +542,23 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
               tooltip: testi.timerRecupero,
               onPressed: _scegliRecupero,
             ),
-            TextButton(onPressed: _salva, child: Text(testi.salva)),
+            TextButton(onPressed: _preparoVideo ? null : _salva, child: Text(testi.salva)),
           ],
+          bottom: _preparoVideo
+              ? PreferredSize(
+                  preferredSize: const Size.fromHeight(24),
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                    child: Row(
+                      children: [
+                        Text(testi.preparoVideo, style: tema.labelMedium),
+                        const SizedBox(width: 12),
+                        const Expanded(child: LinearProgressIndicator()),
+                      ],
+                    ),
+                  ),
+                )
+              : null,
         ),
         body: ListView(
           padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
@@ -503,26 +605,6 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
             ),
             const Divider(height: 32),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Text(testi.rpeSeduta, style: tema.titleSmall),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(4),
-              child: Wrap(
-                spacing: 4,
-                runSpacing: 4,
-                children: [
-                  for (var valore = 1; valore <= 10; valore++)
-                    ChoiceChip(
-                      label: Text('$valore'),
-                      selected: _a.rpe == valore,
-                      onSelected: (scelto) =>
-                          _cambia(() => _a.rpe = scelto ? valore : null),
-                    ),
-                ],
-              ),
-            ),
-            Padding(
               padding: const EdgeInsets.fromLTRB(4, 12, 4, 4),
               child: TextField(
                 controller: _note,
@@ -545,33 +627,9 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
               trailing: const Icon(Icons.edit_outlined),
               onTap: _scegliInizio,
             ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: TextField(
-                controller: _durata,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: testi.durataMinuti,
-                  border: const OutlineInputBorder(),
-                  helperText: widget.logId == null && !_inizioCambiato
-                      ? testi.durataAutomatica
-                      : null,
-                  helperMaxLines: 2,
-                  errorText: _durataValida ? null : testi.valoreNonValido,
-                ),
-                onChanged: (testo) => _cambia(() {
-                  try {
-                    _a.durataMin = leggiIntero(testo, massimo: 1440);
-                    _durataValida = true;
-                  } on FormatException {
-                    _durataValida = false;
-                  }
-                }),
-              ),
-            ),
             const SizedBox(height: 24),
             FilledButton.icon(
-              onPressed: _salva,
+              onPressed: _preparoVideo ? null : _salva,
               icon: const Icon(Icons.check),
               label: Text(testi.salvaAllenamento),
             ),
@@ -717,7 +775,6 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
                 ? Text(testi.secondiBreve, style: tema.labelSmall)
                 : null,
             carico: Text(testi.kg, style: tema.labelSmall),
-            rpe: Text(testi.rpe, style: tema.labelSmall),
             fatta: Text(testi.fatta, style: tema.labelSmall),
           ),
           for (final (indice, serie) in esercizio.serie.indexed)
@@ -828,17 +885,18 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
           (testo) => leggiDecimale(testo, massimo: 10000),
           decimale: true,
         ),
-        rpe: casella(
-          _Campo.rpe,
-          serie.rpe,
-          null,
-          (testo) => leggiDecimale(testo, massimo: 10, passo: 0.5),
-          decimale: true,
-        ),
         fatta: Checkbox(
           value: serie.completata,
           semanticLabel: Testi.of(context).serieFatta(indice + 1),
           onChanged: (fatta) => _completa(serie, prima, fatta ?? false),
+        ),
+        video: IconButton(
+          tooltip: Testi.of(context).videoDellaSerie(indice + 1),
+          visualDensity: VisualDensity.compact,
+          isSelected: _video.containsKey(serie),
+          icon: const Icon(Icons.videocam_outlined),
+          selectedIcon: const Icon(Icons.videocam),
+          onPressed: _preparoVideo ? null : () => _videoSerie(indice, serie),
         ),
       ),
     );
@@ -852,8 +910,8 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
     Widget? ripetizioni,
     Widget? durata,
     required Widget carico,
-    required Widget rpe,
     required Widget fatta,
+    Widget? video,
   }) {
     Widget colonna(_Campo campo, Widget figlio) => Expanded(
       key: ValueKey(campo),
@@ -868,8 +926,9 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
         if (ripetizioni != null) colonna(_Campo.ripetizioni, ripetizioni),
         if (durata != null) colonna(_Campo.durata, durata),
         colonna(_Campo.carico, carico),
-        colonna(_Campo.rpe, rpe),
         SizedBox(width: 48, child: Center(child: fatta)),
+        // Il video della serie, per il coach.
+        SizedBox(width: 40, child: Center(child: video)),
       ],
     );
   }

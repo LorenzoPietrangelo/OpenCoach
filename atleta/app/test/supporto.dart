@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io';
 
 import 'package:atleta_app/l10n/testi.dart';
 import 'package:atleta_app/piattaforma/tor_non_integrato.dart';
@@ -53,16 +54,19 @@ class TelefonoDiProva {
         piattaforma: 'android',
         versioneApp: '1.0.0',
       ),
+      cartellaVideo: cartellaVideo.path,
     );
   }
 
   final archivio = ArchivioAtleta.inMemoria();
   final orologio = OrologioFermo();
+  final cartellaVideo = Directory.systemTemp.createTempSync('opencoach-app-video-');
   late final NucleoAtleta nucleo;
 
   Future<void> chiudi() async {
     await nucleo.chiudi();
     archivio.chiudi();
+    cartellaVideo.deleteSync(recursive: true);
   }
 
   /// Un coach a cui il telefono è abbinato; restituisce l'id del collegamento.

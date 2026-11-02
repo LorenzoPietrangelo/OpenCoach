@@ -10,7 +10,8 @@
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Novità – Open Coach</title>
 <!-- Generata da strumenti/rilascio.ps1 nella repo del codice: non modificarla qui.
-     Ogni rilascio aggiunge in cima la sua versione; le precedenti restano sotto. -->
+     Ogni rilascio mette in cima la sua versione, con le schede delle novità; le precedenti
+     passano sotto, in «Versioni precedenti», con una breve descrizione. -->
 <style>
   :root {
     --sfondo: #f5f8f7;
@@ -100,6 +101,16 @@
   .elenco { margin: 0; padding-left: 1.2em; color: var(--tenue); }
   .elenco li { margin: 6px 0; }
 
+  .anche { margin-top: 22px; color: var(--tenue); }
+  .anche strong { color: var(--testo); }
+
+  .precedenti { margin-top: 64px; padding-top: 40px; border-top: 1px solid var(--bordo); }
+  .precedenti h2 { font-size: 1.35rem; margin: 0 0 8px; }
+  .precedente { margin-top: 26px; }
+  .precedente h3 { font-size: 1.08rem; margin: 0; }
+  .precedente h3 span { color: var(--tenue); font-weight: 400; font-size: 0.95rem; margin-left: 8px; }
+  .precedente p { margin: 4px 0 0; color: var(--tenue); max-width: 46em; }
+
   .scarica {
     display: inline-flex; align-items: center; gap: 10px; margin-top: 48px; padding: 15px 26px;
     border-radius: 999px; font-weight: 700; text-decoration: none;
@@ -135,108 +146,74 @@
     <p class="intro">Le versioni del programma del coach e dell'app dell'atleta funzionano tra loro:
       ognuno può aggiornare quando vuole, e nessuno resta scollegato.</p>
 
-    <section class="versione" aria-labelledby="v1-2-0">
-      <h2 id="v1-2-0">Versione 1.2.0</h2>
-      <p class="data">29 ottobre 2026</p>
-      <p class="titolo-versione">Questionari con le foto, e il peso di ogni giorno.</p>
+    <section class="versione" aria-labelledby="v1-3-0">
+      <h2 id="v1-3-0">Versione 1.3.0</h2>
+      <p class="data">{{DATA}}</p>
+      <p class="titolo-versione">La chat tra coach e atleta, con il video delle serie.</p>
       <div class="punti">
-        <article class="punto">
-          <span class="per-chi">Per il coach</span>
-          <div class="icona"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/></svg></div>
-          <h3>I questionari</h3>
-          <p>Scrivi l'anamnesi iniziale o il check mensile con le domande che vuoi: testo, numeri,
-            scelte, scala da 1 a 10. Puoi chiedere anche delle foto, con le istruzioni sulle pose.</p>
-          <p>Le risposte arrivano nella pagina dell'atleta, e le ritrovi accanto all'editor mentre
-            scrivi la scheda.</p>
-        </article>
-        <article class="punto">
-          <span class="per-chi atleta">Per l'atleta</span>
-          <div class="icona"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M8 6l1.5-2h5L16 6"/></svg></div>
-          <h3>Rispondi quando vuoi</h3>
-          <p>Il questionario arriva sul telefono: lo compili anche in più volte e alleghi le foto,
-            scattate nell'app o scelte dalla galleria.</p>
-          <p>Prima di inviarle l'app le comprime e toglie la posizione GPS. Vanno solo al tuo coach,
-            attraverso Tor.</p>
-        </article>
         <article class="punto">
           <span class="per-chi atleta">Per l'atleta e il coach</span>
           <div class="icona"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M3 17l5-5 4 3 8-8"/><path d="M15 7h5v5"/></svg></div>
-          <h3>Il peso di ogni giorno</h3>
-          <p>L'atleta segna il peso e vede il grafico con la media della settimana. Sceglie lui con
-            quali coach condividerlo, e può smettere quando vuole.</p>
-          <p>Il coach lo trova nella pagina dell'atleta, con l'andamento settimana per settimana.</p>
+            <path d="M21 12a8 8 0 0 1-11.6 7.1L4 20l1-4.6A8 8 0 1 1 21 12z"/><path d="M8.5 11h7M8.5 14h4"/></svg></div>
+          <h3>La chat</h3>
+          <p>Coach e atleta si scrivono direttamente in Open Coach, senza numeri di telefono né altre
+            app. I messaggi passano solo da Tor, come schede e allenamenti.</p>
+          <p>Con la chat aperta le risposte arrivano in pochi secondi; quando arriva un messaggio il
+            telefono manda una notifica, e il PC anche.</p>
         </article>
-      </div>
-      <div class="aggiornare">
-        <p><strong>Come aggiornare:</strong> installa la nuova versione sopra quella vecchia. Atleti,
-          schede, allenamenti e collegamenti restano.</p>
-        <p>Questionari e peso arrivano quando sia il coach sia l'atleta hanno la 1.2.0. Dopo
-          l'aggiornamento il programma del coach non torna alle versioni precedenti.</p>
-      </div>
-    </section>
-
-    <section class="versione" aria-labelledby="v1-1-0">
-      <h2 id="v1-1-0">Versione 1.1.0</h2>
-      <p class="data">25 ottobre 2026</p>
-      <p class="titolo-versione">Ogni esercizio con il suo video, e l'ultima volta sempre
-        sott'occhio.</p>
-      <div class="punti">
+        <article class="punto">
+          <span class="per-chi atleta">Per l'atleta</span>
+          <div class="icona"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <rect x="2" y="6" width="14" height="12" rx="2"/><path d="M16 10l6-3v10l-6-3z"/></svg></div>
+          <h3>Il video di una serie</h3>
+          <p>Mentre registri l'allenamento, tocca la videocamera accanto alla serie: giri un video
+            fino a 60 secondi, o lo scegli dalla galleria. Parte per il coach quando salvi.</p>
+          <p>L'app lo comprime e toglie l'audio e la posizione GPS: un minuto pesa pochi megabyte.</p>
+        </article>
         <article class="punto">
           <span class="per-chi">Per il coach</span>
           <div class="icona"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M4 5h4v14H4zM10 5h4v14h-4z"/><path d="M16.5 5.5l3.5 1-3.5 13-3.5-1z"/></svg></div>
-          <h3>La libreria degli esercizi</h3>
-          <p>Salva una volta gli esercizi che usi, con le note e il link al video che mostra come si
-            eseguono. Nelle schede li ritrovi scrivendo il nome.</p>
-          <p>Se cambi un video, il programma lo aggiorna nelle schede già inviate, senza pubblicare
-            le modifiche che hai ancora in bozza.</p>
-        </article>
-        <article class="punto">
-          <span class="per-chi atleta">Per l'atleta</span>
-          <div class="icona"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="2" y="5" width="20" height="14" rx="3"/><path d="M10 9l5 3-5 3z"/></svg></div>
-          <h3>Il video dentro l'allenamento</h3>
-          <p>Apri l'esercizio e tocca «Guarda il video»: parte lì, senza uscire dall'app, anche a
-            schermo intero.</p>
-          <p>Il video arriva da YouTube, non da Tor, e si carica solo se lo tocchi.</p>
-        </article>
-        <article class="punto">
-          <span class="per-chi atleta">Per l'atleta</span>
-          <div class="icona"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 8v4l3 2"/></svg></div>
-          <h3>L'ultima volta, in grigio</h3>
-          <p>Nelle caselle di ogni serie vedi ripetizioni e chili dell'allenamento precedente. Scrivi
-            sopra se cambi, oppure segna la serie fatta e li prende lei.</p>
+            <circle cx="12" cy="12" r="9"/><path d="M10 8.5l5 3.5-5 3.5z"/></svg></div>
+          <h3>Guarda la tecnica</h3>
+          <p>Il video arriva nella chat con l'esercizio e il numero della serie. Lo guardi dentro il
+            programma, in ripetizione e al rallentatore, a un quarto o a metà velocità.</p>
+          <p>I video restano sul tuo PC e puoi cancellarli quando vuoi per fare spazio.</p>
         </article>
       </div>
+      <p class="anche"><strong>E in più:</strong> l'app non chiede più lo sforzo percepito e la durata
+        dell'allenamento. Resta da scrivere solo quello che conta: ripetizioni e carichi di ogni serie.</p>
       <div class="aggiornare">
         <p><strong>Come aggiornare:</strong> installa la nuova versione sopra quella vecchia. Atleti,
           schede, allenamenti e collegamenti restano.</p>
-        <p>I video arrivano agli atleti quando sia il coach sia l'atleta hanno la 1.1.0. Dopo
-          l'aggiornamento il programma del coach non torna alla 1.0.0.</p>
+        <p>La chat funziona quando sia il coach sia l'atleta hanno la 1.3.0; finché uno dei due non
+          aggiorna, l'altro lo vede scritto nella chat. Dopo l'aggiornamento il programma del coach
+          non torna alle versioni precedenti.</p>
       </div>
     </section>
 
-    <section class="versione" aria-labelledby="v1-0-0">
-      <h2 id="v1-0-0">Versione 1.0.0</h2>
-      <p class="data">24 ottobre 2026</p>
-      <p class="titolo-versione">La prima versione.</p>
-      <ul class="elenco">
-        <li>Programma del coach per Windows: atleti, schede con revisioni, storico degli
-          allenamenti, backup cifrato ed esportazioni.</li>
-        <li>App dell'atleta per Android: schede sempre sul telefono, registrazione delle serie con
-          timer di recupero, storico e sincronizzazione automatica.</li>
-        <li>Collegamento con un QR, senza account, attraverso la rete Tor.</li>
-      </ul>
+    <section class="precedenti" aria-labelledby="titolo-precedenti">
+      <h2 id="titolo-precedenti">Versioni precedenti</h2>
+      <div class="precedente">
+        <h3>Versione 1.2.0<span>29 ottobre 2026</span></h3>
+        <p>I questionari del coach, dall'anamnesi al check mensile, anche con le foto, da compilare
+          sul telefono quando si vuole. E il peso di ogni giorno, con il grafico e la media della
+          settimana, che l'atleta sceglie con quali coach condividere.</p>
+      </div>
+      <div class="precedente">
+        <h3>Versione 1.1.0<span>25 ottobre 2026</span></h3>
+        <p>La libreria degli esercizi del coach, con note e link ai video. Il video dell'esercizio
+          si guarda nell'app durante l'allenamento, e ogni serie mostra in grigio ripetizioni e chili
+          dell'ultima volta.</p>
+      </div>
+      <div class="precedente">
+        <h3>Versione 1.0.0<span>24 ottobre 2026</span></h3>
+        <p>La prima versione: il programma del coach per Windows con atleti, schede, storico,
+          backup ed esportazioni, e l'app dell'atleta per Android, collegati con un QR attraverso la
+          rete Tor, senza account.</p>
+      </div>
     </section>
 
     <a class="scarica" href="index.html#download">

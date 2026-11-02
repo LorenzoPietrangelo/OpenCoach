@@ -1,7 +1,11 @@
+import 'dart:typed_data';
+
 import 'package:coach_app/comuni.dart';
+import 'package:coach_app/schermate/chat.dart';
 import 'package:coach_app/schermate/peso.dart';
 import 'package:coach_app/servizi.dart';
 import 'package:coach_nucleo/coach_nucleo.dart';
+import 'package:crypto/crypto.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:protocollo/protocollo.dart';
@@ -292,6 +296,62 @@ void main() {
     expect(find.text('71,8 kg'), findsOneWidget);
     expect(find.text('−1,8 kg'), findsOneWidget);
     expect(find.byType(GraficoPeso), findsOneWidget);
+  });
+
+  testWidgets('la chat mostra il video di una serie e manda la risposta', (tester) async {
+    final atleta = coach.nucleo.atleti.crea('Giulia');
+    final video = Uint8List.fromList(List.generate(5000, (i) => i % 256));
+    final videoId = nuovoUuid();
+    coach.nucleo.messaggi.salvaParteVideo(atleta.id, videoId, 0, video);
+    await avviaApp(tester, coach, desktop);
+    await coach.riceviLog(atleta.id, const [], messaggi: [
+      {
+        'id': nuovoUuid(),
+        'autore': 'atleta',
+        'testo': 'Ultima serie, mi sembra di cedere',
+        'inviato_il': '2026-10-21T19:00:00+02:00',
+        'video': {
+          'id': videoId,
+          'dimensione': video.length,
+          'parti': 1,
+          'sha256': sha256.convert(video).toString(),
+          'durata_s': 12,
+        },
+        'riferimento': {'esercizio': 'Squat', 'serie': 4},
+      },
+    ]);
+    await tester.pumpAndSettle();
+    expect(desktop.notifiche.last, 'Open Coach: Giulia ti ha mandato un video');
+
+    await tester.tap(find.text('Giulia'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Chat'));
+    await tester.pumpAndSettle();
+    expect(find.text('Squat, serie 4'), findsOneWidget);
+    expect(find.text('Video di 12 s'), findsOneWidget);
+    expect(coach.nucleo.messaggi.nonLetti(atleta.id), 0);
+
+    // Il video si guarda nel programma. Nei test non c'è il lettore di
+    // Windows: resta l'apertura con un altro programma.
+    await tester.tap(find.text('Guarda'));
+    await tester.pumpAndSettle();
+    expect(find.byType(LettoreVideo), findsOneWidget);
+    expect(find.textContaining('Non riesco a riprodurre il video qui'), findsOneWidget);
+    await tester.tap(find.byTooltip('Apri con un altro programma'));
+    await tester.pump();
+    expect(desktop.chiamate.last, startsWith('apri: '));
+    expect(desktop.chiamate.last, endsWith('$videoId.mp4'));
+    await tester.tap(find.byTooltip('Chiudi'));
+    await tester.pumpAndSettle();
+    expect(find.byType(LettoreVideo), findsNothing);
+
+    await tester.enterText(find.byType(TextField), 'Scendi a 90 kg');
+    await tester.tap(find.byTooltip('Invia'));
+    await tester.pumpAndSettle();
+    expect(find.text('Scendi a 90 kg'), findsOneWidget);
+    expect(coach.nucleo.messaggi.conversazione(atleta.id).last.dalCoach, isTrue);
+
+    coach.nucleo.messaggi.eliminaVideo(atleta.id, coach.nucleo.messaggi.conversazione(atleta.id).first.id);
   });
 
   testWidgets('notifica sul desktop gli allenamenti in arrivo', (tester) async {

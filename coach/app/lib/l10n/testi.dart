@@ -1910,6 +1910,120 @@ abstract class Testi {
   /// In it, this message translates to:
   /// **'Chiudi il programma'**
   String get chiudiProgramma;
+
+  /// No description provided for @schedaChat.
+  ///
+  /// In it, this message translates to:
+  /// **'Chat'**
+  String get schedaChat;
+
+  /// No description provided for @chatVuota.
+  ///
+  /// In it, this message translates to:
+  /// **'Nessun messaggio. L\'atleta riceve i tuoi messaggi alla sua prossima sincronizzazione e può risponderti, anche con il video di una serie.'**
+  String get chatVuota;
+
+  /// No description provided for @chatAppVecchia.
+  ///
+  /// In it, this message translates to:
+  /// **'L\'app dell\'atleta è la {versione}: per vedere la chat deve aggiornarla alla 1.3.0.'**
+  String chatAppVecchia(String versione);
+
+  /// No description provided for @scriviMessaggio.
+  ///
+  /// In it, this message translates to:
+  /// **'Scrivi un messaggio'**
+  String get scriviMessaggio;
+
+  /// No description provided for @inviaMessaggio.
+  ///
+  /// In it, this message translates to:
+  /// **'Invia'**
+  String get inviaMessaggio;
+
+  /// No description provided for @videoSerie.
+  ///
+  /// In it, this message translates to:
+  /// **'{esercizio}, serie {serie}'**
+  String videoSerie(String esercizio, int serie);
+
+  /// No description provided for @videoDurata.
+  ///
+  /// In it, this message translates to:
+  /// **'Video di {secondi} s'**
+  String videoDurata(int secondi);
+
+  /// No description provided for @guardaVideo.
+  ///
+  /// In it, this message translates to:
+  /// **'Guarda'**
+  String get guardaVideo;
+
+  /// No description provided for @eliminaVideo.
+  ///
+  /// In it, this message translates to:
+  /// **'Elimina il video'**
+  String get eliminaVideo;
+
+  /// No description provided for @eliminaVideoDomanda.
+  ///
+  /// In it, this message translates to:
+  /// **'Eliminare il video dal PC? Il messaggio resta, ma il video non si potrà più guardare.'**
+  String get eliminaVideoDomanda;
+
+  /// No description provided for @videoEliminato.
+  ///
+  /// In it, this message translates to:
+  /// **'Video eliminato'**
+  String get videoEliminato;
+
+  /// No description provided for @videoNonDisponibile.
+  ///
+  /// In it, this message translates to:
+  /// **'Video non disponibile'**
+  String get videoNonDisponibile;
+
+  /// No description provided for @videoNonAperto.
+  ///
+  /// In it, this message translates to:
+  /// **'Non riesco ad aprire il video: {errore}'**
+  String videoNonAperto(String errore);
+
+  /// No description provided for @notificaMessaggio.
+  ///
+  /// In it, this message translates to:
+  /// **'{nome} ti ha scritto'**
+  String notificaMessaggio(String nome);
+
+  /// No description provided for @notificaVideo.
+  ///
+  /// In it, this message translates to:
+  /// **'{nome} ti ha mandato un video'**
+  String notificaVideo(String nome);
+
+  /// No description provided for @apriConAltroProgramma.
+  ///
+  /// In it, this message translates to:
+  /// **'Apri con un altro programma'**
+  String get apriConAltroProgramma;
+
+  /// No description provided for @videoNonRiproducibile.
+  ///
+  /// In it, this message translates to:
+  /// **'Non riesco a riprodurre il video qui ({errore}). Puoi aprirlo con un altro programma, con il tasto in alto.'**
+  String videoNonRiproducibile(String errore);
+
+  /// No description provided for @pausa.
+  ///
+  /// In it, this message translates to:
+  /// **'Pausa'**
+  String get pausa;
+
+  /// No description provided for @riproduci.
+  ///
+  /// In it, this message translates to:
+  /// **'Riproduci'**
+  String get riproduci;
 }
 
 class _TestiDelegate extends LocalizationsDelegate<Testi> {

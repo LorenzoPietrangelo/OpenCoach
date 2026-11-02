@@ -158,6 +158,7 @@ class PcCoach {
       indirizzo: identita.indirizzo,
       adesso: orologio.adesso,
       budgetPagina: budgetPagina,
+      cartellaVideo: Directory.systemTemp.createTempSync('opencoach-coach-video-').path,
     )..nomeCoach = nome;
     final registro = <String>[];
     final server = ServerCoach(
@@ -437,6 +438,9 @@ class Telefono {
   final TorFinto tor;
   final rete = ReteFinta();
   final registro = <String>[];
+
+  /// I video della chat di questo telefono.
+  final cartellaVideo = Directory.systemTemp.createTempSync('opencoach-video-').path;
   late NucleoAtleta nucleo;
 
   NucleoAtleta _avvia() => NucleoAtleta(
@@ -448,6 +452,7 @@ class Telefono {
     orologio: _ambiente.orologio,
     registra: registro.add,
     logPerRichiesta: _logPerRichiesta,
+    cartellaVideo: cartellaVideo,
   );
 
   /// L'app si chiude e si riapre: restano archivio e cassaforte, non le
@@ -462,6 +467,7 @@ class Telefono {
   Future<void> chiudi() async {
     await nucleo.chiudi();
     archivio.chiudi();
+    Directory(cartellaVideo).deleteSync(recursive: true);
   }
 }
 

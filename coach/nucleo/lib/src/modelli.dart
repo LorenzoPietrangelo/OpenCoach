@@ -166,6 +166,37 @@ class Scheda {
   String get titolo => bozza['titolo'] is String ? bozza['titolo'] as String : '';
 }
 
+/// Messaggio della chat tra coach e atleta (§8.7).
+class Messaggio {
+  const Messaggio({
+    required this.id,
+    required this.dalCoach,
+    required this.testo,
+    required this.inviatoIl,
+    required this.video,
+    required this.riferimento,
+    required this.videoEliminato,
+    required this.letto,
+  });
+
+  final String id;
+  final bool dalCoach;
+  final String testo;
+  final DateTime inviatoIl;
+
+  /// Id, dimensione, parti, impronta e durata del video allegato, se c'è.
+  final Map<String, Object?>? video;
+
+  /// L'esercizio e la serie a cui il video si riferisce, se c'è.
+  final Map<String, Object?>? riferimento;
+
+  /// Il coach ha eliminato il file del video per fare spazio.
+  final bool videoEliminato;
+  final bool letto;
+
+  int? get durataVideoS => video?['durata_s'] as int?;
+}
+
 /// Modello di questionario scritto dal coach (§8.6, §9.3).
 class ModelloQuestionario {
   const ModelloQuestionario({required this.id, required this.contenuto, required this.modificatoIl});

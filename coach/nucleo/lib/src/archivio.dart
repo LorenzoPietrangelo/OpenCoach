@@ -247,4 +247,21 @@ CREATE TABLE foto (
 );
 CREATE INDEX foto_questionario ON foto (questionario_id);
 ''',
+  '''
+CREATE TABLE messaggi (
+  id TEXT PRIMARY KEY,
+  atleta_id TEXT NOT NULL REFERENCES atleti (id) ON DELETE CASCADE,
+  autore TEXT NOT NULL CHECK (autore IN ('coach', 'atleta')),
+  testo TEXT NOT NULL,
+  inviato_il TEXT NOT NULL,
+  ordine TEXT NOT NULL,
+  video TEXT,
+  riferimento TEXT,
+  video_eliminato INTEGER NOT NULL DEFAULT 0,
+  sequenza INTEGER,
+  letto INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX messaggi_atleta ON messaggi (atleta_id, ordine);
+CREATE INDEX messaggi_sequenza ON messaggi (atleta_id, sequenza);
+''',
 ];

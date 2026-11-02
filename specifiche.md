@@ -228,10 +228,17 @@ Risposta 200:
 - Una risposta senza `pesi_accettati` viene da un programma che non conosce i pesi: l'app smette di mandarglieli e lo dice all'atleta, finché una risposta successiva non contiene il campo.
 - Anche i questionari (§8.6) sono un'aggiunta entro la v1. La richiesta può contenere `risposte`, al massimo 20. Il programma salva quelle valide e le elenca in `risposte_accettate` (id del questionario); le altre vanno in `risposte_rifiutate` con `sconosciuto` (questionario inesistente o di un altro atleta), `non_valida` o `foto_mancanti` (manca almeno una delle foto indicate). Rimandare risposte già salvate le conferma senza cambiarle.
 - Un questionario mandato o annullato riceve un numero di sequenza come le schede: nella risposta incrementale `questionari` contiene quelli mandati dopo il cursore e `questionari_annullati` gli id di quelli annullati; nella completa `questionari` contiene tutti quelli ancora senza risposta, dopo i pesi.
+- Anche la chat (§8.7) è un'aggiunta entro la v1. La richiesta può contenere `messaggi` dell'atleta, al massimo 100. Il programma salva quelli validi e li elenca in `messaggi_accettati` (id); gli altri vanno in `messaggi_rifiutati` con `non_valido`, `altro_atleta` (id già usato da un altro atleta) o `video_mancante` (il programma non ha tutte le parti del video, o non corrispondono all'impronta: l'app le ricarica e ritenta). Rimandare un messaggio già salvato lo conferma.
+- Un messaggio del coach riceve un numero di sequenza: nella risposta incrementale `messaggi` contiene quelli scritti dal coach dopo il cursore; nella completa tutta la chat, anche i messaggi dell'atleta, dopo i questionari. Nella risposta completa l'app aggiunge i messaggi che non ha e rimette in coda i propri che il programma non ha più.
+- Una risposta senza `messaggi_accettati` viene da un programma che non conosce la chat: l'app tiene i messaggi in coda e lo dice all'atleta, finché una risposta successiva non contiene il campo. I video partono solo verso un programma che ha già mandato il campo.
 
 #### `PUT /v1/foto/<id>`
 
 Con token. Una foto di un questionario: corpo `image/jpeg` di al massimo 1,5 MiB, `<id>` è un UUID generato dall'app. Risposta 204. Idempotente: ricaricare la stessa foto non cambia nulla. Errori: 400 se non è un JPEG, 409 se l'id è già di un altro atleta, 413 se è troppo grande. La foto si lega al questionario quando arrivano le risposte che la citano.
+
+#### `PUT /v1/video/<id>/<parte>`
+
+Con token. Una parte del video allegato a un messaggio (§8.7): corpo `application/octet-stream` di al massimo 1 MiB, `<id>` è l'id del video, un UUID generato dall'app, e `<parte>` va da 0 al numero di parti meno uno. Ogni parte tranne l'ultima è lunga esattamente 1 MiB. Risposta 204. Idempotente. Errori: 400 se la parte è vuota, 404 se `<parte>` è oltre il limite di 32 MiB, 413 se è troppo grande. Le parti si ricompongono quando arriva il messaggio che cita il video: se la dimensione e lo SHA-256 corrispondono il video si salva, altrimenti le parti si cancellano e il messaggio si rifiuta con `video_mancante`.
 
 #### `DELETE /v1/dispositivo`
 
@@ -399,6 +406,7 @@ Per ogni coach sono sempre visibili l'ultima sync riuscita e il numero di log in
 
 - Il log copia il nome degli esercizi, così resta leggibile anche se la scheda cambia o viene eliminata.
 - Per ogni serie è obbligatorio solo `completata`. `rpe` va da 0 a 10 a passi di 0,5.
+- Dalla versione 1.3.0 l'app non chiede più `rpe` (né della seduta né delle serie) e `durata_min`: restano nel protocollo, facoltativi, per i log che li hanno già e per le app precedenti. Il programma del coach li mostra quando ci sono.
 - Eliminare un log significa inviarlo con `eliminato: true` e `rev` incrementata.
 - Un log appartiene a un solo coach. Per un allenamento libero l'atleta sceglie il coach se ne ha più di uno.
 
@@ -490,6 +498,38 @@ Le risposte, come le manda l'app:
 - Le foto si scattano nell'app, e non finiscono nella galleria, oppure si scelgono dalla galleria. Prima di allegarle l'app le ricomprime in JPEG con il lato corto di al massimo 1600 pixel e senza dati EXIF: niente posizione GPS né modello del telefono. Ogni foto si carica con `PUT /v1/foto/<id>` prima delle risposte.
 - Il coach può annullare un questionario senza risposta: sparisce dal telefono se l'atleta non l'ha ancora inviato; se l'ha inviato, le risposte arrivano lo stesso.
 
+### 8.7 Messaggio
+
+La chat tra coach e atleta. Un messaggio, come lo scambiano app e programma:
+
+```jsonc
+{
+  "id": "…",                            // UUID di chi lo scrive
+  "autore": "atleta",                   // oppure "coach"
+  "testo": "Ultima serie, mi sembra di cedere",
+  "inviato_il": "2026-10-21T19:00:00+02:00",
+  "video": {                            // facoltativo, solo dall'atleta
+    "id": "…",
+    "dimensione": 7340032,              // byte, al massimo 32 MiB
+    "parti": 7,                         // dimensione / 1 MiB, arrotondato in su
+    "sha256": "…",                      // 64 cifre esadecimali
+    "durata_s": 42                      // da 1 a 90
+  },
+  "riferimento": {                      // facoltativo: la serie del video
+    "log_id": "…",                      // facoltativo
+    "esercizio": "Squat",
+    "serie": 4
+  }
+}
+```
+
+- Il testo ha al massimo 4000 caratteri; può essere vuoto solo se c'è un video.
+- I messaggi non si modificano. L'atleta può ritirare un proprio messaggio finché non è arrivato al coach. Il coach li legge segnati come nuovi, con una notifica sul desktop.
+- Il video di una serie si allega mentre si registra l'allenamento: l'atleta lo gira con la fotocamera o lo sceglie dalla galleria, al massimo di 60 secondi, e parte con il log come messaggio con il riferimento alla serie. L'app lo ricomprime in H.264 a 480p sul lato corto, 30 fotogrammi al secondo, senza audio, circa 1 Mbit/s: un minuto pesa sui 7–8 MB. Prima di calcolarne l'impronta toglie i metadati che possono dire dove e con che telefono è stato girato (le scatole MP4 `udta`, `meta` e `uuid`, compresa la posizione `©xyz`) e lo spazio vuoto che il muxer lascia nel file (le scatole `free` del primo livello, spostando gli offset dei campioni).
+- Il video si carica a parti da 1 MiB con `PUT /v1/video/<id>/<parte>` prima del messaggio; se la sync si interrompe, la successiva riprende dalla prima parte mancante. Se il programma rifiuta il messaggio con `video_mancante`, l'app ricarica tutte le parti, fino a tre volte; poi il messaggio resta non inviato e l'atleta può ritentare.
+- Sul PC i video stanno in file nella cartella dati, una sottocartella per atleta, e non entrano nel backup (§9.4); il coach li guarda nel programma, che li riproduce con Media Foundation di Windows, e può cancellarli, lasciando il messaggio. Sul telefono stanno nello spazio privato dell'app, esclusi dai backup del telefono.
+- Come il resto dei dati, messaggi e video passano solo dal servizio onion (§11.1): nessun server li vede.
+
 ## 9. Programma del coach
 
 ### 9.1 Avvio e presenza
@@ -554,11 +594,16 @@ Peso:
 - se l'atleta lo condivide, nella sua pagina: l'ultimo peso, la media degli ultimi 7 giorni e la differenza con i 7 giorni prima, il grafico con i pesi di ogni giorno e la media mobile di 7 giorni, l'elenco;
 - i pesi sono in sola lettura ed entrano nell'esportazione JSON.
 
-Notifiche desktop, disattivabili: log ricevuto, abbinamento completato, invito usato da un secondo telefono.
+Chat (§8.7):
+
+- nella pagina dell'atleta, la conversazione con i messaggi nuovi segnati sulla scheda e nell'elenco degli atleti; scrivere un messaggio, che l'atleta riceve alla sua sync successiva;
+- i video delle serie con l'esercizio e il numero della serie, da guardare nel programma, anche al rallentatore (0,25× e 0,5×) e in ripetizione continua, da aprire con un altro programma o da cancellare per fare spazio.
+
+Notifiche desktop, disattivabili: log ricevuto, abbinamento completato, questionario risposto, messaggio o video ricevuto, invito usato da un secondo telefono.
 
 ### 9.4 Backup e ripristino
 
-- Il backup è un file unico, cifrato con una passphrase scelta dal coach (Argon2id e XChaCha20-Poly1305), che contiene identità, archivio e impostazioni.
+- Il backup è un file unico, cifrato con una passphrase scelta dal coach (Argon2id e XChaCha20-Poly1305), che contiene identità, archivio e impostazioni. I video della chat (§8.7) restano fuori: un ripristino porta i messaggi, non i video.
 - Backup automatico in una cartella scelta dal coach, predefinito ogni settimana, conservando gli ultimi 5. La chiave derivata dalla passphrase resta nel portachiavi del SO per poterlo fare senza chiederla. Backup manuale in ogni momento.
 - Se l'ultimo backup ha più di 30 giorni, il programma lo ricorda.
 - Il ripristino, sullo stesso PC o su un altro, conserva l'indirizzo onion: gli atleti non devono riabbinarsi. Genera una nuova epoca, così i telefoni reinviano i log arrivati dopo il backup (§7.3).
@@ -576,13 +621,14 @@ Notifiche desktop, disattivabili: log ricevuto, abbinamento completato, invito u
 
 - Primo avvio: «Scansiona il QR del tuo coach», oppure incolla il codice. Nessun account, nessuna registrazione.
 - Schede: elenco per coach, dettaglio delle sedute, scelta della seduta da eseguire, avviso quando arriva una nuova revisione.
-- Esecuzione: per ogni esercizio le serie sono precompilate con la prescrizione; l'atleta inserisce ripetizioni, carico, durata e RPE effettivi, usa un timer di recupero e scrive note. Può aggiungere esercizi non previsti o registrare un allenamento libero. Al salvataggio il log entra in coda e parte una sync.
+- Esecuzione: per ogni esercizio le serie sono precompilate con la prescrizione; l'atleta inserisce ripetizioni e carico effettivi (per gli esercizi a tempo, la durata della serie), usa un timer di recupero e scrive note. Non si chiedono né lo sforzo percepito né la durata dell'allenamento. Può aggiungere esercizi non previsti o registrare un allenamento libero. Al salvataggio il log entra in coda e parte una sync.
 - L'ultima volta: per ogni serie i campi vuoti mostrano in grigio ripetizioni, carico e durata della stessa serie nell'allenamento più recente con l'esercizio (stesso id della scheda o stesso nome, con qualsiasi coach; contano solo le serie segnate fatte). Dove c'è un valore dell'ultima volta il campo non si precompila dalla prescrizione. Segnare una serie fatta riempie i campi vuoti con i valori in grigio. Senza un'ultima volta, i campi mostrano la prescrizione come prima.
 - Video: aprendo un esercizio con `video`, l'app mostra «Guarda il video». Un video di YouTube si guarda nell'app (`youtube-nocookie.com`), gli altri link si aprono in un'altra app. Il player si carica solo al tocco e va in pausa quando l'esercizio si chiude. Il video non passa da Tor (§11.1).
 - Storico: i propri log, modificabili ed eliminabili. Ogni modifica incrementa `rev` e rimette il log in coda.
 - Stato della sync come al §7.5, con il tasto «Sincronizza ora».
 - Questionari (§8.6): nella pagina del coach, prima quelli da compilare; la schermata principale dice quanti sono e una sync in background che ne riceve di nuovi li annuncia con una notifica.
 - Peso (§8.5): dalla schermata principale, il peso di oggi o di un altro giorno, la media degli ultimi 7 giorni, il grafico, l'elenco con correzione ed eliminazione, e per ogni coach l'interruttore «condividi». Se il programma di un coach non riceve i pesi, l'app lo dice accanto al suo nome.
+- Chat (§8.7): dalla pagina del coach, con i messaggi nuovi segnati lì e nella schermata principale. Con la chat aperta l'app sincronizza ogni 15 secondi; una sync in background che riceve messaggi li annuncia con una notifica. Nell'esecuzione, accanto a ogni serie, la videocamera allega il video della serie, che parte al salvataggio.
 - Impostazioni: coach collegati (nome, indirizzo, ultima sync); scollegarsi da un coach, che chiama `DELETE /v1/dispositivo` se il coach è raggiungibile e poi, dopo conferma, cancella i dati locali di quel coach; frequenza della sync in background (Android); esportazione dei propri dati in JSON.
 - L'app può essere abbinata a più coach contemporaneamente. Schede e log restano separati per coach.
 - Dopo una revoca le schede e i log di quel coach restano consultabili ed esportabili, ma non si sincronizzano più.

@@ -22,6 +22,9 @@ const _percorsi = {
 /// `PUT /v1/foto/<id>` (§8.6).
 const _prefissoFoto = '/v1/foto/';
 
+/// `PUT /v1/video/<id>/<parte>` (§8.7).
+final _percorsoVideo = RegExp(r'^/v1/video/([0-9a-f-]{36})/(\d{1,2})$');
+
 /// Server dell'API (§6). Ascolta solo su 127.0.0.1 e accetta solo richieste
 /// per `<indirizzo>.onion`: arrivano soltanto attraverso l'onion service.
 class ServerCoach {
@@ -160,6 +163,13 @@ class ServerCoach {
           percorso.substring(_prefissoFoto.length),
           jpeg,
         );
+        await _rispondi(richiesta, 204, null);
+
+      case ('PUT', final percorso) when _percorsoVideo.hasMatch(percorso):
+        final dispositivo = _autentica(richiesta);
+        final trovato = _percorsoVideo.firstMatch(percorso)!;
+        final dati = await _leggiCorpo(richiesta, massimo: LimitiChat.parteVideo);
+        _nucleo.messaggi.salvaParteVideo(dispositivo.atletaId, trovato[1]!, int.parse(trovato[2]!), dati);
         await _rispondi(richiesta, 204, null);
 
       case ('DELETE', '/v1/dispositivo'):

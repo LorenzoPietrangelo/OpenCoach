@@ -57,6 +57,10 @@ abstract interface class Desktop {
   /// File da aprire, scelto dal coach; null se annulla.
   Future<String?> scegliFile(String estensione);
 
+  /// Apre il file con il programma predefinito, per esempio un video della
+  /// chat con il lettore del sistema.
+  Future<void> apriFile(String percorso);
+
   /// Chiude finestra e icona e termina il processo.
   Future<void> esci();
 }
@@ -183,6 +187,17 @@ class DesktopReale with TrayListener, WindowListener implements Desktop {
       ],
     );
     return file?.path;
+  }
+
+  @override
+  Future<void> apriFile(String percorso) async {
+    final (comando, argomenti) = Platform.isWindows
+        ? ('explorer.exe', [percorso])
+        : Platform.isMacOS
+        ? ('open', [percorso])
+        : ('xdg-open', [percorso]);
+    // explorer.exe esce con 1 anche quando apre il file: conta solo se parte.
+    await Process.start(comando, argomenti, mode: ProcessStartMode.detached);
   }
 
   @override

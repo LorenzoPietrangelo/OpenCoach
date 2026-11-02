@@ -15,10 +15,14 @@ import 'trasporto.dart';
 /// Coach a cui il telefono è o è stato abbinato (§10.2). L'app può essere
 /// abbinata a più coach insieme; schede e log restano separati per coach.
 class Collegamenti {
-  Collegamenti(this._c, this._motore);
+  Collegamenti(this._c, this._motore, {void Function(int coachId)? datiCancellati})
+    : _datiCancellati = datiCancellati;
 
   final ContestoAtleta _c;
   final MotoreSync _motore;
+
+  /// Cancella i file del coach fuori dall'archivio, come i video.
+  final void Function(int coachId)? _datiCancellati;
 
   /// Quanto [scollega] aspetta il coach, avvio di Tor compreso, prima di
   /// scollegare il telefono senza avvisarlo. Con il PC spento la
@@ -84,6 +88,7 @@ class Collegamenti {
           );
         }
         _c.db.execute('DELETE FROM coach WHERE id = ?', [coachId]);
+        _datiCancellati?.call(coachId);
         await _c.eliminaCredenziali(coachId);
         _c.segnala(coachId);
       });

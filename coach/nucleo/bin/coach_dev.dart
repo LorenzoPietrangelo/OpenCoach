@@ -21,6 +21,9 @@ Comandi:
   elenco           atleti, telefoni e inviti
   log <nome>       allenamenti ricevuti dall'atleta
   pesi <nome>      pesi che l'atleta condivide
+  chat <nome>      la chat con l'atleta, con i video ricevuti
+  scrivi <nome> <testo>
+                   manda un messaggio all'atleta (nome di una parola)
   questionario <nome>
                    manda all'atleta un questionario di prova con 2 foto
   risposte <nome>  risposte ai questionari, con il peso delle foto
@@ -114,6 +117,19 @@ Future<void> main(List<String> argomenti) async {
               '${q.foto.isEmpty ? '' : ', foto ${[for (final f in q.foto) '${nucleo.questionari.foto(f)?.length} byte'].join(', ')}'}',
             );
           }
+        case 'chat':
+          final atleta = _atleta(nucleo, nome);
+          for (final m in nucleo.messaggi.conversazione(atleta.id)) {
+            final file = nucleo.messaggi.fileVideo(atleta.id, m);
+            stdout.writeln(
+              '- ${m.dalCoach ? 'coach' : 'atleta'}: ${m.testo}'
+              '${m.video == null ? '' : ' [video ${m.durataVideoS} s, ${file?.lengthSync() ?? 'mancante'} byte'
+                        '${m.riferimento == null ? '' : ', ${m.riferimento!['esercizio']} serie ${m.riferimento!['serie']}'}]'}',
+            );
+          }
+        case 'scrivi' when parole.length >= 3:
+          nucleo.messaggi.invia(_atleta(nucleo, parole[1]).id, parole.skip(2).join(' '));
+          stdout.writeln('Messaggio mandato');
         case 'pesi':
           final pesi = nucleo.pesi.elenco(_atleta(nucleo, nome).id);
           stdout.writeln(
@@ -163,6 +179,7 @@ String _descrivi(NucleoCoach nucleo, EventoCoach e) {
     RevisioneRicevuta(:final revisione) => '$atleta ha ricevuto la revisione $revisione',
     DispositivoSincronizzato() => '$atleta ha sincronizzato',
     QuestionarioRisposto(:final titolo) => '$atleta ha risposto a «$titolo»',
+    MessaggioRicevuto(:final conVideo) => '$atleta ha scritto in chat${conVideo ? ', con un video' : ''}',
   };
 }
 

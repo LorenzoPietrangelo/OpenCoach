@@ -9,6 +9,7 @@ import '../l10n/testi.dart';
 import '../piattaforma/desktop.dart';
 import '../servizi.dart';
 import 'allenamenti.dart';
+import 'chat.dart';
 import 'peso.dart';
 import 'questionari.dart';
 import 'schede.dart';
@@ -38,7 +39,7 @@ class DettaglioAtleta extends StatelessWidget {
     final atleta = _nucleo.atleti.cerca(atletaId);
     if (atleta == null) return const SizedBox.shrink();
     return DefaultTabController(
-      length: 5,
+      length: 6,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -82,6 +83,14 @@ class DettaglioAtleta extends StatelessWidget {
                   child: Text(t.schedaQuestionari),
                 ),
               ),
+              Tab(
+                child: Badge(
+                  isLabelVisible: _nucleo.messaggi.nonLetti(atletaId) > 0,
+                  label: Text('${_nucleo.messaggi.nonLetti(atletaId)}'),
+                  offset: const Offset(14, -6),
+                  child: Text(t.schedaChat),
+                ),
+              ),
             ],
           ),
           Expanded(
@@ -92,6 +101,7 @@ class DettaglioAtleta extends StatelessWidget {
                 PannelloAllenamenti(atleta: atleta, coach: coach, aggiornamenti: aggiornamenti),
                 PannelloPeso(atleta: atleta, coach: coach, aggiornamenti: aggiornamenti),
                 PannelloQuestionari(atleta: atleta, coach: coach, aggiornamenti: aggiornamenti),
+                PannelloChat(atleta: atleta, coach: coach, desktop: desktop, aggiornamenti: aggiornamenti),
               ],
             ),
           ),

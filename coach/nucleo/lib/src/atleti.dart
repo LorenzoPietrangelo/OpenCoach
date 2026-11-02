@@ -9,10 +9,14 @@ import 'tempo.dart';
 
 /// Atleti del coach (§9.3).
 class GestioneAtleti {
-  GestioneAtleti(this._c, this._inviti);
+  GestioneAtleti(this._c, this._inviti, {void Function(String atletaId)? eliminato})
+    : _eliminato = eliminato;
 
   final ContestoCoach _c;
   final GestioneInviti _inviti;
+
+  /// Pulisce quello che dell'atleta sta fuori dall'archivio, come i video.
+  final void Function(String atletaId)? _eliminato;
 
   Database get _db => _c.archivio.db;
 
@@ -62,6 +66,7 @@ class GestioneAtleti {
   void elimina(String id) {
     _esistente(id);
     _db.execute('DELETE FROM atleti WHERE id = ?', [id]);
+    _eliminato?.call(id);
     _c.segnalaChiaviCambiate();
   }
 

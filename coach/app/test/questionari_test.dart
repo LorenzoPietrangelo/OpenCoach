@@ -1,5 +1,6 @@
 import 'dart:typed_data';
 
+import 'package:coach_nucleo/coach_nucleo.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:protocollo/protocollo.dart';
@@ -32,9 +33,17 @@ void main() {
 
   testWidgets('scrive un questionario, lo manda e legge le risposte con le foto', (tester) async {
     final atleta = coach.nucleo.atleti.crea('Giulia');
+    await coach.riceviLog(atleta.id, const []);
     await avviaApp(tester, coach, desktop);
 
-    await tester.tap(find.text('Questionari'));
+    // Nessuna sezione a parte: i questionari stanno nella chat.
+    expect(find.text('Questionari'), findsNothing);
+    await tester.tap(find.text('Giulia'));
+    await tester.pumpAndSettle();
+    expect(find.text('Questionari'), findsNothing);
+    await tester.tap(find.text('Chat'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Manda un questionario'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Nuovo questionario'));
     await tester.pumpAndSettle();
@@ -73,16 +82,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('1 domanda · 1 foto'), findsOneWidget);
 
-    // Dalla pagina dell'atleta si manda.
-    await tester.tap(find.text('Atleti'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Giulia'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Questionari').last);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Manda un questionario'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Check mensile'));
+    await tester.tap(find.text('Manda'));
     await tester.pumpAndSettle();
     final inviato = coach.nucleo.questionari.inviati(atleta.id).single;
     expect(find.textContaining('in attesa di risposta'), findsOneWidget);
@@ -105,6 +105,8 @@ void main() {
     ]);
     await tester.pumpAndSettle();
     expect(find.textContaining('Risposte arrivate il'), findsOneWidget);
+    // Il pallino sulla chat conta le risposte da leggere.
+    expect(coach.nucleo.questionari.nonLette(atleta.id), 1);
     expect(desktop.notifiche, contains('Open Coach: Giulia ha risposto a «Check mensile»'));
 
     await tester.tap(find.text('Check mensile'));
@@ -115,8 +117,36 @@ void main() {
     expect(coach.nucleo.questionari.nonLette(atleta.id), 0);
   });
 
+  testWidgets('dalla chat si annulla un questionario senza risposta', (tester) async {
+    final atleta = coach.nucleo.atleti.crea('Giulia');
+    await coach.riceviLog(atleta.id, const []);
+    final modello = coach.nucleo.questionari.creaModello({
+      'titolo': 'Anamnesi',
+      'domande': [
+        {'id': nuovoUuid(), 'tipo': 'testo_breve', 'testo': 'Come stai?', 'obbligatoria': false},
+      ],
+    });
+    coach.nucleo.messaggi.invia(atleta.id, 'Ti mando una cosa');
+    coach.nucleo.questionari.invia(modello, atleta.id);
+    await avviaApp(tester, coach, desktop);
+    await tester.tap(find.text('Giulia'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Chat'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ti mando una cosa'), findsOneWidget);
+    expect(find.text('Anamnesi'), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(TextButton, 'Annulla').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Annulla'));
+    await tester.pumpAndSettle();
+    expect(coach.nucleo.questionari.inviati(atleta.id).single.stato, StatoQuestionario.annullato);
+    expect(find.text('Annullato'), findsOneWidget);
+  });
+
   testWidgets('le risposte si vedono accanto all\'editor della scheda', (tester) async {
     final atleta = coach.nucleo.atleti.crea('Giulia');
+    await coach.riceviLog(atleta.id, const []);
     final domanda = nuovoUuid();
     final modello = coach.nucleo.questionari.creaModello({
       'titolo': 'Anamnesi',

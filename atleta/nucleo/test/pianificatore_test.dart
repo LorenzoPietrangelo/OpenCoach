@@ -1,4 +1,5 @@
 import 'package:atleta_nucleo/atleta_nucleo.dart';
+import 'package:protocollo/protocollo.dart';
 import 'package:test/test.dart';
 
 import 'supporto.dart';
@@ -135,10 +136,131 @@ void main() {
     expect(telefono.tor.attivo, isFalse);
   });
 
+  group('con la chat aperta', () {
+    /// Aspetta, senza far passare il tempo dell'orologio finto, finché
+    /// [condizione] non è vera.
+    Future<void> finche(bool Function() condizione) async {
+      final limite = DateTime.now().add(const Duration(seconds: 10));
+      while (!condizione()) {
+        if (DateTime.now().isAfter(limite)) fail('Non è successo in tempo');
+        await Future<void>.delayed(const Duration(milliseconds: 20));
+      }
+    }
+
+    Future<ClienteApi> cliente() async => ClienteApi(
+      indirizzo: pc.indirizzo,
+      http: telefono.tor.creaHttpClient(),
+      token: (await telefono.nucleo.contesto.credenziali(coach.id))!.token,
+    );
+
+    RichiestaAttesa richiesta({int attesaS = 25}) {
+      final aggiornato = telefono.nucleo.collegamenti.cerca(coach.id)!;
+      return RichiestaAttesa(epoca: aggiornato.epoca, cursore: aggiornato.cursore, attesaS: attesaS);
+    }
+
+    test('il messaggio del coach arriva appena lo scrive', () async {
+      pianificatore()
+        ..entraInPrimoPiano()
+        ..segui(coach.id);
+      await pianificatore().attendi();
+      // La richiesta che parte dopo la sync resta in sospeso sul PC.
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      final sync = pc.richiesteSync;
+      expect(telefono.nucleo.chat.elenco(coach.id), isEmpty);
+
+      pc.nucleo.messaggi.invia(atletaId, 'Domani carichi pesanti');
+      await finche(() => telefono.nucleo.chat.elenco(coach.id).isNotEmpty);
+      expect(telefono.nucleo.chat.elenco(coach.id).single.testo, 'Domani carichi pesanti');
+      expect(pc.richiesteSync, sync + 1);
+
+      // E l'attesa riparte: anche il secondo arriva subito.
+      pc.nucleo.messaggi.invia(atletaId, 'E dormi bene');
+      await finche(() => telefono.nucleo.chat.elenco(coach.id).length == 2);
+      pianificatore().smettiDiSeguire(coach.id);
+    });
+
+    test('quello che scrive l\'atleta non aspetta la risposta del coach', () async {
+      pianificatore()
+        ..entraInPrimoPiano()
+        ..segui(coach.id);
+      await pianificatore().attendi();
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      final messaggio = telefono.nucleo.chat.scrivi(coach.id, 'Finita la panca');
+      await pianificatore().attendi();
+      expect(telefono.nucleo.chat.cerca(coach.id, messaggio.id)!.stato, StatoMessaggio.inviato);
+      pianificatore().smettiDiSeguire(coach.id);
+    });
+
+    test('chiudendo la chat o l\'app non si aspetta più', () async {
+      pianificatore()
+        ..entraInPrimoPiano()
+        ..segui(coach.id);
+      await pianificatore().attendi();
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      pianificatore().smettiDiSeguire(coach.id);
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      final sync = pc.richiesteSync;
+      pc.nucleo.messaggi.invia(atletaId, 'Chat chiusa');
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(pc.richiesteSync, sync);
+
+      // In background si ferma; al ritorno in primo piano riprende.
+      pianificatore().segui(coach.id);
+      await pianificatore().attendi();
+      await pianificatore().vaiInBackground();
+      final inBackground = pc.richiesteSync;
+      pc.nucleo.messaggi.invia(atletaId, 'App chiusa');
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      expect(pc.richiesteSync, inBackground);
+      pianificatore().entraInPrimoPiano();
+      await finche(() => telefono.nucleo.chat.elenco(coach.id).length == 2);
+      pianificatore().smettiDiSeguire(coach.id);
+    });
+
+    test('con un programma che non conosce l\'attesa sincronizza ogni 15 s', () async {
+      pianificatore().entraInPrimoPiano();
+      await pianificatore().attendi();
+      // Dopo la prossima sync, l'attesa si trova davanti un programma vecchio.
+      pc.dopoRichiesteSync(1, () => telefono.tor.guasti.add(const ErroreApi(404, 'non_trovato')));
+      pianificatore().segui(coach.id);
+      await pianificatore().attendi();
+      await finche(() => telefono.tor.guasti.isEmpty && ambiente.orologio.inAttesa.length > 1);
+      final sync = pc.richiesteSync;
+      ambiente.orologio.avanza(PianificatoreSync.intervalloSenzaAttesa);
+      await finche(() => pc.richiesteSync == sync + 1);
+      pianificatore().smettiDiSeguire(coach.id);
+    });
+
+    test('senza novità il coach risponde allo scadere dell\'attesa', () async {
+      await telefono.nucleo.sync.sincronizza(coach.id);
+      final api = await cliente();
+      expect(await api.attendiNovita(richiesta(attesaS: 1)), isFalse);
+      pc.nucleo.messaggi.invia(atletaId, 'Già qui');
+      // C'è già qualcosa: risponde subito.
+      final inizio = DateTime.now();
+      expect(await api.attendiNovita(richiesta()), isTrue);
+      expect(DateTime.now().difference(inizio), lessThan(const Duration(seconds: 5)));
+    });
+
+    test('una sola attesa per dispositivo, e cede alla ripubblicazione', () async {
+      await telefono.nucleo.sync.sincronizza(coach.id);
+      final prima = await cliente();
+      final seconda = await cliente();
+      final inizio = DateTime.now();
+      final attesaPrima = prima.attendiNovita(richiesta());
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      final attesaSeconda = seconda.attendiNovita(richiesta());
+      expect(await attesaPrima, isFalse);
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+      await pc.server.attendiRichiesteInCorso(const Duration(seconds: 5));
+      expect(await attesaSeconda, isFalse);
+      expect(DateTime.now().difference(inizio), lessThan(const Duration(seconds: 10)));
+    });
+  });
+
   test('la sync in background dice quali schede annunciare', () async {
+    pc.pubblicaScheda(atletaId, 'Già archiviata');
     final nuova = pc.pubblicaScheda(atletaId, 'Nuova');
-    final archiviata = pc.pubblicaScheda(atletaId, 'Già archiviata');
-    pc.nucleo.schede.archivia(archiviata);
     final esiti = await telefono.nucleo.sincronizzaInBackground();
     expect([for (final s in esiti.single.schedeNuove) s.id], [nuova]);
   });

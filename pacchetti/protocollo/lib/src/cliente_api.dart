@@ -93,6 +93,18 @@ class ClienteApi {
         ),
       );
 
+  /// `POST /v1/attendi`: vero se il coach ha qualcosa di nuovo. Un programma
+  /// precedente alla 1.3.1 risponde 404.
+  Future<bool> attendiNovita(RichiestaAttesa richiesta) async =>
+      RispostaAttesa.fromJson(
+        await _chiama(
+          'POST',
+          '/v1/attendi',
+          corpo: richiesta.toJson(),
+          autenticata: true,
+        ),
+      ).novita;
+
   Future<void> scollega() =>
       _chiama('DELETE', '/v1/dispositivo', autenticata: true);
 

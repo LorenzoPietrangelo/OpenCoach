@@ -11,6 +11,10 @@ import 'sincronizzazione.dart';
 ///
 /// In background la sync la chiede il sistema operativo (WorkManager,
 /// BGAppRefreshTask) con `NucleoAtleta.sincronizzaInBackground`.
+///
+/// Mentre l'atleta guarda la chat ([segui]) c'è sempre una richiesta in attesa
+/// sul PC del coach, che risponde appena lui scrive; allora parte la sync. Con
+/// un programma che non lo sa fare si sincronizza ogni [intervalloSenzaAttesa].
 class PianificatoreSync {
   PianificatoreSync(this._c, this._motore);
 
@@ -21,6 +25,12 @@ class PianificatoreSync {
     Duration(minutes: 2),
     Duration(minutes: 5),
   ];
+
+  static const intervalloSenzaAttesa = Duration(seconds: 15);
+
+  /// Un'attesa finita prima di così, senza novità, non è arrivata in fondo: il
+  /// coach sta ripubblicando il servizio. Non si ritenta subito.
+  static const _attesaBreve = Duration(seconds: 5);
 
   final ContestoAtleta _c;
   final MotoreSync _motore;
@@ -36,6 +46,14 @@ class PianificatoreSync {
   final _generazione = <int, int>{};
   final _inVolo = <Future<void>>{};
 
+  /// Il coach di cui l'atleta sta guardando la chat.
+  int? _seguito;
+
+  /// Cresce quando il giro che segue la chat deve fermarsi.
+  var _turnoSeguito = 0;
+  Timer? _timerPausa;
+  Completer<void>? _pausa;
+
   bool get inPrimoPiano => _primoPiano;
 
   /// All'apertura dell'app e al ritorno in primo piano.
@@ -43,6 +61,79 @@ class PianificatoreSync {
     _primoPiano = true;
     _armaPeriodico();
     _tutti();
+    _riprendiSeguito();
+  }
+
+  /// L'atleta sta guardando la chat con [coachId]: i messaggi arrivano subito,
+  /// finché l'app resta in primo piano.
+  void segui(int coachId) {
+    if (_seguito == coachId) return;
+    _seguito = coachId;
+    _riprendiSeguito();
+  }
+
+  /// L'atleta non guarda più la chat con [coachId].
+  void smettiDiSeguire(int coachId) {
+    if (_seguito != coachId) return;
+    _fermaSeguito();
+    _seguito = null;
+  }
+
+  void _riprendiSeguito() {
+    _fermaSeguito();
+    final coachId = _seguito;
+    if (_primoPiano && coachId != null) {
+      unawaited(_giroSeguito(coachId, _turnoSeguito));
+    }
+  }
+
+  void _fermaSeguito() {
+    _turnoSeguito++;
+    _timerPausa?.cancel();
+    final pausa = _pausa;
+    _pausa = null;
+    if (pausa != null && !pausa.isCompleted) pausa.complete();
+    final coachId = _seguito;
+    if (coachId != null) _motore.annullaAttesa(coachId);
+  }
+
+  Future<void> _giroSeguito(int coachId, int turno) async {
+    bool vivo() => turno == _turnoSeguito;
+    var attesaSupportata = true;
+    var riuscita = (await _occasione(coachId)).riuscita;
+    while (vivo()) {
+      if (!riuscita || !attesaSupportata) {
+        await _pausaSeguito(intervalloSenzaAttesa);
+        if (!vivo()) return;
+        riuscita = (await _occasione(coachId)).riuscita;
+        continue;
+      }
+      final inizio = _c.orologio.adesso();
+      final esito = await _motore.attendiNovita(coachId);
+      if (!vivo()) return;
+      switch (esito) {
+        case EsitoAttesa.novita:
+          riuscita = (await _occasione(coachId)).riuscita;
+        case EsitoAttesa.nessunaNovita:
+          if (_c.orologio.adesso().difference(inizio) < _attesaBreve) {
+            await _pausaSeguito(intervalloSenzaAttesa);
+          }
+        case EsitoAttesa.nonSupportata:
+          attesaSupportata = false;
+        case EsitoAttesa.guasto:
+          riuscita = false;
+        case EsitoAttesa.nonDisponibile:
+          return;
+      }
+    }
+  }
+
+  Future<void> _pausaSeguito(Duration durata) {
+    final pausa = _pausa = Completer<void>();
+    _timerPausa = _c.orologio.timer(durata, () {
+      if (!pausa.isCompleted) pausa.complete();
+    });
+    return pausa.future;
   }
 
   /// L'app va in background: niente più sync automatiche; Tor si ferma appena
@@ -80,6 +171,7 @@ class PianificatoreSync {
   /// Ferma la sync periodica e i ritentativi.
   void ferma() {
     _primoPiano = false;
+    _fermaSeguito();
     _periodico?.cancel();
     _periodico = null;
     for (final timer in _timerRitentativi.values) {

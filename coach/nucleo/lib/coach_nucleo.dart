@@ -2,7 +2,7 @@
 /// archivio, abbinamento, sincronizzazione, server HTTP e gestione di Tor.
 library;
 
-export 'src/allenamenti.dart' show GestioneAllenamenti;
+export 'src/allenamenti.dart' show EsercizioStorico, GestioneAllenamenti, MisuraEsercizio, SettimanaStorico, StoricoAtleta, rirDaTesto, stima1Rm;
 export 'src/archivio.dart' show Archivio, Impostazioni;
 export 'src/chat.dart' show GestioneMessaggi;
 export 'src/atleti.dart' show GestioneAtleti;

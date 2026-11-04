@@ -167,7 +167,6 @@ class EsercizioInCorso {
               caricoKg: _numero(serie['carico_kg']),
               durataS: _intero(serie['durata_s']),
               rpe: _numero(serie['rpe']),
-              completata: serie['completata'] == true,
             ),
         ],
       );
@@ -188,16 +187,14 @@ class EsercizioInCorso {
 
   bool get previsto => esercizioId != null;
 
-  /// Aggiunge una serie che riparte dai valori e dalla prescrizione
-  /// dell'ultima.
+  /// Aggiunge una serie vuota, che mostra in grigio la prescrizione o i valori
+  /// dell'ultima: fatta lo diventa quando l'atleta la compila.
   SerieInCorso aggiungiSerie() {
     final ultima = serie.lastOrNull;
     final nuova = SerieInCorso(
-      ripetizioni: ultima?.ripetizioni,
-      caricoKg: ultima?.caricoKg,
-      durataS: ultima?.durataS,
-      obiettivoRipetizioni: ultima?.obiettivoRipetizioni,
-      obiettivoCarico: ultima?.obiettivoCarico,
+      obiettivoRipetizioni: ultima?.obiettivoRipetizioni ?? ultima?.ripetizioni?.toString(),
+      obiettivoCarico: ultima?.obiettivoCarico ?? ultima?.caricoKg?.toString().replaceAll('.', ','),
+      obiettivoDurataS: ultima?.obiettivoDurataS ?? ultima?.durataS,
       recupero: ultima?.recupero,
     );
     serie.add(nuova);
@@ -212,34 +209,30 @@ class EsercizioInCorso {
   };
 }
 
-/// Serie di un esercizio: i valori effettivi, precompilati dalla
-/// prescrizione quando il testo del coach è un numero semplice.
+/// Serie di un esercizio: i valori che scrive l'atleta. La prescrizione del
+/// coach resta un obiettivo, che i campi vuoti mostrano in grigio. La serie è
+/// fatta se ha almeno un valore.
 class SerieInCorso {
   SerieInCorso({
     this.ripetizioni,
     this.caricoKg,
     this.durataS,
     this.rpe,
-    this.completata = false,
     this.obiettivoRipetizioni,
     this.obiettivoCarico,
+    this.obiettivoDurataS,
     this.recupero,
   });
 
-  /// Ripetizioni e carico sono testo libero (§8.1): «8» diventa 8
-  /// ripetizioni, «30 s» o «2 min» una durata, «60 kg» o «60,5» un carico.
-  /// Intervalli come «6-8» e indicazioni come «75% 1RM» o «RPE 8» restano
-  /// solo come obiettivo da mostrare.
+  /// Ripetizioni e carico sono testo libero (§8.1): «30 s» o «2 min» dicono
+  /// che l'esercizio è a tempo.
   factory SerieInCorso._daPrescrizione(Map<String, Object?> riga) {
     final ripetizioni = _testo(riga['ripetizioni']);
-    final carico = _testo(riga['carico']);
     final recupero = _intero(riga['recupero_s']);
     return SerieInCorso(
-      ripetizioni: _ripetizioniDa(ripetizioni),
-      durataS: _secondiDa(ripetizioni),
-      caricoKg: _chiliDa(carico),
       obiettivoRipetizioni: ripetizioni,
-      obiettivoCarico: carico,
+      obiettivoCarico: _testo(riga['carico']),
+      obiettivoDurataS: _secondiDa(ripetizioni),
       recupero: recupero == null ? null : Duration(seconds: recupero),
     );
   }
@@ -250,11 +243,16 @@ class SerieInCorso {
 
   /// Da 0 a 10, a passi di 0,5.
   num? rpe;
-  bool completata;
+
+  /// La serie conta come fatta se l'atleta ha scritto almeno un valore.
+  bool get completata => ripetizioni != null || caricoKg != null || durataS != null;
 
   /// Prescrizione del coach, come l'ha scritta: «6-8», «75% 1RM».
   final String? obiettivoRipetizioni;
   final String? obiettivoCarico;
+
+  /// La durata prescritta, se l'esercizio è a tempo.
+  final int? obiettivoDurataS;
 
   /// Recupero prescritto dopo la serie, per il timer.
   final Duration? recupero;
@@ -286,24 +284,11 @@ class SerieFatta {
   bool get vuota => ripetizioni == null && caricoKg == null && durataS == null;
 }
 
-final _numeroIntero = RegExp(r'^\s*(\d{1,5})\s*$');
-
 /// Secondi o minuti, anche con la notazione 30" e 2'.
 final _durata = RegExp(
   r'''^\s*(\d{1,5})\s*(s|sec|secondi|"|min|minuti|')\s*$''',
   caseSensitive: false,
 );
-final _chili = RegExp(
-  r'^\s*(\d{1,5}(?:[.,]\d{1,3})?)\s*(?:kg)?\s*$',
-  caseSensitive: false,
-);
-
-int? _ripetizioniDa(String? testo) {
-  final m = testo == null ? null : _numeroIntero.firstMatch(testo);
-  final valore = m == null ? null : int.parse(m[1]!);
-  return valore != null && valore <= 10000 ? valore : null;
-}
-
 int? _secondiDa(String? testo) {
   final m = testo == null ? null : _durata.firstMatch(testo);
   if (m == null) return null;
@@ -311,12 +296,6 @@ int? _secondiDa(String? testo) {
   final minuti = unita.startsWith('min') || unita == "'";
   final secondi = int.parse(m[1]!) * (minuti ? 60 : 1);
   return secondi <= 86400 ? secondi : null;
-}
-
-num? _chiliDa(String? testo) {
-  final m = testo == null ? null : _chili.firstMatch(testo);
-  final valore = m == null ? null : num.parse(m[1]!.replaceAll(',', '.'));
-  return valore != null && valore <= 10000 ? valore : null;
 }
 
 List<Map<String, Object?>> _oggetti(Object? valore) => [

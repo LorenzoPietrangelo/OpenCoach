@@ -61,7 +61,7 @@ void main() {
     'foto': {'numero': 1, 'istruzioni': 'Corpo intero, di fronte.'},
   };
 
-  testWidgets('dalla pagina del coach si compila, con la foto, e si invia', (tester) async {
+  testWidgets('dalla chat si compila, con la foto, e si invia', (tester) async {
     final coach = telefono.aggiungiCoach('Marco Bianchi');
     final q = questionario();
     telefono.aggiungiQuestionario(coach, q);
@@ -72,13 +72,11 @@ void main() {
 
     await tester.pumpWidget(AppAtleta(nucleo: telefono.nucleo));
     await tester.pumpAndSettle();
-    expect(find.textContaining('1 questionario da compilare'), findsOneWidget);
-    await tester.tap(find.text('Marco Bianchi'));
+    await tester.tap(find.text('Chat'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Questionari'));
-    await tester.pumpAndSettle();
-    expect(find.text('Da compilare'), findsOneWidget);
-    await tester.tap(find.text('Check mensile'));
+    // In cima alla chat e in mezzo ai messaggi.
+    expect(find.text('Da compilare'), findsNWidgets(2));
+    await tester.tap(find.text('Check mensile').first);
     await tester.pumpAndSettle();
 
     // Al posto della fotocamera, una foto finta.

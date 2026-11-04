@@ -14,7 +14,7 @@ import 'schermate/principale.dart';
 import 'servizi.dart';
 
 /// Versione del programma, la stessa del pubspec.
-const versioneProgramma = '1.3.0';
+const versioneProgramma = '1.4.0';
 
 Future<void> main(List<String> argomenti) async {
   WidgetsFlutterBinding.ensureInitialized();

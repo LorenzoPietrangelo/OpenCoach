@@ -1,5 +1,5 @@
 import 'package:atleta_app/piattaforma/sync_in_background.dart';
-import 'package:atleta_app/schermate/elenco_coach.dart';
+import 'package:atleta_app/schermate/principale.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -45,7 +45,7 @@ void main() {
     await tester.pumpWidget(
       conTesti(
         // Ogni apertura è una schermata nuova, come all'avvio dell'app.
-        ElencoCoach(
+        SchermataPrincipale(
           key: UniqueKey(),
           nucleo: telefono.nucleo,
           background: SyncInBackground(telefono.nucleo),

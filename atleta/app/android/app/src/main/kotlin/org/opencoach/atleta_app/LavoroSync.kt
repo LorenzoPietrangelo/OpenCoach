@@ -23,6 +23,11 @@ class LavoroSync(context: Context, parametri: WorkerParameters) :
                 MotoreFlutter.sincronizzaInBackground(applicationContext)
             }
             NotificheSchede.mostra(applicationContext, notifiche)
+            // Per ultimo: può annullare anche questo lavoro, se è uno dei
+            // controlli ravvicinati.
+            if (notifiche.any { it["conversazione"] == true }) {
+                PianificazioneSync.controlliRavvicinati(applicationContext)
+            }
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {

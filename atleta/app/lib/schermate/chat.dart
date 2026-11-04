@@ -8,18 +8,31 @@ import 'package:protocollo/protocollo.dart';
 import '../l10n/testi.dart';
 import 'avvisi.dart';
 import 'formati.dart';
+import 'questionario.dart';
 
-/// La chat con il coach (§8.7). I messaggi partono alla sync successiva;
-/// con la chat aperta l'app sincronizza ogni [intervallo], così le risposte
-/// del coach arrivano senza aspettare la sync automatica. I video delle
-/// serie si allegano dall'allenamento.
+/// La chat con il coach (§8.7): i messaggi e, in mezzo, i questionari che ha
+/// mandato (§8.6); quelli da compilare restano anche in cima. I messaggi
+/// partono alla sync successiva; mentre l'atleta guarda la chat le risposte
+/// del coach arrivano subito (§7.4). I video delle serie si allegano
+/// dall'allenamento.
 class SchermataChat extends StatefulWidget {
-  const SchermataChat({super.key, required this.nucleo, required this.coachId});
+  const SchermataChat({
+    super.key,
+    required this.nucleo,
+    required this.coachId,
+    this.barra = true,
+    this.visibile = true,
+  });
 
   final NucleoAtleta nucleo;
   final int coachId;
 
-  static const intervallo = Duration(seconds: 15);
+  /// Nelle sezioni dell'app la barra in alto è una sola.
+  final bool barra;
+
+  /// Falso mentre l'atleta è in un'altra sezione: quello che arriva resta da
+  /// leggere.
+  final bool visibile;
 
   @override
   State<SchermataChat> createState() => _SchermataChatState();
@@ -28,8 +41,8 @@ class SchermataChat extends StatefulWidget {
 class _SchermataChatState extends State<SchermataChat> {
   final _testo = TextEditingController();
   late final StreamSubscription<int> _cambiamenti;
-  Timer? _prossima;
   var _messaggi = <MessaggioChat>[];
+  var _questionari = <QuestionarioRicevuto>[];
   CoachCollegato? _coach;
 
   NucleoAtleta get _nucleo => widget.nucleo;
@@ -41,12 +54,28 @@ class _SchermataChatState extends State<SchermataChat> {
     _cambiamenti = _nucleo.cambiamenti.listen((id) {
       if (id == widget.coachId && mounted) setState(_leggi);
     });
-    unawaited(_sincronizza());
+    _seguiSeVisibile();
+  }
+
+  @override
+  void didUpdateWidget(SchermataChat vecchia) {
+    super.didUpdateWidget(vecchia);
+    if (widget.visibile == vecchia.visibile) return;
+    _seguiSeVisibile();
+    if (widget.visibile) _leggi();
+  }
+
+  void _seguiSeVisibile() {
+    if (widget.visibile && _coach?.stato == StatoCollegamento.attivo) {
+      _nucleo.pianificatore.segui(widget.coachId);
+    } else {
+      _nucleo.pianificatore.smettiDiSeguire(widget.coachId);
+    }
   }
 
   @override
   void dispose() {
-    _prossima?.cancel();
+    _nucleo.pianificatore.smettiDiSeguire(widget.coachId);
     unawaited(_cambiamenti.cancel());
     _testo.dispose();
     super.dispose();
@@ -55,19 +84,39 @@ class _SchermataChatState extends State<SchermataChat> {
   void _leggi() {
     _coach = _nucleo.collegamenti.cerca(widget.coachId);
     _messaggi = _nucleo.chat.elenco(widget.coachId);
+    _questionari = _nucleo.questionari.elenco(widget.coachId);
     // Con la chat aperta, quello che arriva è letto.
-    if (_messaggi.any((m) => m.dalCoach && !m.letto)) {
+    if (widget.visibile && _messaggi.any((m) => m.dalCoach && !m.letto)) {
       scheduleMicrotask(() => _nucleo.chat.segnaLetti(widget.coachId));
     }
   }
 
-  Future<void> _sincronizza() async {
-    if (_coach?.stato != StatoCollegamento.attivo) return;
-    await _nucleo.pianificatore.sincronizzaOra(widget.coachId);
-    if (!mounted) return;
-    _prossima = _nucleo.contesto.orologio.timer(SchermataChat.intervallo, () {
-      if (mounted) unawaited(_sincronizza());
-    });
+  /// Messaggi e questionari in ordine di tempo: i messaggi restano
+  /// nell'ordine della chat, e ogni questionario entra dov'è arrivato.
+  List<Object> get _voci {
+    final questionari = _questionari.toList()..sort((a, b) => a.ricevutoIl.compareTo(b.ricevutoIl));
+    final voci = <Object>[];
+    var prossimo = 0;
+    for (final messaggio in _messaggi) {
+      while (prossimo < questionari.length && questionari[prossimo].ricevutoIl.isBefore(messaggio.inviatoIl)) {
+        voci.add(questionari[prossimo++]);
+      }
+      voci.add(messaggio);
+    }
+    return voci..addAll(questionari.skip(prossimo));
+  }
+
+  Future<void> _apriQuestionario(QuestionarioRicevuto q) async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute(
+        builder: (_) => SchermataQuestionario(
+          nucleo: _nucleo,
+          coachId: widget.coachId,
+          questionarioId: q.id,
+        ),
+      ),
+    );
+    if (mounted) setState(_leggi);
   }
 
   void _invia() {
@@ -86,8 +135,15 @@ class _SchermataChatState extends State<SchermataChat> {
     final testi = Testi.of(context);
     final coach = _coach;
     final attivo = coach?.stato == StatoCollegamento.attivo;
+    final voci = _voci;
+    final daCompilare = [
+      for (final q in _questionari)
+        if (q.stato == StatoQuestionario.daCompilare) q,
+    ];
     return Scaffold(
-      appBar: AppBar(title: Text(coach == null ? testi.chat : testi.chatCon(coach.nomeCoach))),
+      appBar: widget.barra
+          ? AppBar(title: Text(coach == null ? testi.chat : testi.chatCon(coach.nomeCoach)))
+          : null,
       body: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -96,8 +152,22 @@ class _SchermataChatState extends State<SchermataChat> {
               color: Theme.of(context).colorScheme.errorContainer,
               child: Padding(padding: const EdgeInsets.all(12), child: Text(testi.chatCoachVecchio)),
             ),
+          // Non si perdono tra i messaggi: al massimo due, gli altri sono in
+          // mezzo alla chat.
+          for (final q in daCompilare.take(2))
+            Material(
+              color: Theme.of(context).colorScheme.primaryContainer,
+              child: ListTile(
+                dense: true,
+                leading: const Icon(Icons.edit_note),
+                title: Text(q.titolo),
+                subtitle: Text(testi.questionarioDaCompilare),
+                trailing: const Icon(Icons.chevron_right),
+                onTap: () => _apriQuestionario(q),
+              ),
+            ),
           Expanded(
-            child: _messaggi.isEmpty
+            child: voci.isEmpty
                 ? ListView(
                     padding: const EdgeInsets.all(24),
                     children: [Text(testi.chatVuota, textAlign: TextAlign.center)],
@@ -105,11 +175,14 @@ class _SchermataChatState extends State<SchermataChat> {
                 : ListView.builder(
                     reverse: true,
                     padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-                    itemCount: _messaggi.length,
-                    itemBuilder: (context, i) => _Fumetto(
-                      messaggio: _messaggi[_messaggi.length - 1 - i],
-                      nucleo: _nucleo,
-                    ),
+                    itemCount: voci.length,
+                    itemBuilder: (context, i) => switch (voci[voci.length - 1 - i]) {
+                      final QuestionarioRicevuto q => _CartaQuestionario(q, onTap: () => _apriQuestionario(q)),
+                      final messaggio => _Fumetto(
+                        messaggio: messaggio as MessaggioChat,
+                        nucleo: _nucleo,
+                      ),
+                    },
                   ),
           ),
           if (attivo)
@@ -271,6 +344,38 @@ class _Fumetto extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Un questionario del coach in mezzo alla chat, con il suo stato (§8.6).
+class _CartaQuestionario extends StatelessWidget {
+  const _CartaQuestionario(this.questionario, {required this.onTap});
+
+  final QuestionarioRicevuto questionario;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final testi = Testi.of(context);
+    final q = questionario;
+    return Card(
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      child: ListTile(
+        leading: Icon(switch (q.stato) {
+          StatoQuestionario.daCompilare => Icons.edit_note,
+          StatoQuestionario.inInvio => Icons.schedule_send,
+          StatoQuestionario.inviato => Icons.assignment_turned_in_outlined,
+        }),
+        title: Text(q.titolo),
+        subtitle: Text(switch (q.stato) {
+          StatoQuestionario.daCompilare => q.rifiuto == null ? testi.daCompilare : testi.questionarioRifiutato,
+          StatoQuestionario.inInvio => testi.inCodaPerIlCoach,
+          StatoQuestionario.inviato => testi.arrivatoAlCoach,
+        }),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: onTap,
       ),
     );
   }

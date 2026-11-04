@@ -16,6 +16,7 @@ const _percorsi = {
   '/v1/abbinamento',
   '/v1/abbinamento/conferma',
   '/v1/sync',
+  '/v1/attendi',
   '/v1/dispositivo',
 };
 
@@ -51,6 +52,10 @@ class ServerCoach {
   var _syncInCorso = 0;
   final _attese = <Completer<void>>[];
 
+  /// `POST /v1/attendi` in sospeso, una per dispositivo: chiamando la funzione
+  /// si conclude senza novità.
+  final _inSospeso = <String, void Function()>{};
+
   /// Porta locale a cui l'onion service inoltra le connessioni.
   int get porta => _server!.port;
 
@@ -61,11 +66,22 @@ class ServerCoach {
     _server = server;
   }
 
-  Future<void> chiudi() async => _server?.close(force: true);
+  Future<void> chiudi() async {
+    _concludiInSospeso();
+    await _server?.close(force: true);
+  }
+
+  void _concludiInSospeso() {
+    for (final concludi in _inSospeso.values.toList()) {
+      concludi();
+    }
+  }
 
   /// Aspetta che finiscano le richieste in corso, al massimo per [limite]:
   /// ricreare il servizio onion chiude i circuiti aperti (§9.2).
   Future<void> attendiRichiesteInCorso(Duration limite) async {
+    // Le attese lunghe non vanno aspettate: l'app le rifà da sola.
+    _concludiInSospeso();
     if (_inCorso == 0) return;
     final attesa = Completer<void>();
     _attese.add(attesa);
@@ -155,6 +171,15 @@ class ServerCoach {
           _syncInCorso--;
         }
 
+      case ('POST', '/v1/attendi'):
+        final dispositivo = _autentica(richiesta);
+        final corpo = await _leggiJson(richiesta);
+        final novita = await _attendiNovita(
+          dispositivo,
+          _analizza(() => RichiestaAttesa.fromJson(corpo)),
+        );
+        await _rispondi(richiesta, 200, RispostaAttesa(novita: novita).toJson());
+
       case ('PUT', final percorso) when percorso.startsWith(_prefissoFoto):
         final dispositivo = _autentica(richiesta);
         final jpeg = await _leggiCorpo(richiesta, massimo: Limiti.fotoMassima);
@@ -183,6 +208,40 @@ class ServerCoach {
 
       default:
         throw const ErroreHttp(404, CodiceErrore.nonTrovato);
+    }
+  }
+
+  /// Vero appena c'è qualcosa di nuovo per l'atleta, falso dopo l'attesa. Non
+  /// occupa un posto tra le sync contemporanee, ed è una sola per dispositivo:
+  /// quella nuova conclude la precedente, di cui l'app ha già smesso di
+  /// aspettare la risposta.
+  Future<bool> _attendiNovita(Dispositivo dispositivo, RichiestaAttesa richiesta) async {
+    final sync = _nucleo.sincronizzazione;
+    final atletaId = dispositivo.atletaId;
+    if (sync.haNovita(atletaId, richiesta)) return true;
+    final esito = Completer<bool>();
+    void concludi(bool novita) {
+      if (!esito.isCompleted) esito.complete(novita);
+    }
+
+    void senzaNovita() => concludi(false);
+    final modifiche = sync.modifiche.listen((_) {
+      if (sync.haNovita(atletaId, richiesta)) concludi(true);
+    });
+    final scadenza = Timer(
+      Duration(seconds: min(richiesta.attesaS, Limiti.attesaNovitaS)),
+      senzaNovita,
+    );
+    _inSospeso[dispositivo.id]?.call();
+    _inSospeso[dispositivo.id] = senzaNovita;
+    try {
+      return await esito.future;
+    } finally {
+      scadenza.cancel();
+      await modifiche.cancel();
+      if (identical(_inSospeso[dispositivo.id], senzaNovita)) {
+        _inSospeso.remove(dispositivo.id);
+      }
     }
   }
 

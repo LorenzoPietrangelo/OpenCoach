@@ -139,6 +139,25 @@ class ServizioSincronizzazione {
     return risposta;
   }
 
+  /// Vero se una sync con questa [richiesta] porterebbe qualcosa di nuovo per
+  /// l'atleta, oppure se il cursore non è incrementale o è di un'altra epoca.
+  bool haNovita(String atletaId, RichiestaAttesa richiesta) {
+    final epoca = _c.archivio.epoca;
+    final cursore = Cursore.analizza(richiesta.cursore);
+    if (cursore is! CursoreIncrementale || cursore.epoca != epoca || richiesta.epoca != epoca) {
+      return true;
+    }
+    return _db.select(
+      'SELECT EXISTS (SELECT 1 FROM schede WHERE atleta_id = ?1 AND sequenza > ?2) '
+      'OR EXISTS (SELECT 1 FROM questionari_inviati WHERE atleta_id = ?1 AND sequenza > ?2) '
+      'OR EXISTS (SELECT 1 FROM messaggi WHERE atleta_id = ?1 AND sequenza > ?2) AS novita',
+      [atletaId, cursore.sequenza],
+    ).first['novita'] == 1;
+  }
+
+  /// Una modifica che può essere una novità per qualche atleta.
+  Stream<void> get modifiche => _c.archivio.sequenzaCambiata;
+
   void _salvaLog(
     Dispositivo dispositivo,
     Object? log,

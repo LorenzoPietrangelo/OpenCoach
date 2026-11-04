@@ -11,13 +11,11 @@ import 'contenuto_scheda.dart';
 import 'dettaglio_log.dart';
 import 'dettaglio_scheda.dart';
 import 'formati.dart';
-import 'questionario.dart';
 import 'scollegamento.dart';
 import 'stato_sync.dart';
 
-/// Un coach (§10.2): lo stato della sync (§7.5) con «Sincronizza ora», le
-/// sue schede con l'archivio e lo storico degli allenamenti. Da qui parte
-/// anche un allenamento libero.
+/// Un coach con cui il collegamento è chiuso, dalle impostazioni: quello che
+/// resta sul telefono, in sola lettura.
 class PaginaCoach extends StatefulWidget {
   const PaginaCoach({super.key, required this.nucleo, required this.coachId});
 
@@ -28,16 +26,99 @@ class PaginaCoach extends StatefulWidget {
   State<PaginaCoach> createState() => _PaginaCoachState();
 }
 
-class _PaginaCoachState extends State<PaginaCoach>
-    with SingleTickerProviderStateMixin {
-  late final _tab = TabController(length: 3, vsync: this);
+class _PaginaCoachState extends State<PaginaCoach> {
+  late final StreamSubscription<int> _cambiamenti;
+  CoachCollegato? _coach;
+
+  NucleoAtleta get _nucleo => widget.nucleo;
+
+  @override
+  void initState() {
+    super.initState();
+    _coach = _nucleo.collegamenti.cerca(widget.coachId);
+    _cambiamenti = _nucleo.cambiamenti.listen((id) {
+      if (id == widget.coachId && mounted) {
+        setState(() => _coach = _nucleo.collegamenti.cerca(widget.coachId));
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    unawaited(_cambiamenti.cancel());
+    super.dispose();
+  }
+
+  /// Dopo lo scollegamento, se l'atleta ha cancellato i dati del coach, la
+  /// pagina non ha più niente da mostrare.
+  Future<void> _chiudiSe(Future<bool> datiCancellati) async {
+    if (await datiCancellati && mounted) Navigator.of(context).pop();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final testi = Testi.of(context);
+    final coach = _coach;
+    if (coach == null) {
+      return Scaffold(
+        appBar: AppBar(),
+        body: Center(child: Text(testi.coachNonPiuPresente)),
+      );
+    }
+    final attivo = coach.stato == StatoCollegamento.attivo;
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(coach.nomeCoach),
+        actions: [
+          IconButton(
+            tooltip: testi.chat,
+            onPressed: () => Navigator.of(context).push(
+              MaterialPageRoute<void>(
+                builder: (_) => SchermataChat(nucleo: _nucleo, coachId: widget.coachId),
+              ),
+            ),
+            icon: const Icon(Icons.chat_bubble_outline),
+          ),
+          PopupMenuButton<void>(
+            itemBuilder: (_) => [
+              if (attivo)
+                PopupMenuItem(
+                  onTap: () => _chiudiSe(scollegaDalCoach(context, _nucleo, coach)),
+                  child: Text(testi.scollega),
+                )
+              else
+                PopupMenuItem(
+                  onTap: () => _chiudiSe(cancellaDatiDelCoach(context, _nucleo, coach)),
+                  child: Text(testi.cancellaDatiCoach),
+                ),
+            ],
+          ),
+        ],
+      ),
+      body: SezioneAllenamento(nucleo: _nucleo, coachId: widget.coachId),
+    );
+  }
+}
+
+/// La sezione Allenamento (§10.2): lo stato della sync (§7.5) con «Sincronizza
+/// ora» e la scheda attiva. Storico e archivio delle schede restano chiusi
+/// finché l'atleta non li apre. Da qui parte anche un allenamento libero.
+class SezioneAllenamento extends StatefulWidget {
+  const SezioneAllenamento({super.key, required this.nucleo, required this.coachId});
+
+  final NucleoAtleta nucleo;
+  final int coachId;
+
+  @override
+  State<SezioneAllenamento> createState() => _SezioneAllenamentoState();
+}
+
+class _SezioneAllenamentoState extends State<SezioneAllenamento> {
   late final StreamSubscription<int> _cambiamenti;
   CoachCollegato? _coach;
   var _attuali = <SchedaRicevuta>[];
   var _archiviate = <SchedaRicevuta>[];
   var _log = <LogAllenamento>[];
-  var _questionari = <QuestionarioRicevuto>[];
-  var _nonLetti = 0;
 
   /// La sync chiesta da qui non è ancora finita.
   var _sincronizzando = false;
@@ -56,7 +137,6 @@ class _PaginaCoachState extends State<PaginaCoach>
   @override
   void dispose() {
     unawaited(_cambiamenti.cancel());
-    _tab.dispose();
     super.dispose();
   }
 
@@ -66,55 +146,6 @@ class _PaginaCoachState extends State<PaginaCoach>
     _attuali = _nucleo.schede.elenco(id);
     _archiviate = _nucleo.schede.elenco(id, archiviate: true);
     _log = _nucleo.diario.elenco(id);
-    _questionari = _nucleo.questionari.elenco(id);
-    _nonLetti = _nucleo.chat.nonLetti(id);
-  }
-
-  Future<void> _apriQuestionario(QuestionarioRicevuto q) async {
-    await Navigator.of(context).push<void>(
-      MaterialPageRoute(
-        builder: (_) => SchermataQuestionario(
-          nucleo: _nucleo,
-          coachId: widget.coachId,
-          questionarioId: q.id,
-        ),
-      ),
-    );
-    if (mounted) setState(_leggi);
-  }
-
-  /// I questionari del coach: prima quelli da compilare.
-  Widget _elencoQuestionari(Testi testi) {
-    if (_questionari.isEmpty) {
-      return ListView(
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(testi.nessunQuestionario, textAlign: TextAlign.center),
-          ),
-        ],
-      );
-    }
-    return ListView(
-      children: [
-        for (final q in _questionari)
-          ListTile(
-            leading: Icon(switch (q.stato) {
-              StatoQuestionario.daCompilare => Icons.edit_note,
-              StatoQuestionario.inInvio => Icons.schedule_send,
-              StatoQuestionario.inviato => Icons.assignment_turned_in_outlined,
-            }),
-            title: Text(q.titolo),
-            subtitle: Text(switch (q.stato) {
-              StatoQuestionario.daCompilare => q.rifiuto == null ? testi.daCompilare : testi.questionarioRifiutato,
-              StatoQuestionario.inInvio => testi.inCodaPerIlCoach,
-              StatoQuestionario.inviato => testi.arrivatoAlCoach,
-            }),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () => _apriQuestionario(q),
-          ),
-      ],
-    );
   }
 
   /// «Sincronizza ora» o trascinamento per aggiornare (§7.4).
@@ -141,15 +172,7 @@ class _PaginaCoachState extends State<PaginaCoach>
         ),
       ),
     );
-    if (salvato != true) return;
-    _tab.animateTo(1);
-    messaggi.avvisa(testi.allenamentoSalvato);
-  }
-
-  /// Dopo lo scollegamento, se l'atleta ha cancellato i dati del coach, la
-  /// pagina non ha più niente da mostrare.
-  Future<void> _chiudiSe(Future<bool> datiCancellati) async {
-    if (await datiCancellati && mounted) Navigator.of(context).pop();
+    if (salvato == true) messaggi.avvisa(testi.allenamentoSalvato);
   }
 
   Future<void> _apriScheda(SchedaRicevuta scheda) => Navigator.of(context).push(
@@ -162,62 +185,59 @@ class _PaginaCoachState extends State<PaginaCoach>
     ),
   );
 
-  Future<void> _apriLog(LogAllenamento log) => Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      builder: (_) =>
-          DettaglioLog(nucleo: _nucleo, coachId: widget.coachId, logId: log.id),
-    ),
-  );
-
   @override
   Widget build(BuildContext context) {
     final testi = Testi.of(context);
     final coach = _coach;
-    if (coach == null) {
-      return Scaffold(
-        appBar: AppBar(),
-        body: Center(child: Text(testi.coachNonPiuPresente)),
-      );
-    }
+    if (coach == null) return Center(child: Text(testi.coachNonPiuPresente));
     final attivo = coach.stato == StatoCollegamento.attivo;
-    final daVedere = _attuali.where((s) => s.daVedere).length;
-    final daCompilare = _questionari.where((q) => q.stato == StatoQuestionario.daCompilare).length;
-    Widget aggiornabile(Widget elenco) => attivo
-        ? RefreshIndicator(onRefresh: _sincronizza, child: elenco)
-        : elenco;
-    return Scaffold(
-      appBar: AppBar(
-        title: Text(coach.nomeCoach),
-        actions: [
-          IconButton(
-            tooltip: testi.chat,
-            onPressed: () => Navigator.of(context).push(
-              MaterialPageRoute<void>(
-                builder: (_) => SchermataChat(nucleo: _nucleo, coachId: widget.coachId),
-              ),
-            ),
-            icon: Badge(
-              isLabelVisible: _nonLetti > 0,
-              label: Text('$_nonLetti'),
-              child: const Icon(Icons.chat_bubble_outline),
-            ),
+    final nomi = nomiSedute([..._attuali, ..._archiviate]);
+    final elenco = ListView(
+      physics: const AlwaysScrollableScrollPhysics(),
+      padding: const EdgeInsets.only(bottom: 88),
+      children: [
+        if (_attuali.isEmpty && _archiviate.isEmpty)
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text(testi.nessunaScheda, textAlign: TextAlign.center),
           ),
-          PopupMenuButton<void>(
-            itemBuilder: (_) => [
-              if (attivo)
-                PopupMenuItem(
-                  onTap: () => _chiudiSe(scollegaDalCoach(context, _nucleo, coach)),
-                  child: Text(testi.scollega),
-                )
-              else
-                PopupMenuItem(
-                  onTap: () => _chiudiSe(cancellaDatiDelCoach(context, _nucleo, coach)),
-                  child: Text(testi.cancellaDatiCoach),
+        for (final scheda in _attuali)
+          _VoceScheda(scheda, onTap: () => _apriScheda(scheda)),
+        ExpansionTile(
+          key: const PageStorageKey('storico'),
+          title: Text(_log.isEmpty ? testi.storico : '${testi.storico} (${_log.length})'),
+          shape: const Border(),
+          children: [
+            if (_log.isEmpty)
+              Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(testi.nessunAllenamento, textAlign: TextAlign.center),
+              ),
+            for (final log in _log)
+              _VoceLog(
+                log,
+                titolo: titoloLog(testi, log, nomi),
+                onTap: () => Navigator.of(context).push(
+                  MaterialPageRoute<void>(
+                    builder: (_) => DettaglioLog(nucleo: _nucleo, coachId: widget.coachId, logId: log.id),
+                  ),
                 ),
+              ),
+          ],
+        ),
+        if (_archiviate.isNotEmpty)
+          ExpansionTile(
+            key: const PageStorageKey('archivio'),
+            title: Text('${testi.archivio} (${_archiviate.length})'),
+            shape: const Border(),
+            children: [
+              for (final scheda in _archiviate)
+                _VoceScheda(scheda, onTap: () => _apriScheda(scheda)),
             ],
           ),
-        ],
-      ),
+      ],
+    );
+    return Scaffold(
       body: Column(
         children: [
           _StatoSync(
@@ -225,96 +245,21 @@ class _PaginaCoachState extends State<PaginaCoach>
             inCorso: _sincronizzando || _nucleo.sync.inCorso(coach.id),
             sincronizza: attivo ? _sincronizza : null,
           ),
-          TabBar(
-            controller: _tab,
-            tabs: [
-              // Con tre schede il numero sta sopra il testo, non accanto: sui
-              // telefoni stretti non ci sarebbe posto.
-              Tab(
-                child: Badge(
-                  isLabelVisible: daVedere > 0,
-                  label: Text('$daVedere'),
-                  offset: const Offset(12, -8),
-                  child: Text(testi.schede),
-                ),
-              ),
-              Tab(text: testi.storico),
-              Tab(
-                child: Badge(
-                  isLabelVisible: daCompilare > 0,
-                  label: Text('$daCompilare'),
-                  offset: const Offset(12, -8),
-                  child: Text(testi.questionari, overflow: TextOverflow.fade, softWrap: false),
-                ),
-              ),
-            ],
-          ),
           Expanded(
-            child: TabBarView(
-              controller: _tab,
-              children: [
-                aggiornabile(_elencoSchede(testi)),
-                aggiornabile(_storico(testi)),
-                aggiornabile(_elencoQuestionari(testi)),
-              ],
-            ),
+            child: attivo
+                ? RefreshIndicator(onRefresh: _sincronizza, child: elenco)
+                : elenco,
           ),
         ],
       ),
       floatingActionButton: attivo
           ? FloatingActionButton.extended(
+              heroTag: null,
               onPressed: _allenamentoLibero,
               icon: const Icon(Icons.add),
               label: Text(testi.allenamentoLibero),
             )
           : null,
-    );
-  }
-
-  /// Le schede in corso, poi l'«Archivio» (§8.1).
-  Widget _elencoSchede(Testi testi) => ListView(
-    physics: const AlwaysScrollableScrollPhysics(),
-    padding: const EdgeInsets.only(bottom: 88),
-    children: [
-      if (_attuali.isEmpty && _archiviate.isEmpty)
-        Padding(
-          padding: const EdgeInsets.all(24),
-          child: Text(testi.nessunaScheda, textAlign: TextAlign.center),
-        ),
-      for (final scheda in _attuali)
-        _VoceScheda(scheda, onTap: () => _apriScheda(scheda)),
-      if (_archiviate.isNotEmpty) ...[
-        ListTile(
-          title: Text(
-            testi.archivio,
-            style: Theme.of(context).textTheme.titleSmall,
-          ),
-        ),
-        for (final scheda in _archiviate)
-          _VoceScheda(scheda, onTap: () => _apriScheda(scheda)),
-      ],
-    ],
-  );
-
-  /// I log, dal più recente, con lo stato rispetto al coach (§7.3).
-  Widget _storico(Testi testi) {
-    final nomi = nomiSedute([..._attuali, ..._archiviate]);
-    return ListView(
-      physics: const AlwaysScrollableScrollPhysics(),
-      padding: const EdgeInsets.only(bottom: 88),
-      children: [
-        if (_log.isEmpty)
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text(testi.nessunAllenamento, textAlign: TextAlign.center),
-          ),
-        for (final log in _log)
-          _VoceLog(
-            log,
-            titolo: titoloLog(testi, log, nomi),
-            onTap: () => _apriLog(log),
-          ),
-      ],
     );
   }
 }

@@ -83,9 +83,6 @@ class TestiIt extends Testi {
   String get sezioneLibreria => 'Libreria';
 
   @override
-  String get sezioneQuestionariMenu => 'Questionari';
-
-  @override
   String get sezioneStato => 'Stato';
 
   @override
@@ -266,13 +263,75 @@ class TestiIt extends Testi {
       'Il telefono viene scollegato e si cancellano schede e allenamenti dell\'atleta. Non si può annullare.';
 
   @override
-  String get schedaTelefono => 'Telefono';
-
-  @override
   String get schedaSchede => 'Schede';
 
   @override
-  String get schedaAllenamenti => 'Allenamenti';
+  String get schedaStorico => 'Storico';
+
+  @override
+  String get storicoTotale => 'Allenamenti registrati';
+
+  @override
+  String get storicoSettimana => 'Questa settimana';
+
+  @override
+  String get storicoUltimo => 'Ultimo allenamento';
+
+  @override
+  String get storicoAllenamenti => 'Allenamenti a settimana';
+
+  @override
+  String storicoAllenamentiDettaglio(String giorno, int numero) {
+    String _temp0 = intl.Intl.pluralLogic(
+      numero,
+      locale: localeName,
+      other: '$numero allenamenti',
+      one: '1 allenamento',
+    );
+    return 'Dal $giorno: $_temp0';
+  }
+
+  @override
+  String get storicoDiQualeScheda => 'Scheda';
+
+  @override
+  String storicoSchedaAttiva(String titolo) {
+    return '$titolo (attiva)';
+  }
+
+  @override
+  String get storicoLiberi => 'Allenamenti liberi';
+
+  @override
+  String get storicoTutte => 'Tutte le schede';
+
+  @override
+  String get storicoSchedaVuota =>
+      'Nessun allenamento registrato con questa scheda.';
+
+  @override
+  String get storicoMisuraStima =>
+      'Il massimale stimato più alto di ogni allenamento, in chili: dal carico e dalle ripetizioni, contando il RIR previsto dal coach se c\'è.';
+
+  @override
+  String get storicoProgressi => 'Progressi per esercizio';
+
+  @override
+  String get storicoMisuraCarico =>
+      'Il carico più alto di ogni allenamento, in chili.';
+
+  @override
+  String get storicoMisuraRipetizioni =>
+      'Il numero più alto di ripetizioni di ogni allenamento.';
+
+  @override
+  String get storicoMisuraDurata =>
+      'La serie più lunga di ogni allenamento, in secondi.';
+
+  @override
+  String pubblicataEArchiviata(int revisione, String titolo) {
+    return 'Pubblicata la revisione $revisione: «$titolo» passa nell\'archivio';
+  }
 
   @override
   String get schedaPeso => 'Peso';
@@ -298,12 +357,6 @@ class TestiIt extends Testi {
 
   @override
   String get tuttiIPesi => 'Tutti i pesi';
-
-  @override
-  String get schedaQuestionari => 'Questionari';
-
-  @override
-  String get sezioneQuestionari => 'Questionari';
 
   @override
   String get nuovoQuestionario => 'Nuovo questionario';
@@ -440,21 +493,16 @@ class TestiIt extends Testi {
   String get mandaQuestionario => 'Manda un questionario';
 
   @override
+  String get manda => 'Manda';
+
+  @override
   String mandaQuestionarioA(String nome) {
     return 'Mandare a $nome';
   }
 
   @override
-  String get primaCreaUnQuestionario =>
-      'Prima scrivi un questionario nella sezione «Questionari»';
-
-  @override
   String get questionarioMandato =>
       'Mandato: l\'atleta lo riceve alla prossima sincronizzazione';
-
-  @override
-  String get nessunQuestionarioMandato =>
-      'Non hai ancora mandato questionari a questo atleta.';
 
   @override
   String inAttesaDiRisposta(String quando) {
@@ -500,32 +548,14 @@ class TestiIt extends Testi {
   }
 
   @override
-  String get telefono => 'Telefono collegato';
-
-  @override
   String get nessunTelefonoSpiegazione =>
       'Nessun telefono collegato. Crea un invito e fallo scansionare dall\'app dell\'atleta.';
 
   @override
-  String versioneApp(String versione) {
-    return 'App $versione';
-  }
+  String get revoca => 'Scollega';
 
   @override
-  String abbinatoIl(String quando) {
-    return 'Collegato il $quando';
-  }
-
-  @override
-  String get maiSincronizzato => 'Non ha ancora sincronizzato';
-
-  @override
-  String ultimoContatto(String quando) {
-    return 'Ultimo contatto: $quando';
-  }
-
-  @override
-  String get revoca => 'Revoca';
+  String get scollegaTelefono => 'Scollega il telefono';
 
   @override
   String revocaTitolo(String telefono) {
@@ -538,28 +568,9 @@ class TestiIt extends Testi {
   }
 
   @override
-  String get invito => 'Invito';
-
-  @override
-  String get nessunInvito => 'Nessun invito aperto.';
-
-  @override
-  String get invitoInAbbinamento =>
-      'Il telefono sta completando l\'abbinamento.';
-
-  @override
-  String get invitoAperto => 'Invito aperto';
-
-  @override
   String validoFinoAl(String quando) {
     return 'Valido fino al $quando';
   }
-
-  @override
-  String get annullaInvito => 'Annulla l\'invito';
-
-  @override
-  String get mostraQr => 'Mostra il QR';
 
   @override
   String get nuovoInvito => 'Nuovo invito';
@@ -695,18 +706,6 @@ class TestiIt extends Testi {
 
   @override
   String get noteScheda => 'Note per l\'atleta';
-
-  @override
-  String get validaDal => 'Valida dal';
-
-  @override
-  String get validaAl => 'Valida fino al';
-
-  @override
-  String get nessunaData => 'nessuna data';
-
-  @override
-  String get togliData => 'Togli la data';
 
   @override
   String get aggiungiSeduta => 'Aggiungi una seduta';
@@ -876,62 +875,6 @@ class TestiIt extends Testi {
 
   @override
   String get nessunAllenamento => 'Nessun allenamento ricevuto finora.';
-
-  @override
-  String get allenamentoLibero => 'Allenamento libero';
-
-  @override
-  String get sedutaNonTrovata => 'Seduta di una scheda eliminata';
-
-  @override
-  String minuti(int minuti) {
-    String _temp0 = intl.Intl.pluralLogic(
-      minuti,
-      locale: localeName,
-      other: '$minuti minuti',
-      one: '1 minuto',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String rpeSeduta(String valore) {
-    return 'RPE $valore';
-  }
-
-  @override
-  String get suRevisioneSuperata => 'su una revisione superata';
-
-  @override
-  String get suRevisioneSuperataSpiegazione =>
-      'L\'atleta seguiva una revisione della scheda non più attuale.';
-
-  @override
-  String prescritto(String righe) {
-    return 'Prescritto: $righe';
-  }
-
-  @override
-  String get esercizioAggiunto => 'Aggiunto dall\'atleta';
-
-  @override
-  String serieNumero(int numero) {
-    return 'Serie $numero';
-  }
-
-  @override
-  String ripetizioniEseguite(int numero) {
-    String _temp0 = intl.Intl.pluralLogic(
-      numero,
-      locale: localeName,
-      other: '$numero ripetizioni',
-      one: '1 ripetizione',
-    );
-    return '$_temp0';
-  }
-
-  @override
-  String get nonCompletata => 'non completata';
 
   @override
   String get coach => 'Coach';

@@ -6,6 +6,24 @@ import 'problemi.dart';
 import 'tempo.dart';
 
 /// Stato del collegamento con un coach.
+/// Come è finita un'attesa di novità dal coach (§7.4).
+enum EsitoAttesa {
+  /// Il coach ha qualcosa di nuovo: conviene sincronizzare.
+  novita,
+
+  /// L'attesa è finita senza novità.
+  nessunaNovita,
+
+  /// Il programma del coach non lo sa fare: è precedente alla 1.3.1.
+  nonSupportata,
+
+  /// Il coach non si è raggiunto.
+  guasto,
+
+  /// Il collegamento è chiuso.
+  nonDisponibile,
+}
+
 enum StatoCollegamento {
   /// Il telefono sincronizza con il coach.
   attivo,

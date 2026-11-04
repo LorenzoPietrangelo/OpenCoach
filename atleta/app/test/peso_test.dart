@@ -12,13 +12,12 @@ void main() {
   setUp(() => telefono = TelefonoDiProva());
   tearDown(() => telefono.chiudi());
 
-  testWidgets('il peso di oggi: si registra, si corregge e si condivide con i coach scelti', (
+  testWidgets('il peso di oggi: si registra, si corregge e si condivide con il coach', (
     tester,
   ) async {
     final coach = telefono.aggiungiCoach('Marco Bianchi');
     await tester.pumpWidget(AppAtleta(nucleo: telefono.nucleo));
     await tester.pumpAndSettle();
-    expect(find.text('Registra il peso di oggi'), findsOneWidget);
 
     await tester.tap(find.text('Peso'));
     await tester.pumpAndSettle();
@@ -45,10 +44,32 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Non vede il tuo peso'), findsOneWidget);
     expect(telefono.nucleo.collegamenti.cerca(coach)!.condividePesi, isFalse);
+  });
 
-    await tester.tap(find.byType(BackButton));
+  testWidgets('il grafico compare dal secondo giorno, e prima lo dice', (tester) async {
+    await tester.pumpWidget(conTesti(SchermataPeso(nucleo: telefono.nucleo)));
     await tester.pumpAndSettle();
-    expect(find.text('Oggi: 72,4 kg'), findsOneWidget);
+    expect(find.byType(GraficoPeso), findsNothing);
+    expect(find.textContaining('Il grafico compare'), findsNothing);
+
+    await tester.enterText(find.byType(TextField), '72,4');
+    await tester.tap(find.text('Salva'));
+    await tester.pumpAndSettle();
+    expect(find.byType(GraficoPeso), findsNothing);
+    expect(find.textContaining('Il grafico compare'), findsOneWidget);
+
+    // Correggere lo stesso giorno non aggiunge un punto.
+    await tester.enterText(find.byType(TextField), '72');
+    await tester.tap(find.text('Salva'));
+    await tester.pumpAndSettle();
+    expect(find.byType(GraficoPeso), findsNothing);
+
+    telefono.nucleo.pesi.salva(DateTime(2026, 10, 20), 73);
+    telefono.nucleo.contesto.segnala(0);
+    await tester.pumpAndSettle();
+    expect(find.byType(GraficoPeso), findsOneWidget);
+    expect(find.textContaining('Il grafico compare'), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   test('la media degli ultimi 7 giorni conta solo i giorni con un peso', () {

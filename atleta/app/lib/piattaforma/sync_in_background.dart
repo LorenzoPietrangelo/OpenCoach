@@ -13,17 +13,22 @@ class NotificaSchede {
     required this.coachId,
     required this.titolo,
     required this.testo,
+    this.conversazione = false,
   });
 
   final int coachId;
   final String titolo;
   final String testo;
 
+  /// C'è un messaggio nuovo: i controlli ravvicinati ripartono (§7.4).
+  final bool conversazione;
+
   /// Come la legge il codice Kotlin (NotificheSchede).
   Map<String, Object> perAndroid() => {
     'coach': coachId,
     'titolo': titolo,
     'testo': testo,
+    'conversazione': conversazione,
   };
 }
 
@@ -50,6 +55,7 @@ List<NotificaSchede> notificheSchede(
           for (final id in esito.questionariNuovi) ?titoloQuestionario?.call(esito.coachId, id),
           if (esito.messaggiNuovi.isNotEmpty) ?testoMessaggio?.call(esito.coachId, esito.messaggiNuovi.last),
         ].join(', '),
+        conversazione: esito.messaggiNuovi.isNotEmpty,
       ),
 ];
 
@@ -191,6 +197,16 @@ class SyncInBackground {
   Future<void> proseguiSeInCorso() async {
     if (_nucleo.sync.occupato) await _canale.invokeMethod('prosegui');
   }
+
+  /// L'app si chiude: se con il coach ci si stava scrivendo, i prossimi
+  /// controlli sono ravvicinati, per ricevere presto la risposta (§7.4).
+  Future<void> controlliRavvicinatiSeConversazione() async {
+    final inCorso = _nucleo.collegamenti.attivi().any((c) => _nucleo.chat.conversazioneInCorso(c.id));
+    if (inCorso) await _canale.invokeMethod('controlliRavvicinati');
+  }
+
+  /// L'app è di nuovo aperta: i controlli ravvicinati non servono più.
+  Future<void> annullaControlliRavvicinati() => _canale.invokeMethod('annullaControlliRavvicinati');
 
   /// Con almeno un coach collegato chiede il permesso per le notifiche, che
   /// da Android 13 serve.

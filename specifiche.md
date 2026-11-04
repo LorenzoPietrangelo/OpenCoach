@@ -232,6 +232,14 @@ Risposta 200:
 - Un messaggio del coach riceve un numero di sequenza: nella risposta incrementale `messaggi` contiene quelli scritti dal coach dopo il cursore; nella completa tutta la chat, anche i messaggi dell'atleta, dopo i questionari. Nella risposta completa l'app aggiunge i messaggi che non ha e rimette in coda i propri che il programma non ha più.
 - Una risposta senza `messaggi_accettati` viene da un programma che non conosce la chat: l'app tiene i messaggi in coda e lo dice all'atleta, finché una risposta successiva non contiene il campo. I video partono solo verso un programma che ha già mandato il campo.
 
+#### `POST /v1/attendi`
+
+Con la chat aperta l'app chiede al coach di avvisarla appena ha qualcosa di nuovo (§7.4). Corpo: `{"epoca": "…", "cursore": "…", "attesa_s": 25}`, con l'epoca e il cursore dell'ultima sync. Risposta: `{"novita": true}` appena una sync porterebbe schede, questionari o messaggi nuovi, o se il cursore non è incrementale o è di un'altra epoca; `{"novita": false}` dopo `attesa_s` secondi, al massimo 25.
+
+- Non cambia niente sul coach: le novità le porta la sync che l'app fa dopo.
+- Non conta tra le sync contemporanee. Ce n'è una per dispositivo: quella nuova conclude la precedente. Si concludono tutte senza novità quando il coach ripubblica il servizio (§9.2).
+- Un programma precedente alla 1.3.1 risponde 404: l'app sincronizza ogni 15 secondi.
+
 #### `PUT /v1/foto/<id>`
 
 Con token. Una foto di un questionario: corpo `image/jpeg` di al massimo 1,5 MiB, `<id>` è un UUID generato dall'app. Risposta 204. Idempotente: ricaricare la stessa foto non cambia nulla. Errori: 400 se non è un JPEG, 409 se l'id è già di un altro atleta, 413 se è troppo grande. La foto si lega al questionario quando arrivano le risposte che la citano.
@@ -309,13 +317,15 @@ App in primo piano:
 - all'apertura e al ritorno in primo piano;
 - subito dopo il salvataggio, la modifica o l'eliminazione di un log;
 - con il tasto «Sincronizza ora» o trascinando per aggiornare;
-- ogni 10 minuti finché l'app resta aperta.
+- ogni 10 minuti finché l'app resta aperta;
+- mentre l'atleta guarda la chat, appena il coach ha qualcosa di nuovo: c'è sempre un `POST /v1/attendi` in sospeso, che non blocca le sync. Se il programma del coach non lo conosce, ogni 15 secondi.
 
 Se il coach non è raggiungibile, l'app ritenta dopo 30 s, 2 minuti e 5 minuti, poi aspetta la prossima occasione.
 
 App in background:
 
-- Android: lavoro periodico con WorkManager, predefinito ogni 60 minuti (impostabile: disattivato, 30 minuti, 1, 3 o 6 ore), solo con rete disponibile e batteria non scarica. Una sync iniziata in primo piano prosegue come lavoro accelerato se l'app viene chiusa.
+- Android: lavoro periodico con WorkManager, predefinito ogni 60 minuti (impostabile: disattivato, 15 o 30 minuti, 1, 3 o 6 ore), solo con rete disponibile e batteria non scarica. Una sync iniziata in primo piano prosegue come lavoro accelerato se l'app viene chiusa.
+- Android, dopo una conversazione: se l'app si chiude entro 10 minuti dall'ultimo messaggio, partono controlli dopo 1, 3, 5 e 10 minuti, con le stesse condizioni. Un messaggio nuovo ricevuto così li fa ripartire da capo; riaprendo l'app si annullano. Con la sync in background disattivata non ci sono. Android può rimandarli, come ogni lavoro.
 - iOS: `BGAppRefreshTask`, senza garanzie su se e quando il sistema lo esegue, e `beginBackgroundTask` per completare una sync in corso quando l'app va in background. Nella pratica su iOS la sync avviene ad app aperta, e l'interfaccia lo dice.
 - Quando una sync in background riceve una scheda nuova o una nuova revisione, l'app mostra una notifica locale.
 
@@ -345,8 +355,8 @@ Per ogni coach sono sempre visibili l'ultima sync riuscita e il numero di log in
   "stato": "pubblicata",                 // "pubblicata" | "archiviata"
   "titolo": "Forza – blocco 2",
   "note": "…",
-  "valida_dal": "2026-10-20",
-  "valida_al": "2026-11-16",             // facoltativo
+  "valida_dal": "2026-10-20",             // facoltativo: il programma non lo scrive più
+  "valida_al": "2026-11-16",             // facoltativo: il programma non lo scrive più
   "pubblicata_il": "2026-10-18T21:00:00+02:00",
   "sedute": [
     {
@@ -557,15 +567,16 @@ La chat tra coach e atleta. Un messaggio, come lo scambiano app e programma:
 Atleti:
 
 - creare, modificare, archiviare ed eliminare. Eliminare revoca il dispositivo e cancella tutti i dati dell'atleta, dopo conferma;
-- generare, mostrare di nuovo e annullare un invito;
-- vedere per ogni atleta stato, dispositivo, versione dell'app e ultimo contatto;
-- revocare il dispositivo: il token smette di valere subito e il servizio viene ripubblicato senza la sua chiave;
+- la pagina di un atleta nuovo mostra solo l'invito, con il QR e il link. Appena il telefono si collega lascia il posto alle altre sezioni. Un atleta che ha già avuto un telefono o ha già dei dati continua a vederli anche se il telefono manca, con il pulsante per un nuovo invito;
+- dal menu dell'atleta, creare un invito, che annulla quello ancora aperto;
+- vedere nell'elenco degli atleti stato, dispositivo e ultimo contatto;
+- dal menu dell'atleta, scollegare il telefono: il token smette di valere subito e il servizio viene ripubblicato senza la sua chiave;
 - esportare i dati di un atleta in JSON (anagrafica, schede con le revisioni, allenamenti) e in CSV (una riga per serie, nel formato che Excel in italiano apre direttamente). Le note private entrano nell'esportazione solo se il coach lo chiede, perché il file può finire all'atleta.
 
 Schede:
 
 - creare, modificare e duplicare, anche per un altro atleta;
-- pubblicare: crea una revisione che l'atleta riceve alla prossima sync. Le modifiche successive restano in bozza fino alla ripubblicazione;
+- pubblicare: crea una revisione che l'atleta riceve alla prossima sync. L'atleta ha una sola scheda attiva: quella che aveva passa nell'archivio, per lui e per il coach, e lo stesso vale riportando tra le attive una scheda archiviata. Una bozza non cambia niente finché non è pubblicata. Le modifiche successive restano in bozza fino alla ripubblicazione;
 - archiviare ed eliminare;
 - vedere per ogni revisione se l'atleta l'ha ricevuta e quando.
 
@@ -579,15 +590,16 @@ Libreria degli esercizi:
 Questionari (§8.6):
 
 - creare, modificare, duplicare ed eliminare modelli: titolo, descrizione, domande di ogni tipo, eventuale richiesta di foto con le istruzioni. Eliminare un modello non tocca i questionari già mandati;
-- dalla pagina dell'atleta, mandare un modello: un check mensile è un questionario rimandato ogni volta dal coach. Annullare un questionario senza risposta;
+- dalla chat con l'atleta, con l'icona accanto al messaggio, mandare un modello: un check mensile è un questionario rimandato ogni volta dal coach. Annullare un questionario senza risposta, che resta nella chat con il suo stato. Non c'è una sezione a parte: dalla stessa icona si scrivono, modificano, duplicano ed eliminano i modelli;
 - leggere le risposte con le foto, segnate come nuove finché non si aprono, con una notifica sul desktop quando arrivano;
 - nell'editor delle schede, un pannello accanto mostra le risposte dell'atleta, dalla più recente.
 
-Log:
+Storico:
 
-- elenco per atleta in ordine di esecuzione, con il dettaglio di ogni seduta e il confronto con la prescrizione della revisione usata;
-- segnalazione dei log eseguiti su una revisione non più attuale;
-- i log sono in sola lettura.
+- per ogni atleta, grafici invece dell'elenco dei log, per la scheda che sceglie il coach (all'inizio quella attiva), per gli allenamenti liberi o per tutte: gli allenamenti a settimana nelle ultime 12 settimane e i progressi di un esercizio a scelta;
+- i progressi seguono il massimale stimato più alto di ogni allenamento, con la formula di Epley: 1RM = carico × (1 + (ripetizioni + RIR) / 30). Il RIR è quello che il coach ha previsto nella revisione seguita dall'atleta («1-2» vale 1,5), o quello che si ricava dall'RPE nei log vecchi che lo hanno; senza RIR la serie vale come a cedimento. Senza ripetizioni si segue il carico, senza carichi la durata, senza durate le ripetizioni;
+- contano solo le serie fatte, e un allenamento senza serie fatte non conta. Lo stesso esercizio si riconosce dal nome;
+- i log sono in sola lettura e restano interi nelle esportazioni, note comprese.
 
 Peso:
 
@@ -619,18 +631,19 @@ Notifiche desktop, disattivabili: log ricevuto, abbinamento completato, question
 
 ### 10.2 Funzioni
 
-- Primo avvio: «Scansiona il QR del tuo coach», oppure incolla il codice. Nessun account, nessuna registrazione.
-- Schede: elenco per coach, dettaglio delle sedute, scelta della seduta da eseguire, avviso quando arriva una nuova revisione.
-- Esecuzione: per ogni esercizio le serie sono precompilate con la prescrizione; l'atleta inserisce ripetizioni e carico effettivi (per gli esercizi a tempo, la durata della serie), usa un timer di recupero e scrive note. Non si chiedono né lo sforzo percepito né la durata dell'allenamento. Può aggiungere esercizi non previsti o registrare un allenamento libero. Al salvataggio il log entra in coda e parte una sync.
-- L'ultima volta: per ogni serie i campi vuoti mostrano in grigio ripetizioni, carico e durata della stessa serie nell'allenamento più recente con l'esercizio (stesso id della scheda o stesso nome, con qualsiasi coach; contano solo le serie segnate fatte). Dove c'è un valore dell'ultima volta il campo non si precompila dalla prescrizione. Segnare una serie fatta riempie i campi vuoti con i valori in grigio. Senza un'ultima volta, i campi mostrano la prescrizione come prima.
+- L'atleta ha un solo coach alla volta. Con il coach l'app si apre sulle sezioni Allenamento, Chat e Peso, e il resto sta nelle impostazioni. Il QR o il link di un altro coach, dopo conferma, collega il telefono al nuovo e solo dopo lo scollega dal precedente, così un coach irraggiungibile non lo lascia senza nessuno. Chi aveva più coach da una versione precedente sceglie all'apertura quale tenere. Di un coach precedente allenamenti e schede restano consultabili nelle impostazioni.
+- Primo avvio, e dopo essersi scollegati: «Scansiona il QR del tuo coach», oppure incolla il codice. Nessun account, nessuna registrazione.
+- Allenamento: la scheda attiva; lo storico e l'archivio delle schede, due voci chiuse che si aprono con un tocco. Dettaglio delle sedute, scelta della seduta da eseguire, avviso quando arriva una nuova revisione.
+- Esecuzione: per ogni esercizio serie, ripetizioni, recupero e RIR si leggono sulla stessa riga. L'atleta scrive ripetizioni e carico effettivi (per gli esercizi a tempo, la durata della serie): una serie con almeno un valore conta come fatta, una vuota no, senza altro da segnare. Lasciando una serie compilata parte il timer di recupero previsto dal coach, che si può avviare anche a mano. Scrive anche le note. Non si chiedono né lo sforzo percepito né la durata dell'allenamento. Può aggiungere esercizi non previsti o registrare un allenamento libero. Al salvataggio il log entra in coda e parte una sync.
+- L'ultima volta: per ogni serie i campi vuoti mostrano in grigio ripetizioni, carico e durata della stessa serie nell'allenamento più recente con l'esercizio (stesso id della scheda o stesso nome, con qualsiasi coach; contano solo le serie fatte). Senza un'ultima volta, mostrano in grigio la prescrizione. I valori in grigio non contano finché l'atleta non li scrive.
 - Video: aprendo un esercizio con `video`, l'app mostra «Guarda il video». Un video di YouTube si guarda nell'app (`youtube-nocookie.com`), gli altri link si aprono in un'altra app. Il player si carica solo al tocco e va in pausa quando l'esercizio si chiude. Il video non passa da Tor (§11.1).
-- Storico: i propri log, modificabili ed eliminabili. Ogni modifica incrementa `rev` e rimette il log in coda.
+- Allenamenti fatti: i propri log, modificabili ed eliminabili. Ogni modifica incrementa `rev` e rimette il log in coda.
 - Stato della sync come al §7.5, con il tasto «Sincronizza ora».
-- Questionari (§8.6): nella pagina del coach, prima quelli da compilare; la schermata principale dice quanti sono e una sync in background che ne riceve di nuovi li annuncia con una notifica.
-- Peso (§8.5): dalla schermata principale, il peso di oggi o di un altro giorno, la media degli ultimi 7 giorni, il grafico, l'elenco con correzione ed eliminazione, e per ogni coach l'interruttore «condividi». Se il programma di un coach non riceve i pesi, l'app lo dice accanto al suo nome.
-- Chat (§8.7): dalla pagina del coach, con i messaggi nuovi segnati lì e nella schermata principale. Con la chat aperta l'app sincronizza ogni 15 secondi; una sync in background che riceve messaggi li annuncia con una notifica. Nell'esecuzione, accanto a ogni serie, la videocamera allega il video della serie, che parte al salvataggio.
-- Impostazioni: coach collegati (nome, indirizzo, ultima sync); scollegarsi da un coach, che chiama `DELETE /v1/dispositivo` se il coach è raggiungibile e poi, dopo conferma, cancella i dati locali di quel coach; frequenza della sync in background (Android); esportazione dei propri dati in JSON.
-- L'app può essere abbinata a più coach contemporaneamente. Schede e log restano separati per coach.
+- Questionari (§8.6): nella chat, dov'è il momento in cui sono arrivati; quelli da compilare restano anche fissi in cima, e la sezione Chat li conta. Una sync in background che ne riceve di nuovi li annuncia con una notifica.
+- Peso (§8.5): il peso di oggi o di un altro giorno, la media degli ultimi 7 giorni, il grafico, l'elenco con correzione ed eliminazione, e l'interruttore «condividi» con il coach. Se il suo programma non riceve i pesi, l'app lo dice accanto al nome.
+- Chat (§8.7): la sezione conta i messaggi nuovi, che diventano letti quando l'atleta la guarda. Mentre la guarda i messaggi arrivano subito (§7.4); una sync in background che riceve messaggi li annuncia con una notifica. Nell'esecuzione, accanto a ogni serie, la videocamera allega il video della serie, che parte al salvataggio.
+- Impostazioni: il coach e quelli precedenti (nome, indirizzo, ultima sync); cambiare coach; scollegarsi, che chiama `DELETE /v1/dispositivo` se il coach è raggiungibile e poi, dopo conferma, cancella i dati locali di quel coach; frequenza della sync in background (Android); esportazione dei propri dati in JSON.
+- Schede e log restano separati per coach.
 - Dopo una revoca le schede e i log di quel coach restano consultabili ed esportabili, ma non si sincronizzano più.
 
 ## 11. Sicurezza e privacy

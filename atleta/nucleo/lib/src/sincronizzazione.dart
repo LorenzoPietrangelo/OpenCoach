@@ -28,7 +28,11 @@ class MotoreSync {
     this._schede, {
     this.logPerRichiesta = Limiti.logPerRichiesta,
     this.budgetRichiesta = budgetPredefinito,
+    this.attesaNovitaS = Limiti.attesaNovitaS,
   });
+
+  /// Per quanti secondi il coach trattiene un'attesa di novità (§6.3).
+  final int attesaNovitaS;
 
   /// Byte di log per richiesta, sotto il limite di 2 MiB (§6.2).
   static const budgetPredefinito = 1536 * 1024;
@@ -73,6 +77,13 @@ class MotoreSync {
   /// tra un tentativo e l'altro e durante le attese.
   final _interruzioni = <int, Completer<void>>{};
 
+  /// Canale dell'attesa di novità in corso per ogni coach (§7.4).
+  final _canaliAttesa = <int, _Canale>{};
+
+  /// Cresce a ogni attesa e a ogni annullamento: un'attesa annullata mentre
+  /// Tor partiva non apre la connessione.
+  final _turniAttesa = <int, int>{};
+
   /// Canale della sync in corso per ogni coach, da chiudere se si interrompe.
   final _canali = <int, _Canale>{};
 
@@ -86,6 +97,7 @@ class MotoreSync {
     final interruzione = _interruzioni.putIfAbsent(coachId, Completer.new);
     if (!interruzione.isCompleted) interruzione.complete();
     _canali[coachId]?.chiudi();
+    annullaAttesa(coachId);
   }
 
   /// Le operazioni con [coachId] tornano a funzionare normalmente.
@@ -133,6 +145,54 @@ class MotoreSync {
         dopoAbbinamento: _confermaProlungata.remove(coachId),
       );
     });
+  }
+
+  /// Aspetta che il coach abbia qualcosa di nuovo, con `POST /v1/attendi`, al
+  /// massimo per [attesaNovitaS] secondi. Non occupa la coda delle sync: se
+  /// intanto l'atleta scrive, il messaggio parte subito. Non lancia eccezioni.
+  Future<EsitoAttesa> attendiNovita(int coachId) async {
+    final turno = _turniAttesa[coachId] = (_turniAttesa[coachId] ?? 0) + 1;
+    bool annullata() => _turniAttesa[coachId] != turno;
+    final coach = _c.coach(coachId);
+    if (coach == null || coach.stato != StatoCollegamento.attivo || _interrotta(coachId)) {
+      return EsitoAttesa.nonDisponibile;
+    }
+    // Il coach non può dire cosa c'è di nuovo finché non c'è un cursore.
+    if (coach.confermaInSospeso || coach.cursore == null) return EsitoAttesa.novita;
+    _Canale? canale;
+    try {
+      if (!await _c.rete.disponibile()) return EsitoAttesa.guasto;
+      await _c.tor.avvia();
+      final credenziali = await _c.credenziali(coachId);
+      if (credenziali == null || credenziali.dispositivoId != coach.dispositivoId) {
+        return EsitoAttesa.guasto;
+      }
+      await _c.assicuraChiave(coach.indirizzo, credenziali.chiave);
+      if (annullata()) return EsitoAttesa.nessunaNovita;
+      canale = _canaliAttesa[coachId] = _Canale(_c, coach.indirizzo, credenziali.token);
+      final novita = await canale.api.attendiNovita(
+        RichiestaAttesa(epoca: coach.epoca, cursore: coach.cursore, attesaS: attesaNovitaS),
+      );
+      return novita ? EsitoAttesa.novita : EsitoAttesa.nessunaNovita;
+    } on ErroreApi catch (e) {
+      _c.registra("Attesa di novità: $e");
+      // Un programma precedente alla 1.3.1.
+      return e.stato == 404 || e.stato == 405 ? EsitoAttesa.nonSupportata : EsitoAttesa.guasto;
+    } catch (e) {
+      if (!annullata()) _c.registra('Attesa di novità non riuscita: $e');
+      return EsitoAttesa.guasto;
+    } finally {
+      if (canale != null) {
+        if (identical(_canaliAttesa[coachId], canale)) _canaliAttesa.remove(coachId);
+        canale.chiudi();
+      }
+    }
+  }
+
+  /// Chiude subito l'attesa di novità in corso con [coachId], se c'è.
+  void annullaAttesa(int coachId) {
+    _turniAttesa[coachId] = (_turniAttesa[coachId] ?? 0) + 1;
+    _canaliAttesa.remove(coachId)?.chiudi();
   }
 
   /// Sincronizza con tutti i coach attivi, in parallelo.

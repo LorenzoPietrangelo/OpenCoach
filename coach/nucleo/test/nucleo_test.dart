@@ -360,12 +360,39 @@ void main() {
       expect(a.nucleo.libreria.elenco(), hasLength(1));
     });
 
+    test('l\'atleta ha una sola scheda attiva', () {
+      StatoScheda stato(String id) => a.nucleo.schede.cerca(id)!.stato;
+      final prima = a.nucleo.schede.crea(atletaId, contenuto: contenutoScheda('Prima'));
+      a.nucleo.schede.pubblica(prima);
+
+      // Una bozza non cambia niente finché non è pubblicata.
+      final seconda = a.nucleo.schede.crea(atletaId, contenuto: contenutoScheda('Seconda'));
+      expect(stato(prima), StatoScheda.pubblicata);
+      a.nucleo.schede.pubblica(seconda);
+      expect(stato(prima), StatoScheda.archiviata);
+      expect(stato(seconda), StatoScheda.pubblicata);
+
+      // Una nuova revisione non tocca le altre schede, di nessun atleta.
+      final altroAtleta = a.nucleo.atleti.crea('Luca').id;
+      final diLuca = a.nucleo.schede.crea(altroAtleta, contenuto: contenutoScheda('Di Luca'));
+      a.nucleo.schede.pubblica(diLuca);
+      a.nucleo.schede.pubblica(seconda);
+      expect(stato(seconda), StatoScheda.pubblicata);
+      expect(stato(diLuca), StatoScheda.pubblicata);
+
+      // Riportare tra le attive una scheda archiviata prende il posto dell'altra.
+      a.nucleo.schede.ripristina(prima);
+      expect(stato(prima), StatoScheda.pubblicata);
+      expect(stato(seconda), StatoScheda.archiviata);
+    });
+
     test('un video cambiato si ripubblica senza le modifiche della bozza', () {
       final esercizio = a.nucleo.libreria.salva(nome: 'Squat', video: video1);
       final id = a.nucleo.schede.crea(atletaId, contenuto: contenutoScheda('A'));
       a.nucleo.schede.pubblica(id);
       a.nucleo.schede.salvaBozza(id, contenutoScheda('B'));
-      final altra = a.nucleo.schede.crea(atletaId, contenuto: contenutoScheda('C'));
+      final altroAtleta = a.nucleo.atleti.crea('Luca').id;
+      final altra = a.nucleo.schede.crea(altroAtleta, contenuto: contenutoScheda('C'));
       a.nucleo.schede.pubblica(altra);
       expect(a.nucleo.schede.conVideoDaAggiornare(), isEmpty);
 

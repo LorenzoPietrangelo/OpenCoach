@@ -16,6 +16,9 @@ abstract final class Limiti {
   static const abbinamentiAlMinuto = 10;
   static const syncContemporanee = 10;
 
+  /// Attesa massima di `POST /v1/attendi`, in secondi (§6.3).
+  static const attesaNovitaS = 25;
+
   /// Chiavi autorizzate contemporaneamente: dispositivi attivi più inviti
   /// aperti (§9.2, §12).
   static const chiaviAutorizzate = 200;

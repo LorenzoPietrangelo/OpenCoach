@@ -48,6 +48,11 @@ class _EditorSchedaState extends State<EditorScheda> {
     final scheda = widget.nucleo.schede.cerca(widget.schedaId)!;
     _bozza = _copia(scheda.bozza);
     _bozza['sedute'] = _lista(_bozza, 'sedute');
+    // Le schede non hanno più date: quelle vecchie le perdono alla prima
+    // pubblicazione.
+    _bozza
+      ..remove('valida_dal')
+      ..remove('valida_al');
   }
 
   Map<String, Object?> _copia(Map<String, Object?> m) =>
@@ -87,10 +92,19 @@ class _EditorSchedaState extends State<EditorScheda> {
     final t = Testi.of(context);
     if (!_salva()) return;
     try {
+      final attuale = widget.nucleo.schede
+          .elenco(widget.atleta.id)
+          .where((s) => s.stato == StatoScheda.pubblicata && s.id != widget.schedaId)
+          .firstOrNull;
       final revisione = widget.nucleo.schede.pubblica(widget.schedaId);
       widget.aggiornamenti.segnala();
       setState(() {});
-      avviso(context, t.pubblicataRevisione(revisione));
+      avviso(
+        context,
+        attuale == null
+            ? t.pubblicataRevisione(revisione)
+            : t.pubblicataEArchiviata(revisione, attuale.titolo),
+      );
     } on SchedaNonValida catch (e) {
       await showDialog<void>(
         context: context,
@@ -161,17 +175,6 @@ class _EditorSchedaState extends State<EditorScheda> {
   String _quando(String dataOraProtocollo) {
     final istante = analizzaDataOra(dataOraProtocollo);
     return istante == null ? dataOraProtocollo : dataOra(istante);
-  }
-
-  Future<void> _scegliData(String chiave) async {
-    final attuale = analizzaData(_bozza[chiave]);
-    final scelta = await showDatePicker(
-      context: context,
-      initialDate: attuale ?? DateTime.now(),
-      firstDate: DateTime(2020),
-      lastDate: DateTime(2100),
-    );
-    if (scelta != null) _cambia(() => _bozza[chiave] = formattaData(scelta));
   }
 
   @override
@@ -249,25 +252,6 @@ class _EditorSchedaState extends State<EditorScheda> {
               minLines: 1,
               maxLines: 4,
               onChanged: (v) => _cambia(() => _bozza['note'] = v),
-            ),
-            const SizedBox(height: 12),
-            Wrap(
-              spacing: 16,
-              runSpacing: 8,
-              children: [
-                _CampoData(
-                  etichetta: t.validaDal,
-                  valore: _bozza['valida_dal'] as String?,
-                  scegli: () => _scegliData('valida_dal'),
-                  togli: () => _cambia(() => _bozza.remove('valida_dal')),
-                ),
-                _CampoData(
-                  etichetta: t.validaAl,
-                  valore: _bozza['valida_al'] as String?,
-                  scegli: () => _scegliData('valida_al'),
-                  togli: () => _cambia(() => _bozza.remove('valida_al')),
-                ),
-              ],
             ),
             for (final (i, seduta) in sedute.indexed)
               _seduta(t, seduta, i, sedute.length),
@@ -618,38 +602,6 @@ class _NomeEsercizio extends StatelessWidget {
   }
 }
 
-class _CampoData extends StatelessWidget {
-  const _CampoData({
-    required this.etichetta,
-    required this.valore,
-    required this.scegli,
-    required this.togli,
-  });
-
-  final String etichetta;
-  final String? valore;
-  final VoidCallback scegli;
-  final VoidCallback togli;
-
-  @override
-  Widget build(BuildContext context) {
-    final t = Testi.of(context);
-    final giorno = analizzaData(valore);
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        OutlinedButton.icon(
-          onPressed: scegli,
-          icon: const Icon(Icons.event),
-          label: Text('$etichetta: ${giorno == null ? t.nessunaData : soloData(giorno)}'),
-        ),
-        if (giorno != null)
-          IconButton(tooltip: t.togliData, icon: const Icon(Icons.clear), onPressed: togli),
-      ],
-    );
-  }
-}
-
 /// Campo del recupero: accetta «90» o «1:30» e passa i secondi a [cambia],
 /// null se il campo è vuoto o non si capisce.
 class _CampoRecupero extends StatefulWidget {
@@ -747,8 +699,6 @@ String erroreLeggibile(Testi t, String errore) {
           'titolo' => t.titoloScheda,
           'nome' => t.campoNome,
           'note' => t.campoNote,
-          'valida_dal' => t.validaDal,
-          'valida_al' => t.validaAl,
           'serie' => t.serie,
           'ripetizioni' => t.ripetizioni,
           'carico' => t.carico,

@@ -23,6 +23,10 @@ object PianificazioneSync {
     private const val MINUTI = "minuti"
     private const val PERIODICA = "sync_periodica"
     private const val IN_CHIUSURA = "sync_in_chiusura"
+    private const val RAVVICINATA = "sync_ravvicinata_"
+
+    /** Dopo quanti minuti controllare, con l'app chiusa dopo una conversazione. */
+    private val MINUTI_RAVVICINATI = listOf(1L, 3L, 5L, 10L)
 
     fun minuti(context: Context) = preferenze(context).getInt(MINUTI, MINUTI_PREDEFINITI)
 
@@ -47,6 +51,32 @@ object PianificazioneSync {
             .build()
         WorkManager.getInstance(context)
             .enqueueUniqueWork(IN_CHIUSURA, ExistingWorkPolicy.KEEP, richiesta)
+    }
+
+    /**
+     * Controlli ravvicinati dopo una conversazione (§7.4): ripartono da capo se
+     * erano già programmati. Android può rimandarli, come ogni lavoro. Se
+     * l'atleta ha disattivato la sync in background non ci sono.
+     */
+    fun controlliRavvicinati(context: Context) {
+        if (minuti(context) <= 0) return
+        val vincoli = Constraints.Builder()
+            .setRequiredNetworkType(NetworkType.CONNECTED)
+            .setRequiresBatteryNotLow(true)
+            .build()
+        val lavori = WorkManager.getInstance(context)
+        for (attesa in MINUTI_RAVVICINATI) {
+            val richiesta = OneTimeWorkRequestBuilder<LavoroSync>()
+                .setInitialDelay(attesa, TimeUnit.MINUTES)
+                .setConstraints(vincoli)
+                .build()
+            lavori.enqueueUniqueWork("$RAVVICINATA$attesa", ExistingWorkPolicy.REPLACE, richiesta)
+        }
+    }
+
+    fun annullaControlliRavvicinati(context: Context) {
+        val lavori = WorkManager.getInstance(context)
+        for (attesa in MINUTI_RAVVICINATI) lavori.cancelUniqueWork("$RAVVICINATA$attesa")
     }
 
     private fun pianifica(context: Context, attiva: Boolean, politica: ExistingPeriodicWorkPolicy) {

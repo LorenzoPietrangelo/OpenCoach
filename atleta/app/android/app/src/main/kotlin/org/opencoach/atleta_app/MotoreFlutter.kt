@@ -159,6 +159,14 @@ object MotoreFlutter {
                     PianificazioneSync.prosegui(app)
                     risultato.success(null)
                 }
+                "controlliRavvicinati" -> {
+                    PianificazioneSync.controlliRavvicinati(app)
+                    risultato.success(null)
+                }
+                "annullaControlliRavvicinati" -> {
+                    PianificazioneSync.annullaControlliRavvicinati(app)
+                    risultato.success(null)
+                }
                 "permessoNotifiche" -> {
                     chiediPermessoNotifiche()
                     risultato.success(null)

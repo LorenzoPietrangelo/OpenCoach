@@ -53,9 +53,10 @@ void main() {
     final coach = telefono.aggiungiCoach('Marco Bianchi');
     final scheda = await iniziaGiornoA(tester, coach);
 
-    // Gli esercizi partono chiusi: nome, serie × ripetizioni e RIR.
+    // Gli esercizi partono chiusi: nome e, su una riga, serie × ripetizioni,
+    // recupero e RIR.
     expect(find.text('Squat'), findsOneWidget);
-    expect(find.text('4 × 6-8 · RIR 1-2'), findsOneWidget);
+    expect(find.text('4 × 6-8 · recupero 2:30 · RIR 1-2'), findsOneWidget);
     expect(find.text('0/4'), findsOneWidget);
     expect(find.text('Pausa di 1 s in buca'), findsNothing);
     expect(
@@ -66,9 +67,9 @@ void main() {
     // Toccato, l'esercizio si apre per registrare le serie.
     await tester.tap(find.text('Squat'));
     await tester.pumpAndSettle();
-    expect(find.text('75% 1RM · recupero 2:30'), findsOneWidget);
+    expect(find.byType(Checkbox), findsNothing);
     expect(find.text('Pausa di 1 s in buca'), findsOneWidget);
-    // «6-8» e «75% 1RM» non sono numeri: restano come suggerimento.
+    // La prescrizione è un suggerimento in grigio: i valori li scrive l'atleta.
     expect(find.widgetWithText(TextField, '6-8'), findsNWidgets(4));
     expect(find.widgetWithText(TextField, '75% 1RM'), findsNWidgets(4));
     await tester.enterText(find.widgetWithText(TextField, '6-8').first, '8');
@@ -77,10 +78,13 @@ void main() {
       '82,5',
     );
 
-    // Serie fatta: parte il recupero previsto dal coach.
-    await tester.tap(find.byType(Checkbox).first);
+    // Compilata, la serie conta come fatta. Il recupero previsto dal coach
+    // parte quando la lascia, non tra un campo e l'altro.
     await tester.pump();
     expect(find.text('1/4'), findsOneWidget);
+    expect(find.text('2:30'), findsNothing);
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pump();
     expect(find.text('2:30'), findsOneWidget);
     telefono.orologio.avanza(const Duration(seconds: 60));
     await tester.pump(const Duration(seconds: 1));
@@ -108,16 +112,9 @@ void main() {
     expect(squat, hasLength(4));
     expect(squat[0], {'ripetizioni': 8, 'carico_kg': 82.5, 'completata': true});
     expect(squat[1], {'completata': false});
-    // Panca e plank restano come li ha precompilati la prescrizione.
-    expect((eseguiti[1]['serie']! as List<Object?>).first, {
-      'ripetizioni': 8,
-      'carico_kg': 60,
-      'completata': false,
-    });
-    expect((eseguiti[2]['serie']! as List<Object?>).first, {
-      'durata_s': 30,
-      'completata': false,
-    });
+    // Panca e plank non li ha compilati: non sono fatti.
+    expect((eseguiti[1]['serie']! as List<Object?>).first, {'completata': false});
+    expect((eseguiti[2]['serie']! as List<Object?>).first, {'completata': false});
   });
 
   testWidgets('in grigio i valori dell\'ultima volta, e il video dell\'esercizio', (
@@ -174,8 +171,9 @@ void main() {
     ]);
     expect([testo(0), testo(1)], ['', '']);
 
-    // Segnata fatta, la serie prende i valori in grigio.
-    await tester.tap(find.byType(Checkbox).first);
+    // I valori in grigio non contano finché l'atleta non li scrive.
+    await tester.enterText(campi.at(0), '8');
+    await tester.enterText(campi.at(1), '62,5');
     await tester.pump();
     expect([testo(0), testo(1)], ['8', '62,5']);
     await tester.tap(find.text('Salva'));
@@ -219,7 +217,7 @@ void main() {
               telefono.nucleo.diario.elenco(coach).single.contenuto!,
             ).first['serie']!
             as List<Object?>;
-    expect(squat.first, {'ripetizioni': 8, 'completata': false});
+    expect(squat.first, {'ripetizioni': 8, 'completata': true});
   });
 
   testWidgets('allenamento libero con un esercizio aggiunto e note', (
@@ -255,7 +253,7 @@ void main() {
     expect(campi, findsNWidgets(2));
     await tester.enterText(campi.at(0), '10');
     // Senza un recupero previsto il timer non parte.
-    await tester.tap(find.byType(Checkbox));
+    await tester.testTextInput.receiveAction(TextInputAction.done);
     await tester.pump();
     expect(find.text('Recupero'), findsNothing);
 
@@ -271,6 +269,8 @@ void main() {
 
     // Si torna allo storico del coach, con l'allenamento in attesa di invio.
     expect(find.text('Allenamento salvato'), findsOneWidget);
+    await tester.tap(find.textContaining('Storico'));
+    await tester.pumpAndSettle();
     expect(
       find.widgetWithText(ListTile, 'Allenamento libero · Trazioni'),
       findsOneWidget,

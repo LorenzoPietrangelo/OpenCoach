@@ -48,40 +48,46 @@ void main() {
     return (grande, atleta, schede);
   }
 
+  /// Le schede sul telefono, attive e archiviate.
+  Set<String> tutte(int coachId) => {...idSchede(coachId), ...idSchede(coachId, archiviate: true)};
+
   test(
     'sync incrementale: schede nuove, cambiate, archiviate ed eliminate',
     () async {
       final a = pc.pubblicaScheda(atletaId, 'A');
-      final b = pc.pubblicaScheda(atletaId, 'B');
       final coach = await ambiente.abbina(telefono, pc, atletaId);
-      expect(idSchede(coach.id), {a, b});
+      expect(idSchede(coach.id), {a});
       telefono.nucleo.schede.segnaVista(coach.id, a);
-      telefono.nucleo.schede.segnaVista(coach.id, b);
 
       pc.nucleo.schede.salvaBozza(a, contenutoScheda('A, seconda versione'));
       pc.nucleo.schede.pubblica(a);
-      pc.nucleo.schede.archivia(b);
-      final c = pc.pubblicaScheda(atletaId, 'C');
 
-      final esito = await telefono.nucleo.sync.sincronizza(coach.id);
+      var esito = await telefono.nucleo.sync.sincronizza(coach.id);
       expect(esito.riuscita, isTrue);
       expect(esito.completa, isFalse);
-      expect({for (final s in esito.schedeNuove) s.id}, {a, c});
-      expect(idSchede(coach.id), {a, c});
+      expect({for (final s in esito.schedeNuove) s.id}, {a});
+      expect(idSchede(coach.id), {a});
       final nuovaA = telefono.nucleo.schede.cerca(coach.id, a)!;
       expect(nuovaA.revisione, 2);
       expect(nuovaA.titolo, 'A, seconda versione');
       expect(nuovaA.daVedere, isTrue, reason: 'è arrivata una nuova revisione');
+      // Una sola scheda attiva: quella nuova manda l'altra in archivio.
+      telefono.nucleo.schede.segnaVista(coach.id, a);
+      final c = pc.pubblicaScheda(atletaId, 'C');
+      esito = await telefono.nucleo.sync.sincronizza(coach.id);
+      expect({for (final s in esito.schedeNuove) s.id}, {c});
+      expect(idSchede(coach.id), {c});
       final archiviata = telefono.nucleo.schede.elenco(
         coach.id,
         archiviate: true,
       );
-      expect(archiviata.single.id, b);
+      expect(archiviata.single.id, a);
       expect(archiviata.single.daVedere, isFalse);
 
       pc.nucleo.schede.elimina(c);
       await telefono.nucleo.sync.sincronizza(coach.id);
-      expect(idSchede(coach.id), {a});
+      expect(idSchede(coach.id), isEmpty);
+      expect(idSchede(coach.id, archiviate: true), {a});
       // Il cursore inviato dice al coach che la revisione è arrivata.
       expect(pc.nucleo.schede.cerca(a)!.revisioni.first.ricevutaIl, isNotNull);
     },
@@ -111,7 +117,7 @@ void main() {
     expect(esito.riuscita, isTrue);
     expect(esito.completa, isTrue);
     expect(grande.richiesteSync - prima, greaterThan(2));
-    expect(idSchede(coach.id), schede.toSet());
+    expect(tutte(coach.id), schede.toSet());
     expect(stato(coach.id).epoca, grande.archivio.epoca);
   });
 
@@ -126,9 +132,14 @@ void main() {
     expect(esito.riuscita, isTrue);
     expect(esito.completa, isFalse);
     expect(grande.richiesteSync - prima, greaterThan(1));
-    expect(esito.schedeNuove, hasLength(6));
+    // Tutte alla revisione nuova, e attiva solo l'ultima pubblicata.
+    expect(esito.schedeNuove.map((s) => s.id), [schede.last]);
+    expect(idSchede(coach.id), {schede.last});
     expect(
-      {for (final s in telefono.nucleo.schede.elenco(coach.id)) s.revisione},
+      {
+        for (final id in tutte(coach.id))
+          telefono.nucleo.schede.cerca(coach.id, id)!.revisione,
+      },
       {2},
     );
   });
@@ -148,7 +159,7 @@ void main() {
     final coach = await invito.collega();
     expect(coach.problema, isNull);
     expect(coach.epoca, grande.archivio.epoca);
-    expect(idSchede(coach.id), schede.toSet()..remove(prima));
+    expect(tutte(coach.id), schede.toSet()..remove(prima));
   });
 
   test('dopo un ripristino del coach i log persi si reinviano', () async {
@@ -167,7 +178,7 @@ void main() {
     final persa = grande.pubblicaScheda(atleta, 'Persa');
     final dopo = diario.salva(coach.id, allenamento(note: 'dopo il backup'));
     await telefono.nucleo.sync.sincronizza(coach.id);
-    expect(idSchede(coach.id), {...schede, persa});
+    expect(tutte(coach.id), {...schede, persa});
     final db = grande.archivio.db;
     db.execute('DELETE FROM log WHERE id = ?', [dopo.id]);
     db.execute('UPDATE log SET rev = 1, contenuto = ? WHERE id = ?', [
@@ -190,7 +201,7 @@ void main() {
       reason: 'stato completo su più pagine, poi il reinvio',
     );
     // Il telefono segue il coach per le schede...
-    expect(idSchede(coach.id), schede.toSet());
+    expect(tutte(coach.id), schede.toSet());
     // ...e il coach riceve di nuovo i log che aveva perso.
     expect(grande.log(dopo.id)?.rev, 1);
     expect(grande.log(log[1].id)?.rev, 2);

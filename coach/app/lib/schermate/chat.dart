@@ -11,10 +11,12 @@ import '../comuni.dart';
 import '../l10n/testi.dart';
 import '../piattaforma/desktop.dart';
 import '../servizi.dart';
+import 'questionari.dart';
 
 /// Chat con l'atleta (§8.7). I messaggi del coach partono alla sync
 /// successiva dell'atleta; i video che l'atleta allega alle serie si
-/// guardano con il lettore del sistema.
+/// guardano con il lettore del sistema. Da qui si mandano anche i questionari
+/// (§8.6), che restano in mezzo ai messaggi con il loro stato.
 class PannelloChat extends StatefulWidget {
   const PannelloChat({
     super.key,
@@ -52,6 +54,35 @@ class _PannelloChatState extends State<PannelloChat> {
     widget.aggiornamenti.segnala();
   }
 
+  Future<void> _mandaQuestionario() => Navigator.push<void>(
+    context,
+    MaterialPageRoute(
+      builder: (_) => SceltaQuestionario(
+        atleta: widget.atleta,
+        coach: widget.coach,
+        aggiornamenti: widget.aggiornamenti,
+      ),
+    ),
+  );
+
+  /// Messaggi e questionari in ordine di tempo: i messaggi restano nell'ordine
+  /// della chat, e un questionario sta dove ha risposto l'atleta, così le
+  /// risposte arrivano in fondo come un messaggio; prima, dove è stato mandato.
+  List<Object> _voci(List<Messaggio> messaggi) {
+    DateTime quando(QuestionarioInviato q) => q.rispostoIl ?? q.inviatoIl;
+    final questionari = widget.coach.nucleo.questionari.inviati(widget.atleta.id)
+      ..sort((a, b) => quando(a).compareTo(quando(b)));
+    final voci = <Object>[];
+    var prossimo = 0;
+    for (final messaggio in messaggi) {
+      while (prossimo < questionari.length && quando(questionari[prossimo]).isBefore(messaggio.inviatoIl)) {
+        voci.add(questionari[prossimo++]);
+      }
+      voci.add(messaggio);
+    }
+    return voci..addAll(questionari.skip(prossimo));
+  }
+
   /// Con il pannello aperto, i messaggi arrivati sono letti.
   void _segnaLetti() {
     if (_messaggi.nonLetti(widget.atleta.id) == 0) return;
@@ -69,7 +100,7 @@ class _PannelloChatState extends State<PannelloChat> {
       listenable: widget.aggiornamenti,
       builder: (context, _) {
         _segnaLetti();
-        final conversazione = _messaggi.conversazione(widget.atleta.id);
+        final voci = _voci(_messaggi.conversazione(widget.atleta.id));
         final dispositivo = widget.coach.nucleo.dispositivi.attivo(widget.atleta.id);
         final appVecchia = dispositivo != null && confrontaVersioni(dispositivo.versioneApp, '1.3.0') < 0;
         return Column(
@@ -81,19 +112,27 @@ class _PannelloChatState extends State<PannelloChat> {
                 child: Text(t.chatAppVecchia(dispositivo.versioneApp)),
               ),
             Expanded(
-              child: conversazione.isEmpty
+              child: voci.isEmpty
                   ? Padding(padding: const EdgeInsets.all(24), child: Text(t.chatVuota))
                   : ListView.builder(
                       reverse: true,
                       padding: const EdgeInsets.all(24),
-                      itemCount: conversazione.length,
-                      itemBuilder: (context, i) => _Fumetto(
-                        messaggio: conversazione[conversazione.length - 1 - i],
-                        atletaId: widget.atleta.id,
-                        coach: widget.coach,
-                        desktop: widget.desktop,
-                        aggiornamenti: widget.aggiornamenti,
-                      ),
+                      itemCount: voci.length,
+                      itemBuilder: (context, i) => switch (voci[voci.length - 1 - i]) {
+                        final QuestionarioInviato q => CartaQuestionario(
+                          questionario: q,
+                          atleta: widget.atleta,
+                          coach: widget.coach,
+                          aggiornamenti: widget.aggiornamenti,
+                        ),
+                        final messaggio => _Fumetto(
+                          messaggio: messaggio as Messaggio,
+                          atletaId: widget.atleta.id,
+                          coach: widget.coach,
+                          desktop: widget.desktop,
+                          aggiornamenti: widget.aggiornamenti,
+                        ),
+                      },
                     ),
             ),
             const Divider(height: 1),
@@ -102,6 +141,12 @@ class _PannelloChatState extends State<PannelloChat> {
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
+                  IconButton(
+                    tooltip: t.mandaQuestionario,
+                    onPressed: _mandaQuestionario,
+                    icon: const Icon(Icons.assignment_outlined),
+                  ),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: CallbackShortcuts(
                       // Invio manda, Maiusc+Invio va a capo.

@@ -130,6 +130,21 @@ class ChatCoach {
     return riga == null ? null : MessaggioChat.daRiga(riga);
   }
 
+  /// Per quanto dopo l'ultimo messaggio la conversazione conta come in corso.
+  static const durataConversazione = Duration(minutes: 10);
+
+  /// Vero se con il coach ci si è scritti da poco: con l'app chiusa conviene
+  /// controllare presto se ha risposto (§7.4).
+  bool conversazioneInCorso(int coachId) {
+    final ultimo = _db.select(
+      'SELECT inviato_il FROM messaggi WHERE coach_id = ? ORDER BY ordine DESC, rowid DESC LIMIT 1',
+      [coachId],
+    ).firstOrNull;
+    if (ultimo == null) return false;
+    final trascorso = _c.orologio.adesso().difference(analizzaDataOra(ultimo['inviato_il'])!);
+    return trascorso < durataConversazione;
+  }
+
   /// Messaggi del coach non ancora letti.
   int nonLetti(int coachId) =>
       _db.select(

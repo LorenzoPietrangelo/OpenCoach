@@ -64,6 +64,17 @@ void main() {
     expect(() => chat().scrivi(coach.id, ' '), throwsA(isA<OperazioneNonAmmessa>()));
   });
 
+  test('la conversazione conta come in corso per 10 minuti', () {
+    final chat = telefono.nucleo.chat;
+    expect(chat.conversazioneInCorso(coach.id), isFalse);
+    chat.scrivi(coach.id, 'Finita la panca');
+    expect(chat.conversazioneInCorso(coach.id), isTrue);
+    ambiente.orologio.avanza(const Duration(minutes: 9));
+    expect(chat.conversazioneInCorso(coach.id), isTrue);
+    ambiente.orologio.avanza(const Duration(minutes: 2));
+    expect(chat.conversazioneInCorso(coach.id), isFalse);
+  });
+
   test('il video di una serie arriva intero al coach', () async {
     final file = registra();
     final logId = nuovoUuid();

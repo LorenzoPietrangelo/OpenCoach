@@ -237,12 +237,6 @@ abstract class Testi {
   /// **'Libreria'**
   String get sezioneLibreria;
 
-  /// No description provided for @sezioneQuestionariMenu.
-  ///
-  /// In it, this message translates to:
-  /// **'Questionari'**
-  String get sezioneQuestionariMenu;
-
   /// No description provided for @sezioneStato.
   ///
   /// In it, this message translates to:
@@ -537,23 +531,113 @@ abstract class Testi {
   /// **'Il telefono viene scollegato e si cancellano schede e allenamenti dell\'atleta. Non si può annullare.'**
   String get eliminaAtletaTesto;
 
-  /// No description provided for @schedaTelefono.
-  ///
-  /// In it, this message translates to:
-  /// **'Telefono'**
-  String get schedaTelefono;
-
   /// No description provided for @schedaSchede.
   ///
   /// In it, this message translates to:
   /// **'Schede'**
   String get schedaSchede;
 
-  /// No description provided for @schedaAllenamenti.
+  /// No description provided for @schedaStorico.
   ///
   /// In it, this message translates to:
-  /// **'Allenamenti'**
-  String get schedaAllenamenti;
+  /// **'Storico'**
+  String get schedaStorico;
+
+  /// No description provided for @storicoTotale.
+  ///
+  /// In it, this message translates to:
+  /// **'Allenamenti registrati'**
+  String get storicoTotale;
+
+  /// No description provided for @storicoSettimana.
+  ///
+  /// In it, this message translates to:
+  /// **'Questa settimana'**
+  String get storicoSettimana;
+
+  /// No description provided for @storicoUltimo.
+  ///
+  /// In it, this message translates to:
+  /// **'Ultimo allenamento'**
+  String get storicoUltimo;
+
+  /// No description provided for @storicoAllenamenti.
+  ///
+  /// In it, this message translates to:
+  /// **'Allenamenti a settimana'**
+  String get storicoAllenamenti;
+
+  /// No description provided for @storicoAllenamentiDettaglio.
+  ///
+  /// In it, this message translates to:
+  /// **'Dal {giorno}: {numero, plural, one{1 allenamento} other{{numero} allenamenti}}'**
+  String storicoAllenamentiDettaglio(String giorno, int numero);
+
+  /// No description provided for @storicoDiQualeScheda.
+  ///
+  /// In it, this message translates to:
+  /// **'Scheda'**
+  String get storicoDiQualeScheda;
+
+  /// No description provided for @storicoSchedaAttiva.
+  ///
+  /// In it, this message translates to:
+  /// **'{titolo} (attiva)'**
+  String storicoSchedaAttiva(String titolo);
+
+  /// No description provided for @storicoLiberi.
+  ///
+  /// In it, this message translates to:
+  /// **'Allenamenti liberi'**
+  String get storicoLiberi;
+
+  /// No description provided for @storicoTutte.
+  ///
+  /// In it, this message translates to:
+  /// **'Tutte le schede'**
+  String get storicoTutte;
+
+  /// No description provided for @storicoSchedaVuota.
+  ///
+  /// In it, this message translates to:
+  /// **'Nessun allenamento registrato con questa scheda.'**
+  String get storicoSchedaVuota;
+
+  /// No description provided for @storicoMisuraStima.
+  ///
+  /// In it, this message translates to:
+  /// **'Il massimale stimato più alto di ogni allenamento, in chili: dal carico e dalle ripetizioni, contando il RIR previsto dal coach se c\'è.'**
+  String get storicoMisuraStima;
+
+  /// No description provided for @storicoProgressi.
+  ///
+  /// In it, this message translates to:
+  /// **'Progressi per esercizio'**
+  String get storicoProgressi;
+
+  /// No description provided for @storicoMisuraCarico.
+  ///
+  /// In it, this message translates to:
+  /// **'Il carico più alto di ogni allenamento, in chili.'**
+  String get storicoMisuraCarico;
+
+  /// No description provided for @storicoMisuraRipetizioni.
+  ///
+  /// In it, this message translates to:
+  /// **'Il numero più alto di ripetizioni di ogni allenamento.'**
+  String get storicoMisuraRipetizioni;
+
+  /// No description provided for @storicoMisuraDurata.
+  ///
+  /// In it, this message translates to:
+  /// **'La serie più lunga di ogni allenamento, in secondi.'**
+  String get storicoMisuraDurata;
+
+  /// No description provided for @pubblicataEArchiviata.
+  ///
+  /// In it, this message translates to:
+  /// **'Pubblicata la revisione {revisione}: «{titolo}» passa nell\'archivio'**
+  String pubblicataEArchiviata(int revisione, String titolo);
 
   /// No description provided for @schedaPeso.
   ///
@@ -596,18 +680,6 @@ abstract class Testi {
   /// In it, this message translates to:
   /// **'Tutti i pesi'**
   String get tuttiIPesi;
-
-  /// No description provided for @schedaQuestionari.
-  ///
-  /// In it, this message translates to:
-  /// **'Questionari'**
-  String get schedaQuestionari;
-
-  /// No description provided for @sezioneQuestionari.
-  ///
-  /// In it, this message translates to:
-  /// **'Questionari'**
-  String get sezioneQuestionari;
 
   /// No description provided for @nuovoQuestionario.
   ///
@@ -825,29 +897,23 @@ abstract class Testi {
   /// **'Manda un questionario'**
   String get mandaQuestionario;
 
+  /// No description provided for @manda.
+  ///
+  /// In it, this message translates to:
+  /// **'Manda'**
+  String get manda;
+
   /// No description provided for @mandaQuestionarioA.
   ///
   /// In it, this message translates to:
   /// **'Mandare a {nome}'**
   String mandaQuestionarioA(String nome);
 
-  /// No description provided for @primaCreaUnQuestionario.
-  ///
-  /// In it, this message translates to:
-  /// **'Prima scrivi un questionario nella sezione «Questionari»'**
-  String get primaCreaUnQuestionario;
-
   /// No description provided for @questionarioMandato.
   ///
   /// In it, this message translates to:
   /// **'Mandato: l\'atleta lo riceve alla prossima sincronizzazione'**
   String get questionarioMandato;
-
-  /// No description provided for @nessunQuestionarioMandato.
-  ///
-  /// In it, this message translates to:
-  /// **'Non hai ancora mandato questionari a questo atleta.'**
-  String get nessunQuestionarioMandato;
 
   /// No description provided for @inAttesaDiRisposta.
   ///
@@ -915,47 +981,23 @@ abstract class Testi {
   /// **'{nome} ha risposto a «{titolo}»'**
   String notificaQuestionarioRisposto(String nome, String titolo);
 
-  /// No description provided for @telefono.
-  ///
-  /// In it, this message translates to:
-  /// **'Telefono collegato'**
-  String get telefono;
-
   /// No description provided for @nessunTelefonoSpiegazione.
   ///
   /// In it, this message translates to:
   /// **'Nessun telefono collegato. Crea un invito e fallo scansionare dall\'app dell\'atleta.'**
   String get nessunTelefonoSpiegazione;
 
-  /// No description provided for @versioneApp.
-  ///
-  /// In it, this message translates to:
-  /// **'App {versione}'**
-  String versioneApp(String versione);
-
-  /// No description provided for @abbinatoIl.
-  ///
-  /// In it, this message translates to:
-  /// **'Collegato il {quando}'**
-  String abbinatoIl(String quando);
-
-  /// No description provided for @maiSincronizzato.
-  ///
-  /// In it, this message translates to:
-  /// **'Non ha ancora sincronizzato'**
-  String get maiSincronizzato;
-
-  /// No description provided for @ultimoContatto.
-  ///
-  /// In it, this message translates to:
-  /// **'Ultimo contatto: {quando}'**
-  String ultimoContatto(String quando);
-
   /// No description provided for @revoca.
   ///
   /// In it, this message translates to:
-  /// **'Revoca'**
+  /// **'Scollega'**
   String get revoca;
+
+  /// No description provided for @scollegaTelefono.
+  ///
+  /// In it, this message translates to:
+  /// **'Scollega il telefono'**
+  String get scollegaTelefono;
 
   /// No description provided for @revocaTitolo.
   ///
@@ -969,47 +1011,11 @@ abstract class Testi {
   /// **'Il telefono di {nome} non potrà più sincronizzare. Per ricollegarlo serve un nuovo invito.'**
   String revocaTesto(String nome);
 
-  /// No description provided for @invito.
-  ///
-  /// In it, this message translates to:
-  /// **'Invito'**
-  String get invito;
-
-  /// No description provided for @nessunInvito.
-  ///
-  /// In it, this message translates to:
-  /// **'Nessun invito aperto.'**
-  String get nessunInvito;
-
-  /// No description provided for @invitoInAbbinamento.
-  ///
-  /// In it, this message translates to:
-  /// **'Il telefono sta completando l\'abbinamento.'**
-  String get invitoInAbbinamento;
-
-  /// No description provided for @invitoAperto.
-  ///
-  /// In it, this message translates to:
-  /// **'Invito aperto'**
-  String get invitoAperto;
-
   /// No description provided for @validoFinoAl.
   ///
   /// In it, this message translates to:
   /// **'Valido fino al {quando}'**
   String validoFinoAl(String quando);
-
-  /// No description provided for @annullaInvito.
-  ///
-  /// In it, this message translates to:
-  /// **'Annulla l\'invito'**
-  String get annullaInvito;
-
-  /// No description provided for @mostraQr.
-  ///
-  /// In it, this message translates to:
-  /// **'Mostra il QR'**
-  String get mostraQr;
 
   /// No description provided for @nuovoInvito.
   ///
@@ -1244,30 +1250,6 @@ abstract class Testi {
   /// In it, this message translates to:
   /// **'Note per l\'atleta'**
   String get noteScheda;
-
-  /// No description provided for @validaDal.
-  ///
-  /// In it, this message translates to:
-  /// **'Valida dal'**
-  String get validaDal;
-
-  /// No description provided for @validaAl.
-  ///
-  /// In it, this message translates to:
-  /// **'Valida fino al'**
-  String get validaAl;
-
-  /// No description provided for @nessunaData.
-  ///
-  /// In it, this message translates to:
-  /// **'nessuna data'**
-  String get nessunaData;
-
-  /// No description provided for @togliData.
-  ///
-  /// In it, this message translates to:
-  /// **'Togli la data'**
-  String get togliData;
 
   /// No description provided for @aggiungiSeduta.
   ///
@@ -1532,72 +1514,6 @@ abstract class Testi {
   /// In it, this message translates to:
   /// **'Nessun allenamento ricevuto finora.'**
   String get nessunAllenamento;
-
-  /// No description provided for @allenamentoLibero.
-  ///
-  /// In it, this message translates to:
-  /// **'Allenamento libero'**
-  String get allenamentoLibero;
-
-  /// No description provided for @sedutaNonTrovata.
-  ///
-  /// In it, this message translates to:
-  /// **'Seduta di una scheda eliminata'**
-  String get sedutaNonTrovata;
-
-  /// No description provided for @minuti.
-  ///
-  /// In it, this message translates to:
-  /// **'{minuti, plural, =1{1 minuto} other{{minuti} minuti}}'**
-  String minuti(int minuti);
-
-  /// No description provided for @rpeSeduta.
-  ///
-  /// In it, this message translates to:
-  /// **'RPE {valore}'**
-  String rpeSeduta(String valore);
-
-  /// No description provided for @suRevisioneSuperata.
-  ///
-  /// In it, this message translates to:
-  /// **'su una revisione superata'**
-  String get suRevisioneSuperata;
-
-  /// No description provided for @suRevisioneSuperataSpiegazione.
-  ///
-  /// In it, this message translates to:
-  /// **'L\'atleta seguiva una revisione della scheda non più attuale.'**
-  String get suRevisioneSuperataSpiegazione;
-
-  /// No description provided for @prescritto.
-  ///
-  /// In it, this message translates to:
-  /// **'Prescritto: {righe}'**
-  String prescritto(String righe);
-
-  /// No description provided for @esercizioAggiunto.
-  ///
-  /// In it, this message translates to:
-  /// **'Aggiunto dall\'atleta'**
-  String get esercizioAggiunto;
-
-  /// No description provided for @serieNumero.
-  ///
-  /// In it, this message translates to:
-  /// **'Serie {numero}'**
-  String serieNumero(int numero);
-
-  /// No description provided for @ripetizioniEseguite.
-  ///
-  /// In it, this message translates to:
-  /// **'{numero, plural, =1{1 ripetizione} other{{numero} ripetizioni}}'**
-  String ripetizioniEseguite(int numero);
-
-  /// No description provided for @nonCompletata.
-  ///
-  /// In it, this message translates to:
-  /// **'non completata'**
-  String get nonCompletata;
 
   /// No description provided for @coach.
   ///

@@ -9,15 +9,18 @@ import '../comuni.dart';
 import '../l10n/testi.dart';
 import '../servizi.dart';
 
-/// I modelli di questionario (§8.6, §9.3): anamnesi, check mensili, tutto
-/// quello che il coach vuole chiedere. Si mandano dalla pagina dell'atleta.
-class SchermataQuestionari extends StatelessWidget {
-  const SchermataQuestionari({
+/// I modelli di questionario (§8.6, §9.3), dalla chat con un atleta: anamnesi,
+/// check mensili, tutto quello che il coach vuole chiedere. Qui si manda quello
+/// scelto, si scrive uno nuovo e si modificano quelli che ci sono.
+class SceltaQuestionario extends StatelessWidget {
+  const SceltaQuestionario({
     super.key,
+    required this.atleta,
     required this.coach,
     required this.aggiornamenti,
   });
 
+  final Atleta atleta;
   final Coach coach;
   final Aggiornamenti aggiornamenti;
 
@@ -31,64 +34,89 @@ class SchermataQuestionari extends StatelessWidget {
     aggiornamenti.segnala();
   }
 
+  Future<void> _manda(BuildContext context, ModelloQuestionario modello) async {
+    final t = Testi.of(context);
+    await esegui(context, () async {
+      _nucleo.questionari.invia(modello.id, atleta.id);
+      aggiornamenti.segnala();
+      if (!context.mounted) return;
+      avviso(context, t.questionarioMandato);
+      Navigator.pop(context);
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final t = Testi.of(context);
-    return ListenableBuilder(
-      listenable: aggiornamenti,
-      builder: (context, _) {
-        final modelli = _nucleo.questionari.modelli();
-        return ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            Row(
-              children: [
-                Expanded(child: Text(t.sezioneQuestionari, style: Theme.of(context).textTheme.headlineSmall)),
-                FilledButton.icon(
-                  onPressed: () => _apri(context),
-                  icon: const Icon(Icons.add),
-                  label: Text(t.nuovoQuestionario),
-                ),
-              ],
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(t.mandaQuestionarioA(atleta.nome)),
+        actions: [
+          Padding(
+            padding: const EdgeInsets.only(right: 16),
+            child: FilledButton.icon(
+              onPressed: () => _apri(context),
+              icon: const Icon(Icons.add),
+              label: Text(t.nuovoQuestionario),
             ),
-            const SizedBox(height: 8),
-            Text(t.questionariSpiegazione),
-            const SizedBox(height: 16),
-            if (modelli.isEmpty) Text(t.nessunQuestionario),
-            for (final m in modelli)
-              Card(
-                child: ListTile(
-                  leading: const Icon(Icons.assignment_outlined),
-                  title: Text(m.titolo),
-                  subtitle: Text(descriviModello(t, m.contenuto)),
-                  onTap: () => _apri(context, m.id),
-                  trailing: PopupMenuButton<String>(
-                    tooltip: t.altreAzioni,
-                    onSelected: (azione) async {
-                      if (azione == 'duplica') {
-                        _nucleo.questionari.duplicaModello(m.id);
-                      } else {
-                        final sicuro = await conferma(
-                          context,
-                          titolo: t.eliminaQuestionarioTitolo(m.titolo),
-                          testo: t.eliminaQuestionarioTesto,
-                          azione: t.elimina,
-                          pericolosa: true,
-                        );
-                        if (sicuro) _nucleo.questionari.eliminaModello(m.id);
-                      }
-                      aggiornamenti.segnala();
-                    },
-                    itemBuilder: (context) => [
-                      PopupMenuItem(value: 'duplica', child: Text(t.duplica)),
-                      PopupMenuItem(value: 'elimina', child: Text(t.elimina)),
-                    ],
+          ),
+        ],
+      ),
+      body: ListenableBuilder(
+        listenable: aggiornamenti,
+        builder: (context, _) {
+          final modelli = _nucleo.questionari.modelli();
+          return ListView(
+            padding: const EdgeInsets.all(24),
+            children: [
+              Text(t.questionariSpiegazione),
+              const SizedBox(height: 16),
+              if (modelli.isEmpty) Text(t.nessunQuestionario),
+              for (final m in modelli)
+                Card(
+                  child: ListTile(
+                    leading: const Icon(Icons.assignment_outlined),
+                    title: Text(m.titolo),
+                    subtitle: Text(descriviModello(t, m.contenuto)),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        FilledButton(onPressed: () => _manda(context, m), child: Text(t.manda)),
+                        PopupMenuButton<String>(
+                          tooltip: t.altreAzioni,
+                          onSelected: (azione) async {
+                            if (azione == 'modifica') {
+                              await _apri(context, m.id);
+                              return;
+                            }
+                            if (azione == 'duplica') {
+                              _nucleo.questionari.duplicaModello(m.id);
+                            } else {
+                              final sicuro = await conferma(
+                                context,
+                                titolo: t.eliminaQuestionarioTitolo(m.titolo),
+                                testo: t.eliminaQuestionarioTesto,
+                                azione: t.elimina,
+                                pericolosa: true,
+                              );
+                              if (sicuro) _nucleo.questionari.eliminaModello(m.id);
+                            }
+                            aggiornamenti.segnala();
+                          },
+                          itemBuilder: (context) => [
+                            PopupMenuItem(value: 'modifica', child: Text(t.modifica)),
+                            PopupMenuItem(value: 'duplica', child: Text(t.duplica)),
+                            PopupMenuItem(value: 'elimina', child: Text(t.elimina)),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-          ],
-        );
-      },
+            ],
+          );
+        },
+      ),
     );
   }
 }
@@ -439,51 +467,26 @@ class _EditorQuestionarioState extends State<EditorQuestionario> {
   }
 }
 
-/// I questionari mandati all'atleta: se ne manda uno nuovo, si leggono le
+/// Un questionario mandato all'atleta, in mezzo alla chat: si leggono le
 /// risposte, si annulla quello a cui non ha ancora risposto.
-class PannelloQuestionari extends StatelessWidget {
-  const PannelloQuestionari({
+class CartaQuestionario extends StatelessWidget {
+  const CartaQuestionario({
     super.key,
+    required this.questionario,
     required this.atleta,
     required this.coach,
     required this.aggiornamenti,
   });
 
+  final QuestionarioInviato questionario;
   final Atleta atleta;
   final Coach coach;
   final Aggiornamenti aggiornamenti;
 
   NucleoCoach get _nucleo => coach.nucleo;
 
-  Future<void> _manda(BuildContext context) async {
-    final t = Testi.of(context);
-    final modelli = _nucleo.questionari.modelli();
-    if (modelli.isEmpty) {
-      avviso(context, t.primaCreaUnQuestionario);
-      return;
-    }
-    final scelto = await showDialog<String>(
-      context: context,
-      builder: (context) => SimpleDialog(
-        title: Text(t.mandaQuestionarioA(atleta.nome)),
-        children: [
-          for (final m in modelli)
-            SimpleDialogOption(
-              onPressed: () => Navigator.pop(context, m.id),
-              child: ListTile(title: Text(m.titolo), subtitle: Text(descriviModello(t, m.contenuto))),
-            ),
-        ],
-      ),
-    );
-    if (scelto == null || !context.mounted) return;
-    await esegui(context, () async {
-      _nucleo.questionari.invia(scelto, atleta.id);
-      aggiornamenti.segnala();
-      if (context.mounted) avviso(context, t.questionarioMandato);
-    });
-  }
-
-  Future<void> _apri(BuildContext context, QuestionarioInviato q) async {
+  Future<void> _apri(BuildContext context) async {
+    final q = questionario;
     _nucleo.questionari.segnaLetto(q.id);
     aggiornamenti.segnala();
     await Navigator.push<void>(
@@ -503,63 +506,49 @@ class PannelloQuestionari extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Testi.of(context);
-    return ListenableBuilder(
-      listenable: aggiornamenti,
-      builder: (context, _) {
-        final inviati = _nucleo.questionari.inviati(atleta.id);
-        return ListView(
-          padding: const EdgeInsets.all(24),
-          children: [
-            Align(
-              alignment: Alignment.centerLeft,
-              child: FilledButton.icon(
-                onPressed: () => _manda(context),
-                icon: const Icon(Icons.send),
-                label: Text(t.mandaQuestionario),
-              ),
+    final q = questionario;
+    return Align(
+      alignment: Alignment.center,
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 520),
+        child: Card(
+          margin: const EdgeInsets.symmetric(vertical: 8),
+          child: ListTile(
+            leading: Badge(
+              isLabelVisible: q.stato == StatoQuestionario.risposto && !q.letto,
+              child: Icon(switch (q.stato) {
+                StatoQuestionario.inviato => Icons.hourglass_empty,
+                StatoQuestionario.risposto => Icons.assignment_turned_in_outlined,
+                StatoQuestionario.annullato => Icons.block,
+              }),
             ),
-            const SizedBox(height: 16),
-            if (inviati.isEmpty) Text(t.nessunQuestionarioMandato),
-            for (final q in inviati)
-              Card(
-                child: ListTile(
-                  leading: Badge(
-                    isLabelVisible: q.stato == StatoQuestionario.risposto && !q.letto,
-                    child: Icon(switch (q.stato) {
-                      StatoQuestionario.inviato => Icons.hourglass_empty,
-                      StatoQuestionario.risposto => Icons.assignment_turned_in_outlined,
-                      StatoQuestionario.annullato => Icons.block,
-                    }),
-                  ),
-                  title: Text(q.titolo),
-                  subtitle: Text(switch (q.stato) {
-                    StatoQuestionario.inviato => t.inAttesaDiRisposta(dataOra(q.inviatoIl)),
-                    StatoQuestionario.risposto => t.rispostoIl(dataOra(q.rispostoIl!)),
-                    StatoQuestionario.annullato => t.questionarioAnnullato,
-                  }),
-                  onTap: q.stato == StatoQuestionario.risposto ? () => _apri(context, q) : null,
-                  trailing: q.stato == StatoQuestionario.inviato
-                      ? TextButton(
-                          onPressed: () async {
-                            final sicuro = await conferma(
-                              context,
-                              titolo: t.annullaQuestionarioTitolo,
-                              testo: t.annullaQuestionarioTesto,
-                              azione: t.annullaQuestionario,
-                              pericolosa: true,
-                            );
-                            if (!sicuro || !context.mounted) return;
-                            await esegui(context, () async => _nucleo.questionari.annulla(q.id));
-                            aggiornamenti.segnala();
-                          },
-                          child: Text(t.annullaQuestionario),
-                        )
-                      : null,
-                ),
-              ),
-          ],
-        );
-      },
+            title: Text(q.titolo),
+            subtitle: Text(switch (q.stato) {
+              StatoQuestionario.inviato => t.inAttesaDiRisposta(dataOra(q.inviatoIl)),
+              StatoQuestionario.risposto => t.rispostoIl(dataOra(q.rispostoIl!)),
+              StatoQuestionario.annullato => t.questionarioAnnullato,
+            }),
+            onTap: q.stato == StatoQuestionario.risposto ? () => _apri(context) : null,
+            trailing: q.stato == StatoQuestionario.inviato
+                ? TextButton(
+                    onPressed: () async {
+                      final sicuro = await conferma(
+                        context,
+                        titolo: t.annullaQuestionarioTitolo,
+                        testo: t.annullaQuestionarioTesto,
+                        azione: t.annullaQuestionario,
+                        pericolosa: true,
+                      );
+                      if (!sicuro || !context.mounted) return;
+                      await esegui(context, () async => _nucleo.questionari.annulla(q.id));
+                      aggiornamenti.segnala();
+                    },
+                    child: Text(t.annullaQuestionario),
+                  )
+                : null,
+          ),
+        ),
+      ),
     );
   }
 }

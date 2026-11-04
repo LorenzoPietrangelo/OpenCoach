@@ -212,9 +212,7 @@ Future<int> _allenamento(NucleoAtleta nucleo) async {
   final AllenamentoInCorso allenamento;
   if (scheda == null) {
     allenamento = AllenamentoInCorso.libero(inizio: inizio, coachId: coach.id);
-    allenamento.aggiungiEsercizio('Corsa').serie.single
-      ..durataS = 1800
-      ..completata = true;
+    allenamento.aggiungiEsercizio('Corsa').serie.single.durataS = 1800;
   } else {
     final seduta =
         (scheda.contenuto['sedute'] as List<Object?>).first
@@ -227,7 +225,6 @@ Future<int> _allenamento(NucleoAtleta nucleo) async {
     for (final esercizio in allenamento.esercizi) {
       for (final serie in esercizio.serie) {
         serie.ripetizioni ??= 8;
-        serie.completata = true;
       }
     }
   }

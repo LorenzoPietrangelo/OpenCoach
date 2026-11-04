@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'l10n/testi.dart';
 import 'piattaforma/inviti_in_arrivo.dart';
 import 'piattaforma/sync_in_background.dart';
-import 'schermate/elenco_coach.dart';
+import 'schermate/principale.dart';
 
 /// L'app dell'atleta sopra il nucleo: le sync automatiche seguono il primo
 /// piano e il background (§7.4).
@@ -46,6 +46,7 @@ class _AppAtletaState extends State<AppAtleta> {
       onShow: _inPrimoPiano,
       onHide: () {
         unawaited(widget.background?.proseguiSeInCorso());
+        unawaited(widget.background?.controlliRavvicinatiSeConversazione());
         unawaited(_pianificatore.vaiInBackground());
       },
     );
@@ -54,6 +55,7 @@ class _AppAtletaState extends State<AppAtleta> {
   void _inPrimoPiano() {
     _pianificatore.entraInPrimoPiano();
     unawaited(widget.background?.chiediPermessoNotifiche());
+    unawaited(widget.background?.annullaControlliRavvicinati());
   }
 
   @override
@@ -69,7 +71,7 @@ class _AppAtletaState extends State<AppAtleta> {
     localizationsDelegates: Testi.localizationsDelegates,
     supportedLocales: Testi.supportedLocales,
     theme: ThemeData(colorSchemeSeed: Colors.teal),
-    home: ElencoCoach(
+    home: SchermataPrincipale(
       nucleo: widget.nucleo,
       background: widget.background,
       inviti: widget.inviti,

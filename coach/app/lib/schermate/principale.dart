@@ -11,7 +11,6 @@ import '../servizi.dart';
 import 'atleti.dart';
 import 'impostazioni.dart';
 import 'libreria.dart';
-import 'questionari.dart';
 import 'stato.dart';
 
 /// Chiede conferma e chiude il programma: gli atleti non potranno più
@@ -119,7 +118,7 @@ class _PrincipaleState extends State<Principale> {
           testo: t.avvisoBackup,
           icona: Icons.backup_outlined,
           azione: t.vaiAlBackup,
-          premuto: () => setState(() => _sezione = 4),
+          premuto: () => setState(() => _sezione = 3),
         ),
     ];
     final corpo = switch (_sezione) {
@@ -129,8 +128,7 @@ class _PrincipaleState extends State<Principale> {
         aggiornamenti: widget.aggiornamenti,
       ),
       1 => SchermataLibreria(coach: widget.coach, aggiornamenti: widget.aggiornamenti),
-      2 => SchermataQuestionari(coach: widget.coach, aggiornamenti: widget.aggiornamenti),
-      3 => SchermataStato(coach: widget.coach, aggiornamenti: widget.aggiornamenti),
+      2 => SchermataStato(coach: widget.coach, aggiornamenti: widget.aggiornamenti),
       _ => SchermataImpostazioni(
         coach: widget.coach,
         desktop: widget.desktop,
@@ -160,11 +158,6 @@ class _PrincipaleState extends State<Principale> {
                 icon: const Icon(Icons.video_library_outlined),
                 selectedIcon: const Icon(Icons.video_library),
                 label: Text(t.sezioneLibreria),
-              ),
-              NavigationRailDestination(
-                icon: const Icon(Icons.assignment_outlined),
-                selectedIcon: const Icon(Icons.assignment),
-                label: Text(t.sezioneQuestionariMenu),
               ),
               NavigationRailDestination(
                 icon: const Icon(Icons.wifi_tethering_outlined),

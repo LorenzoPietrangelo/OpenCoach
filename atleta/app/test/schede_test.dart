@@ -1,4 +1,5 @@
 import 'package:atleta_app/app.dart';
+import 'package:atleta_app/schermate/pagina_coach.dart';
 import 'package:atleta_app/schermate/dettaglio_scheda.dart';
 import 'package:atleta_nucleo/atleta_nucleo.dart';
 import 'package:flutter/material.dart';
@@ -15,6 +16,9 @@ void main() {
   testWidgets('le schede del coach: da vedere, archivio e dettaglio', (
     tester,
   ) async {
+    tester.view.physicalSize = const Size(1080, 4000);
+    tester.view.devicePixelRatio = 2;
+    addTearDown(tester.view.reset);
     final coach = telefono.aggiungiCoach('Marco Bianchi');
     final forza = schedaForza();
     telefono.aggiungiScheda(coach, forza);
@@ -31,10 +35,6 @@ void main() {
 
     await tester.pumpWidget(AppAtleta(nucleo: telefono.nucleo));
     await tester.pumpAndSettle();
-    expect(find.textContaining('1 scheda da vedere'), findsOneWidget);
-
-    await tester.tap(find.text('Marco Bianchi'));
-    await tester.pumpAndSettle();
     expect(find.text('Forza – blocco 2'), findsOneWidget);
     expect(find.text('Mobilità'), findsOneWidget);
     expect(find.text('Da vedere'), findsOneWidget);
@@ -45,7 +45,9 @@ void main() {
       ),
       findsNothing,
     );
-    expect(find.text('Archivio'), findsOneWidget);
+    expect(find.text('Forza – blocco 1'), findsNothing);
+    await tester.tap(find.text('Archivio (1)'));
+    await tester.pumpAndSettle();
     expect(find.text('Forza – blocco 1'), findsOneWidget);
     // Senza Tor la sync non parte, e lo stato lo dice (§7.5).
     expect(find.textContaining('rete Tor'), findsOneWidget);
@@ -103,9 +105,7 @@ void main() {
     final scheda = schedaForza();
     telefono.aggiungiScheda(coach, scheda, vista: true);
 
-    await tester.pumpWidget(AppAtleta(nucleo: telefono.nucleo));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Marco Bianchi'));
+    await tester.pumpWidget(conTesti(PaginaCoach(nucleo: telefono.nucleo, coachId: coach)));
     await tester.pumpAndSettle();
     expect(
       find.textContaining('Il coach ha chiuso il collegamento.'),

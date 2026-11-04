@@ -10,12 +10,14 @@ import 'avvisi.dart';
 import 'formati.dart';
 
 /// Il peso dell'atleta, un valore al giorno (§8.5): si registra quello di
-/// oggi o di un altro giorno, si vede l'andamento e si sceglie con quali
-/// coach condividerlo.
+/// oggi o di un altro giorno, si vede l'andamento e si sceglie se condividerlo
+/// con il coach. Nelle sezioni dell'app la barra in alto è una sola: [barra] è
+/// falso.
 class SchermataPeso extends StatefulWidget {
-  const SchermataPeso({super.key, required this.nucleo});
+  const SchermataPeso({super.key, required this.nucleo, this.barra = true});
 
   final NucleoAtleta nucleo;
+  final bool barra;
 
   @override
   State<SchermataPeso> createState() => _SchermataPesoState();
@@ -118,7 +120,7 @@ class _SchermataPesoState extends State<SchermataPeso> {
     final media = pesi.isEmpty ? null : mediaSettimana(pesi, pesi.last.giorno);
     final etichettaGiorno = _giorno == _oggi ? testi.oggi : giornoEMese(context, _giorno);
     return Scaffold(
-      appBar: AppBar(title: Text(testi.peso)),
+      appBar: widget.barra ? AppBar(title: Text(testi.peso)) : null,
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
@@ -179,9 +181,12 @@ class _SchermataPesoState extends State<SchermataPeso> {
           ],
           if (pesi.length >= 2) ...[
             const SizedBox(height: 16),
-            SizedBox(height: 200, child: GraficoPeso(pesi: pesi)),
+            SizedBox(height: 220, child: GraficoPeso(pesi: pesi)),
             const SizedBox(height: 4),
             Text(testi.legendaGraficoPeso, style: tema.bodySmall),
+          ] else if (pesi.length == 1) ...[
+            const SizedBox(height: 16),
+            Text(testi.graficoPesoDaDueGiorni, style: tema.bodySmall),
           ],
           if (coach.isNotEmpty) ...[
             const SizedBox(height: 24),
@@ -280,6 +285,8 @@ class GraficoPeso extends StatelessWidget {
         linea: schema.primary,
         griglia: schema.outlineVariant,
         testo: Theme.of(context).textTheme.bodySmall!,
+        primoGiorno: giornoEMese(context, pesi.first.giorno),
+        ultimoGiorno: giornoEMese(context, pesi.last.giorno),
       ),
       child: const SizedBox.expand(),
     );
@@ -293,6 +300,8 @@ class _Pittore extends CustomPainter {
     required this.linea,
     required this.griglia,
     required this.testo,
+    required this.primoGiorno,
+    required this.ultimoGiorno,
   });
 
   final List<PesoDelGiorno> pesi;
@@ -300,6 +309,8 @@ class _Pittore extends CustomPainter {
   final Color linea;
   final Color griglia;
   final TextStyle testo;
+  final String primoGiorno;
+  final String ultimoGiorno;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -310,7 +321,8 @@ class _Pittore extends CustomPainter {
     final margine = max(0.5, (massimo - minimo) * 0.1);
     minimo -= margine;
     massimo += margine;
-    final area = Rect.fromLTRB(44, 6, size.width - 6, size.height - 6);
+    // A sinistra i chili, sotto i giorni: i punti non ci finiscono sopra.
+    final area = Rect.fromLTRB(52, 6, size.width - 6, size.height - 24);
 
     Offset posizione(DateTime giorno, double kg) => Offset(
       area.left + area.width * giorno.difference(primo).inDays / giorni,
@@ -332,6 +344,13 @@ class _Pittore extends CustomPainter {
       )..layout();
       etichetta.paint(canvas, Offset(0, y - etichetta.height / 2));
     }
+    TextPainter giorno(String testoGiorno) => TextPainter(
+      text: TextSpan(text: testoGiorno, style: testo),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    giorno(primoGiorno).paint(canvas, Offset(area.left, area.bottom + 6));
+    final fine = giorno(ultimoGiorno);
+    fine.paint(canvas, Offset(area.right - fine.width, area.bottom + 6));
     final pennelloPunti = Paint()..color = punti;
     for (final p in pesi) {
       canvas.drawCircle(posizione(p.giorno, p.kg), 3, pennelloPunti);

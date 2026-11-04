@@ -98,10 +98,11 @@ void main() {
       expect(serie.completata, isFalse);
     }
 
-    // Numeri semplici diventano valori precompilati, riga per riga.
+    // Anche i numeri semplici restano obiettivi: i valori li scrive l'atleta.
     final pancaInCorso = allenamento.esercizi[1];
-    expect([for (final s in pancaInCorso.serie) s.ripetizioni], [8, 8, 12]);
-    expect([for (final s in pancaInCorso.serie) s.caricoKg], [60, 60, 50.5]);
+    expect([for (final s in pancaInCorso.serie) s.ripetizioni], [null, null, null]);
+    expect([for (final s in pancaInCorso.serie) s.obiettivoRipetizioni], ['8', '8', '12']);
+    expect([for (final s in pancaInCorso.serie) s.caricoKg], [null, null, null]);
     expect(
       [for (final s in pancaInCorso.serie) s.recupero],
       [const Duration(seconds: 90), const Duration(seconds: 90), null],
@@ -109,7 +110,8 @@ void main() {
 
     // «30 s» è una durata.
     final plank = allenamento.esercizi[2];
-    expect([for (final s in plank.serie) s.durataS], [30, 30, 30]);
+    expect([for (final s in plank.serie) s.durataS], [null, null, null]);
+    expect([for (final s in plank.serie) s.obiettivoDurataS], [30, 30, 30]);
     expect(plank.serie.first.ripetizioni, isNull);
 
     // Senza prescrizione c'è una serie vuota.
@@ -125,11 +127,8 @@ void main() {
     allenamento.esercizi[0].serie.first
       ..ripetizioni = 7
       ..caricoKg = 100
-      ..rpe = 8.5
-      ..completata = true;
-    allenamento.aggiungiEsercizio('Trazioni').serie.single
-      ..ripetizioni = 6
-      ..completata = true;
+      ..rpe = 8.5;
+    allenamento.aggiungiEsercizio('Trazioni').serie.single.ripetizioni = 6;
     allenamento
       ..note = 'Buone sensazioni'
       ..rpe = 8;
@@ -165,7 +164,7 @@ void main() {
     });
   });
 
-  test("una serie aggiunta riparte dall'ultima", () {
+  test("una serie aggiunta è vuota e mostra l'obiettivo dell'ultima", () {
     final allenamento = AllenamentoInCorso.daSeduta(
       scheda,
       sedutaId,
@@ -175,8 +174,8 @@ void main() {
     pancaInCorso.serie.last.caricoKg = 52.5;
     final aggiunta = pancaInCorso.aggiungiSerie();
     expect(pancaInCorso.serie, hasLength(4));
-    expect(aggiunta.ripetizioni, 12);
-    expect(aggiunta.caricoKg, 52.5);
+    expect(aggiunta.ripetizioni, isNull);
+    expect(aggiunta.caricoKg, isNull);
     expect(aggiunta.obiettivoRipetizioni, '12');
     expect(aggiunta.completata, isFalse);
   });
@@ -185,9 +184,7 @@ void main() {
     final allenamento = AllenamentoInCorso.libero(inizio: inizio);
     expect(allenamento.libero, isTrue);
     expect(allenamento.coachId, isNull);
-    allenamento.aggiungiEsercizio('Corsa').serie.single
-      ..durataS = 1800
-      ..completata = true;
+    allenamento.aggiungiEsercizio('Corsa').serie.single.durataS = 1800;
     final contenuto = allenamento.contenuto(
       fine: inizio.add(const Duration(minutes: 32)),
     );
@@ -226,8 +223,7 @@ void main() {
     for (final serie in allenamento.esercizi.single.serie) {
       serie
         ..ripetizioni = 7
-        ..caricoKg = 100
-        ..completata = true;
+        ..caricoKg = 100;
     }
     final log = telefono.nucleo.diario.salva(
       allenamento.coachId!,

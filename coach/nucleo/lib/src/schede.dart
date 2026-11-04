@@ -64,7 +64,8 @@ class GestioneSchede {
   }
 
   /// Pubblica la bozza come nuova revisione e ne restituisce il numero.
-  /// Lancia [SchedaNonValida] se la bozza non è completa.
+  /// Lancia [SchedaNonValida] se la bozza non è completa. L'atleta ha una sola
+  /// scheda attiva: quella che aveva passa nell'archivio.
   int pubblica(String schedaId) {
     return _c.archivio.transazione(() {
       final riga = _riga(schedaId);
@@ -73,8 +74,19 @@ class GestioneSchede {
       );
       final errori = validaContenutoScheda(contenuto);
       if (errori.isNotEmpty) throw SchedaNonValida(errori);
-      return _nuovaRevisione(riga, jsonEncode(contenuto), bozzaModificata: false);
+      final revisione = _nuovaRevisione(riga, jsonEncode(contenuto), bozzaModificata: false);
+      _archiviaLeAltre(riga['atleta_id'] as String, schedaId);
+      return revisione;
     });
+  }
+
+  void _archiviaLeAltre(String atletaId, String schedaId) {
+    for (final altra in _db.select(
+      "SELECT id FROM schede WHERE atleta_id = ? AND stato = 'pubblicata' AND id != ?",
+      [atletaId, schedaId],
+    )) {
+      archivia(altra['id'] as String);
+    }
   }
 
   /// Schede pubblicate i cui video non sono più quelli della libreria.
@@ -214,13 +226,17 @@ class GestioneSchede {
     errore: 'Si possono archiviare solo schede pubblicate',
   );
 
-  /// Riporta una scheda archiviata tra quelle attive.
-  void ripristina(String schedaId) => _cambiaStato(
-    schedaId,
-    da: 'archiviata',
-    a: 'pubblicata',
-    errore: 'La scheda non è archiviata',
-  );
+  /// Riporta una scheda archiviata tra quelle attive, al posto di quella che
+  /// l'atleta aveva.
+  void ripristina(String schedaId) => _c.archivio.transazione(() {
+    _cambiaStato(
+      schedaId,
+      da: 'archiviata',
+      a: 'pubblicata',
+      errore: 'La scheda non è archiviata',
+    );
+    _archiviaLeAltre(_riga(schedaId)['atleta_id'] as String, schedaId);
+  });
 
   /// Elimina la scheda. Se l'atleta l'aveva ricevuta, la toglie anche dal suo
   /// telefono alla sync successiva.

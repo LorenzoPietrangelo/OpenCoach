@@ -14,8 +14,9 @@ import 'video_esercizio.dart';
 
 /// Esecuzione di un allenamento (§10.2): le serie partono dalla
 /// prescrizione; l'atleta scrive ripetizioni, carico e, per gli esercizi a
-/// tempo, la durata della serie, segna le serie fatte, usa il timer di
-/// recupero e scrive note. Sforzo percepito e durata dell'allenamento non si
+/// tempo, la durata della serie: una serie compilata conta come fatta. Quando
+/// la lascia parte il timer di recupero, e può scrivere note. Sforzo percepito
+/// e durata dell'allenamento non si
 /// chiedono più: restano solo nei log che li avevano già.
 /// Può aggiungere esercizi non previsti. Al salvataggio il log entra in coda
 /// e parte una sync (§7.4).
@@ -97,26 +98,11 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
   void initState() {
     super.initState();
     _aTempo.addAll(
-      _a.esercizi.where((e) => e.serie.any((s) => s.durataS != null)),
+      _a.esercizi.where((e) => e.serie.any((s) => s.durataS != null || s.obiettivoDurataS != null)),
     );
     // Un allenamento già registrato si apre per correggerlo: le serie si
     // vedono subito.
-    if (widget.logId != null) {
-      _aperti.addAll(_a.esercizi);
-    } else {
-      // Dove c'è un valore dell'ultima volta il campo resta vuoto e lo
-      // mostra in grigio, invece del numero preso dalla prescrizione.
-      for (final esercizio in _a.esercizi) {
-        final precedenti = _ultimaVolta(esercizio);
-        for (final (i, serie) in esercizio.serie.indexed) {
-          final prima = precedenti.elementAtOrNull(i);
-          if (prima == null) continue;
-          if (prima.ripetizioni != null) serie.ripetizioni = null;
-          if (prima.caricoKg != null) serie.caricoKg = null;
-          if (prima.durataS != null) serie.durataS = null;
-        }
-      }
-    }
+    if (widget.logId != null) _aperti.addAll(_a.esercizi);
   }
 
   /// Le serie fatte l'ultima volta con l'esercizio, per nome e id: se
@@ -255,21 +241,16 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
         }
       });
 
-  /// Segna la serie fatta e, se il coach ha previsto un recupero, avvia il
-  /// timer. I campi lasciati vuoti prendono i valori dell'ultima volta, che
-  /// l'atleta vedeva in grigio.
-  void _completa(SerieInCorso serie, SerieFatta? prima, bool fatta) {
-    _cambia(() {
-      serie.completata = fatta;
-      if (!fatta || prima == null) return;
-      serie.ripetizioni ??= prima.ripetizioni;
-      serie.caricoKg ??= prima.caricoKg;
-      serie.durataS ??= prima.durataS;
-    });
+  /// Le serie per cui il recupero è già partito: correggerle non lo rifà.
+  final _recuperate = <SerieInCorso>{};
+
+  /// L'atleta ha lasciato una serie, passando a un'altra o chiudendo la
+  /// tastiera: se l'ha compilata e il coach ha previsto un recupero, parte il
+  /// timer.
+  void _serieLasciata(SerieInCorso serie) {
     final recupero = serie.recupero;
-    if (fatta && recupero != null && recupero > Duration.zero) {
-      _avviaRecupero(recupero);
-    }
+    if (!mounted || !serie.completata || recupero == null || recupero <= Duration.zero) return;
+    if (_recuperate.add(serie)) _avviaRecupero(recupero);
   }
 
   // Timer di recupero. Il tempo che resta si misura sull'orologio, così il
@@ -655,8 +636,8 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
         : previsto?.note ?? '';
     final aperto = _aperti.contains(esercizio);
     final fatte = esercizio.serie.where((s) => s.completata).length;
-    // Chiuso, l'esercizio mostra solo serie, ripetizioni e RIR (§8.1);
-    // carico e recupero si vedono aprendolo.
+    // Chiuso, l'esercizio mostra serie, ripetizioni, recupero e RIR (§8.1);
+    // il carico si vede aprendolo.
     final riepilogo = previsto == null || previsto.prescrizione.isEmpty
         ? testi.numeroSerie(esercizio.serie.length)
         : [
@@ -665,17 +646,14 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
                 testi,
                 serie: riga.serie,
                 ripetizioni: riga.ripetizioni,
+                recupero: riga.recupero,
                 rir: riga.rir,
               ),
           ].where((t) => t.isNotEmpty).join(' + ');
     final dettagli = [
       if (previsto != null)
         for (final riga in previsto.prescrizione)
-          testoPrescrizione(
-            testi,
-            carico: riga.carico,
-            recupero: riga.recupero,
-          ),
+          testoPrescrizione(testi, carico: riga.carico),
     ].where((t) => t.isNotEmpty);
     return Card(
       key: ObjectKey(esercizio),
@@ -725,7 +703,7 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
     );
   }
 
-  /// La parte che si apre toccando l'esercizio: carico e recupero previsti,
+  /// La parte che si apre toccando l'esercizio: il carico previsto,
   /// note, le serie da registrare e il menu dell'esercizio.
   Widget _registrazione(
     EsercizioInCorso esercizio, {
@@ -775,7 +753,6 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
                 ? Text(testi.secondiBreve, style: tema.labelSmall)
                 : null,
             carico: Text(testi.kg, style: tema.labelSmall),
-            fatta: Text(testi.fatta, style: tema.labelSmall),
           ),
           for (final (indice, serie) in esercizio.serie.indexed)
             _serie(
@@ -857,8 +834,13 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
       onChanged: (valore, valido) => _valore(serie, campo, valore, valido),
     );
 
-    return KeyedSubtree(
+    return Focus(
       key: ObjectKey(serie),
+      canRequestFocus: false,
+      skipTraversal: true,
+      onFocusChange: (dentro) {
+        if (!dentro) _serieLasciata(serie);
+      },
       child: _colonne(
         numero: Text('${indice + 1}'),
         ripetizioni: conRipetizioni
@@ -885,11 +867,6 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
           (testo) => leggiDecimale(testo, massimo: 10000),
           decimale: true,
         ),
-        fatta: Checkbox(
-          value: serie.completata,
-          semanticLabel: Testi.of(context).serieFatta(indice + 1),
-          onChanged: (fatta) => _completa(serie, prima, fatta ?? false),
-        ),
         video: IconButton(
           tooltip: Testi.of(context).videoDellaSerie(indice + 1),
           visualDensity: VisualDensity.compact,
@@ -910,7 +887,6 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
     Widget? ripetizioni,
     Widget? durata,
     required Widget carico,
-    required Widget fatta,
     Widget? video,
   }) {
     Widget colonna(_Campo campo, Widget figlio) => Expanded(
@@ -926,7 +902,6 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
         if (ripetizioni != null) colonna(_Campo.ripetizioni, ripetizioni),
         if (durata != null) colonna(_Campo.durata, durata),
         colonna(_Campo.carico, carico),
-        SizedBox(width: 48, child: Center(child: fatta)),
         // Il video della serie, per il coach.
         SizedBox(width: 40, child: Center(child: video)),
       ],
@@ -1037,17 +1012,6 @@ class _CampoNumeroState extends State<_CampoNumero> {
       null => '',
     },
   );
-
-  /// Un valore arrivato da fuori, come quelli dell'ultima volta quando
-  /// l'atleta segna la serie fatta, riempie il campo se è vuoto.
-  @override
-  void didUpdateWidget(_CampoNumero vecchio) {
-    super.didUpdateWidget(vecchio);
-    final valore = widget.valore;
-    if (valore != null && valore != vecchio.valore && _testo.text.isEmpty) {
-      _testo.text = numero(valore);
-    }
-  }
 
   @override
   void dispose() {

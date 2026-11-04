@@ -11,12 +11,16 @@ import 'scansione_qr.dart';
 /// Abbinamento con il QR d'invito, con il link incollato a mano o con quello
 /// aperto da un'altra app (§5.2, §5.3, §10.2): legge l'invito, chiede
 /// «Collegarti a …?» e collega il telefono. Gli errori sono quelli del §5.4.
+/// L'atleta ha un solo coach alla volta: se ne ha già uno, se ne scollega solo
+/// dopo essersi collegato al nuovo, così un coach irraggiungibile non lo lascia
+/// senza nessuno.
 class AggiungiCoach extends StatefulWidget {
   const AggiungiCoach({
     super.key,
     required this.nucleo,
     this.inviti,
     this.scansiona = ScansioneQr.apri,
+    this.azioni = const [],
   });
 
   final NucleoAtleta nucleo;
@@ -29,6 +33,9 @@ class AggiungiCoach extends StatefulWidget {
   /// Inquadra il QR e restituisce il suo testo, o null se l'atleta ci
   /// rinuncia. I test la sostituiscono, perché la fotocamera non c'è.
   final Future<String?> Function(BuildContext context) scansiona;
+
+  /// I pulsanti nella barra, quando è la schermata principale.
+  final List<Widget> azioni;
 
   @override
   State<AggiungiCoach> createState() => _AggiungiCoachState();
@@ -95,10 +102,17 @@ class _AggiungiCoachState extends State<AggiungiCoach> {
         avanzamento: _avanza,
       );
       if (!mounted) return;
+      final attuali = [
+        for (final coach in widget.nucleo.collegamenti.attivi())
+          if (coach.indirizzo != invito.indirizzo) coach,
+      ];
       final conferma = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
           title: Text(testi.collegartiA(invito.nomeCoach)),
+          content: attuali.isEmpty
+              ? null
+              : Text(testi.cambioCoach(attuali.map((c) => c.nomeCoach).join(', '))),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
@@ -133,9 +147,19 @@ class _AggiungiCoachState extends State<AggiungiCoach> {
           onError: (Object e) => debugPrint('Prima sync non riuscita: $e'),
         ),
       );
+      // Il nuovo coach c'è: dal precedente ci si scollega. Se non riesce,
+      // all'apertura l'atleta sceglie quale tenere.
+      try {
+        for (final coach in attuali) {
+          await widget.nucleo.collegamenti.scollega(coach.id);
+        }
+      } on Exception catch (e) {
+        debugPrint('Scollegamento dal coach precedente non riuscito: $e');
+      }
       if (!mounted) return;
       final messaggi = ScaffoldMessenger.of(context);
-      Navigator.of(context).pop();
+      // Quando è la schermata principale, la sostituiscono le sezioni.
+      unawaited(Navigator.of(context).maybePop());
       messaggi.avvisa(testi.collegatoA(invito.nomeCoach));
     } on ErroreAbbinamento catch (e) {
       if (mounted) setState(() => _errore = e.messaggio);
@@ -155,7 +179,7 @@ class _AggiungiCoachState extends State<AggiungiCoach> {
     final tema = Theme.of(context);
     final errore = _errore;
     return Scaffold(
-      appBar: AppBar(title: Text(testi.titoloInvito)),
+      appBar: AppBar(title: Text(testi.titoloInvito), actions: widget.azioni),
       body: ListView(
         padding: const EdgeInsets.all(24),
         children: [

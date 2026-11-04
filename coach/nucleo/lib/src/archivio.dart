@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:protocollo/protocollo.dart';
 import 'package:sqlite3/sqlite3.dart';
 
@@ -86,10 +88,20 @@ class Archivio {
   int prossimaSequenza() {
     final sequenza = sequenzaCorrente + 1;
     scriviImpostazione(Impostazioni.sequenza, '$sequenza');
+    _sequenzaCambiata.add(null);
     return sequenza;
   }
 
-  void chiudi() => db.close();
+  final _sequenzaCambiata = StreamController<void>.broadcast();
+
+  /// Una modifica visibile agli atleti. Arriva dopo la fine della transazione
+  /// in corso, che è sincrona.
+  Stream<void> get sequenzaCambiata => _sequenzaCambiata.stream;
+
+  void chiudi() {
+    unawaited(_sequenzaCambiata.close());
+    db.close();
+  }
 }
 
 /// Chiavi della tabella `impostazioni`.

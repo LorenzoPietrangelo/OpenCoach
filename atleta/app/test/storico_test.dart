@@ -17,7 +17,7 @@ void main() {
       conTesti(PaginaCoach(nucleo: telefono.nucleo, coachId: coach)),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Storico'));
+    await tester.tap(find.textContaining('Storico'));
     await tester.pumpAndSettle();
   }
 

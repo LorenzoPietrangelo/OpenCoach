@@ -8,15 +8,15 @@ import '../comuni.dart';
 import '../l10n/testi.dart';
 import '../piattaforma/desktop.dart';
 import '../servizi.dart';
-import 'allenamenti.dart';
 import 'chat.dart';
 import 'peso.dart';
-import 'questionari.dart';
 import 'schede.dart';
+import 'storico.dart';
 import 'telefono.dart';
 
-/// Dettaglio di un atleta: telefono e invito, schede, allenamenti, peso,
-/// questionari.
+/// Dettaglio di un atleta. Finché un atleta nuovo non collega il telefono si
+/// vede solo l'invito; poi schede, storico, peso e la chat, che contiene
+/// anche i questionari. Invito e telefono stanno allora nel menu.
 class DettaglioAtleta extends StatelessWidget {
   const DettaglioAtleta({
     super.key,
@@ -38,55 +38,81 @@ class DettaglioAtleta extends StatelessWidget {
     final t = Testi.of(context);
     final atleta = _nucleo.atleti.cerca(atletaId);
     if (atleta == null) return const SizedBox.shrink();
-    return DefaultTabController(
-      length: 6,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
+    final daLeggere = _nucleo.messaggi.nonLetti(atletaId) + _nucleo.questionari.nonLette(atletaId);
+    final senzaTelefono = !atleta.archiviato && _nucleo.dispositivi.attivo(atletaId) == null;
+    // Chi ha già avuto un telefono, o ha già dei dati, continua a vederli anche
+    // se il telefono ora manca.
+    final nuovo =
+        senzaTelefono &&
+        _nucleo.dispositivi.elenco(atletaId).isEmpty &&
+        _nucleo.schede.elenco(atletaId).isEmpty &&
+        _nucleo.questionari.inviati(atletaId).isEmpty &&
+        _nucleo.messaggi.conversazione(atletaId).isEmpty;
+    final intestazione = Padding(
+      padding: const EdgeInsets.fromLTRB(24, 16, 16, 0),
+      child: Row(
         children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(24, 16, 16, 0),
-            child: Row(
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(atleta.nome, style: Theme.of(context).textTheme.headlineSmall),
-                      if (atleta.note.isNotEmpty)
-                        Text(
-                          atleta.note,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall,
-                        ),
-                      if (atleta.archiviato) Text(t.atletaArchiviato),
-                    ],
+                Text(atleta.nome, style: Theme.of(context).textTheme.headlineSmall),
+                if (atleta.note.isNotEmpty)
+                  Text(
+                    atleta.note,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
-                ),
-                _MenuAtleta(atleta: atleta, coach: coach, desktop: desktop, aggiornamenti: aggiornamenti),
+                if (atleta.archiviato) Text(t.atletaArchiviato),
               ],
             ),
           ),
+          _MenuAtleta(atleta: atleta, coach: coach, desktop: desktop, aggiornamenti: aggiornamenti, nuovo: nuovo),
+        ],
+      ),
+    );
+    if (nuovo) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          intestazione,
+          Expanded(child: PannelloCollegamento(atleta: atleta, coach: coach, aggiornamenti: aggiornamenti)),
+        ],
+      );
+    }
+    return DefaultTabController(
+      length: 4,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          intestazione,
+          if (senzaTelefono)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
+              child: Row(
+                children: [
+                  Expanded(child: Text(t.nessunTelefonoSpiegazione)),
+                  const SizedBox(width: 16),
+                  FilledButton.tonalIcon(
+                    onPressed: () => nuovoInvito(context, atleta, coach, aggiornamenti),
+                    icon: const Icon(Icons.add_link),
+                    label: Text(t.nuovoInvito),
+                  ),
+                ],
+              ),
+            ),
           TabBar(
             isScrollable: true,
             tabAlignment: TabAlignment.start,
             tabs: [
-              Tab(text: t.schedaTelefono),
               Tab(text: t.schedaSchede),
-              Tab(text: t.schedaAllenamenti),
+              Tab(text: t.schedaStorico),
               Tab(text: t.schedaPeso),
               Tab(
                 child: Badge(
-                  isLabelVisible: _nucleo.questionari.nonLette(atletaId) > 0,
-                  label: Text('${_nucleo.questionari.nonLette(atletaId)}'),
-                  offset: const Offset(14, -6),
-                  child: Text(t.schedaQuestionari),
-                ),
-              ),
-              Tab(
-                child: Badge(
-                  isLabelVisible: _nucleo.messaggi.nonLetti(atletaId) > 0,
-                  label: Text('${_nucleo.messaggi.nonLetti(atletaId)}'),
+                  isLabelVisible: daLeggere > 0,
+                  label: Text('$daLeggere'),
                   offset: const Offset(14, -6),
                   child: Text(t.schedaChat),
                 ),
@@ -96,11 +122,9 @@ class DettaglioAtleta extends StatelessWidget {
           Expanded(
             child: TabBarView(
               children: [
-                PannelloTelefono(atleta: atleta, coach: coach, aggiornamenti: aggiornamenti),
                 PannelloSchede(atleta: atleta, coach: coach, aggiornamenti: aggiornamenti),
-                PannelloAllenamenti(atleta: atleta, coach: coach, aggiornamenti: aggiornamenti),
+                PannelloStorico(atleta: atleta, coach: coach, aggiornamenti: aggiornamenti),
                 PannelloPeso(atleta: atleta, coach: coach, aggiornamenti: aggiornamenti),
-                PannelloQuestionari(atleta: atleta, coach: coach, aggiornamenti: aggiornamenti),
                 PannelloChat(atleta: atleta, coach: coach, desktop: desktop, aggiornamenti: aggiornamenti),
               ],
             ),
@@ -111,7 +135,7 @@ class DettaglioAtleta extends StatelessWidget {
   }
 }
 
-enum _AzioneAtleta { rinomina, note, esportaJson, esportaCsv, archivia, elimina }
+enum _AzioneAtleta { invito, scollega, rinomina, note, esportaJson, esportaCsv, archivia, elimina }
 
 class _MenuAtleta extends StatelessWidget {
   const _MenuAtleta({
@@ -119,6 +143,7 @@ class _MenuAtleta extends StatelessWidget {
     required this.coach,
     required this.desktop,
     required this.aggiornamenti,
+    required this.nuovo,
   });
 
   final Atleta atleta;
@@ -126,11 +151,21 @@ class _MenuAtleta extends StatelessWidget {
   final Desktop desktop;
   final Aggiornamenti aggiornamenti;
 
+  /// L'invito è già in vista: nel menu non serve.
+  final bool nuovo;
+
   NucleoCoach get _nucleo => coach.nucleo;
 
   Future<void> _scegli(BuildContext context, _AzioneAtleta azione) async {
     final t = Testi.of(context);
     switch (azione) {
+      case _AzioneAtleta.invito:
+        await nuovoInvito(context, atleta, coach, aggiornamenti);
+      case _AzioneAtleta.scollega:
+        final dispositivo = _nucleo.dispositivi.attivo(atleta.id);
+        if (dispositivo != null) {
+          await scollegaTelefono(context, atleta, dispositivo, coach, aggiornamenti);
+        }
       case _AzioneAtleta.rinomina:
         final nome = await chiediTesto(
           context,
@@ -196,6 +231,9 @@ class _MenuAtleta extends StatelessWidget {
       tooltip: t.altreAzioni,
       onSelected: (azione) => _scegli(context, azione),
       itemBuilder: (context) => [
+        if (!atleta.archiviato && !nuovo) PopupMenuItem(value: _AzioneAtleta.invito, child: Text(t.nuovoInvito)),
+        if (_nucleo.dispositivi.attivo(atleta.id) != null)
+          PopupMenuItem(value: _AzioneAtleta.scollega, child: Text(t.scollegaTelefono)),
         PopupMenuItem(value: _AzioneAtleta.rinomina, child: Text(t.rinomina)),
         PopupMenuItem(value: _AzioneAtleta.note, child: Text(t.notePrivate)),
         PopupMenuItem(value: _AzioneAtleta.esportaJson, child: Text(t.esportaJson)),

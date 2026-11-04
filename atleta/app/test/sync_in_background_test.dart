@@ -105,11 +105,13 @@ void main() {
           'coach': 1,
           'titolo': 'Nuova scheda da Marco Bianchi',
           'testo': 'Forza',
+          'conversazione': false,
         },
         {
           'coach': 4,
           'titolo': '2 schede nuove da Anna Neri',
           'testo': 'Corsa, Mobilità',
+          'conversazione': false,
         },
       ],
     );

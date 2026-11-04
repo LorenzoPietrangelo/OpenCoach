@@ -70,6 +70,7 @@ void main() {
   ) async {
     telefono = TelefonoDiProva();
     inviti = InvitiInArrivo();
+    telefono.aggiungiCoach('Marco Bianchi');
     final link = linkInvito();
     await tester.pumpWidget(AppAtleta(nucleo: telefono.nucleo, inviti: inviti));
     await tester.tap(find.byTooltip('Impostazioni'));
@@ -82,7 +83,7 @@ void main() {
     expect(testoDelCampo(tester), link);
     // L'invito è valido: senza Tor l'abbinamento si ferma lì (§7.5).
     expect(find.textContaining('rete Tor'), findsOneWidget);
-    expect(telefono.nucleo.collegamenti.elenco(), isEmpty);
+    expect(telefono.nucleo.collegamenti.elenco(), hasLength(1));
 
     // Sotto c'è ancora la schermata in cui era l'atleta.
     await tester.tap(find.byType(BackButton));

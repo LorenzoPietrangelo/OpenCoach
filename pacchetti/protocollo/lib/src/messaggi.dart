@@ -258,6 +258,51 @@ class RichiestaSync {
   };
 }
 
+/// `POST /v1/attendi` (§6.3): il coach risponde appena ha qualcosa di nuovo
+/// per il cursore indicato, o dopo [attesaS] secondi. Con la chat aperta i
+/// messaggi arrivano così subito, senza sync continue.
+class RichiestaAttesa {
+  const RichiestaAttesa({
+    required this.epoca,
+    required this.cursore,
+    required this.attesaS,
+  });
+
+  factory RichiestaAttesa.fromJson(Object? json) {
+    final m = _oggetto(json);
+    final epoca = _campo<String?>(m, 'epoca');
+    final cursore = _campo<String?>(m, 'cursore');
+    if ((epoca?.length ?? 0) > 100 || (cursore?.length ?? 0) > 1000) {
+      throw const FormatException('Epoca o cursore troppo lunghi');
+    }
+    final attesaS = _campo<int>(m, 'attesa_s');
+    if (attesaS < 0) throw const FormatException('Attesa negativa');
+    return RichiestaAttesa(epoca: epoca, cursore: cursore, attesaS: attesaS);
+  }
+
+  final String? epoca;
+  final String? cursore;
+  final int attesaS;
+
+  Map<String, Object?> toJson() => {
+    'epoca': epoca,
+    'cursore': cursore,
+    'attesa_s': attesaS,
+  };
+}
+
+/// Vero se conviene sincronizzare; falso se l'attesa è finita senza novità.
+class RispostaAttesa {
+  const RispostaAttesa({required this.novita});
+
+  factory RispostaAttesa.fromJson(Object? json) =>
+      RispostaAttesa(novita: _campo<bool>(_oggetto(json), 'novita'));
+
+  final bool novita;
+
+  Map<String, Object?> toJson() => {'novita': novita};
+}
+
 /// Log salvato dal coach nella revisione indicata.
 class LogConfermato {
   const LogConfermato(this.id, this.rev);

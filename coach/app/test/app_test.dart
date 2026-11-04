@@ -46,18 +46,25 @@ void main() {
 
     expect(find.text('Giulia Rossi'), findsWidgets);
     expect(find.text('Nessun telefono collegato. Crea un invito e fallo scansionare dall\'app dell\'atleta.'), findsOneWidget);
+    // Finché il telefono non si collega c'è solo l'invito.
+    expect(find.text('Schede'), findsNothing);
+    expect(find.text('Chat'), findsNothing);
 
-    await tester.tap(find.text('Nuovo invito'));
+    await tester.tap(find.text('Crea l\'invito'));
     await tester.pumpAndSettle();
     expect(find.byType(QrImageView), findsOneWidget);
     final link = tester.widget<SelectableText>(find.byType(SelectableText)).data!;
     final invito = UriInvito.analizza(link);
     expect(invito.indirizzo, coach.indirizzo);
-
-    await tester.tap(find.text('Chiudi'));
-    await tester.pumpAndSettle();
-    expect(find.text('Invito aperto'), findsOneWidget);
     expect(find.text('Invito in corso'), findsOneWidget);
+
+    // Il telefono si collega: l'invito sparisce e appaiono le altre sezioni.
+    final atleta = coach.nucleo.atleti.elenco().single.atleta;
+    await coach.riceviLog(atleta.id, const []);
+    await tester.pumpAndSettle();
+    expect(find.byType(QrImageView), findsNothing);
+    expect(find.text('Schede'), findsOneWidget);
+    expect(find.text('Chat'), findsOneWidget);
   });
 
   testWidgets('con un telefono collegato avvisa prima di un nuovo invito', (tester) async {
@@ -66,8 +73,11 @@ void main() {
     await avviaApp(tester, coach, desktop);
     await tester.tap(find.text('Giulia'));
     await tester.pumpAndSettle();
-    expect(find.text('Pixel 8'), findsOneWidget);
+    // Il telefono c'è: l'invito sta solo nel menu.
+    expect(find.text('Nuovo invito'), findsNothing);
 
+    await tester.tap(find.byTooltip('Altre azioni'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Nuovo invito'));
     await tester.pumpAndSettle();
     expect(find.text('Sostituire il telefono?'), findsOneWidget);
@@ -76,8 +86,31 @@ void main() {
     expect(coach.nucleo.inviti.inCorso(atleta.id), isNull);
   });
 
+  testWidgets('dal menu si scollega il telefono, se c\'è', (tester) async {
+    final atleta = coach.nucleo.atleti.crea('Giulia');
+    await coach.riceviLog(atleta.id, const []);
+    await avviaApp(tester, coach, desktop);
+    await tester.tap(find.text('Giulia'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Altre azioni'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Scollega il telefono'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Scollega'));
+    await tester.pumpAndSettle();
+    expect(coach.nucleo.dispositivi.attivo(atleta.id), isNull);
+
+    // Senza telefono, l'invito torna in vista e la voce sparisce.
+    expect(find.text('Nuovo invito'), findsOneWidget);
+    await tester.tap(find.byTooltip('Altre azioni'));
+    await tester.pumpAndSettle();
+    expect(find.text('Scollega il telefono'), findsNothing);
+  });
+
   testWidgets('l\'editor scrive e pubblica una scheda', (tester) async {
     final atleta = coach.nucleo.atleti.crea('Giulia');
+    await coach.riceviLog(atleta.id, const []);
     await avviaApp(tester, coach, desktop);
     await tester.tap(find.text('Giulia'));
     await tester.pumpAndSettle();
@@ -139,6 +172,7 @@ void main() {
 
   testWidgets('la libreria manda il video agli esercizi con lo stesso nome', (tester) async {
     final atleta = coach.nucleo.atleti.crea('Giulia');
+    await coach.riceviLog(atleta.id, const []);
     final schedaId = coach.nucleo.schede.crea(atleta.id, contenuto: contenutoScheda('Forza'));
     coach.nucleo.schede.pubblica(schedaId);
     await avviaApp(tester, coach, desktop);
@@ -184,6 +218,7 @@ void main() {
 
   testWidgets('uscire dall\'editor con modifiche chiede conferma', (tester) async {
     final atleta = coach.nucleo.atleti.crea('Giulia');
+    await coach.riceviLog(atleta.id, const []);
     coach.nucleo.schede.crea(atleta.id, contenuto: contenutoScheda('Forza'));
     await avviaApp(tester, coach, desktop);
     await tester.tap(find.text('Giulia'));
@@ -205,6 +240,7 @@ void main() {
 
   testWidgets('l\'editor mostra lo storico delle revisioni', (tester) async {
     final atleta = coach.nucleo.atleti.crea('Giulia');
+    await coach.riceviLog(atleta.id, const []);
     final id = coach.nucleo.schede.crea(atleta.id, contenuto: contenutoScheda('Forza'));
     coach.nucleo.schede.pubblica(id);
     coach.nucleo.schede.pubblica(id);
@@ -223,8 +259,9 @@ void main() {
     expect(find.textContaining('sostituita prima di arrivare all\'atleta'), findsOneWidget);
   });
 
-  testWidgets('mostra gli allenamenti ricevuti con la prescrizione', (tester) async {
+  testWidgets('lo storico mostra i grafici, non i singoli allenamenti', (tester) async {
     final atleta = coach.nucleo.atleti.crea('Giulia');
+    await coach.riceviLog(atleta.id, const []);
     final sedutaId = nuovoUuid();
     final schedaId = coach.nucleo.schede.crea(atleta.id, contenuto: contenutoScheda('Forza', sedutaId: sedutaId));
     coach.nucleo.schede.pubblica(schedaId);
@@ -257,19 +294,33 @@ void main() {
     await avviaApp(tester, coach, desktop);
     await tester.tap(find.text('Giulia'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Allenamenti'));
+    expect(find.text('Allenamenti'), findsNothing);
+    tester.view.physicalSize = const Size(1400, 1800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    await tester.tap(find.text('Storico'));
     await tester.pumpAndSettle();
-    expect(find.text('Giorno A'), findsOneWidget);
-    expect(find.textContaining('60 minuti'), findsOneWidget);
+    expect(find.text('Allenamenti a settimana'), findsOneWidget);
+    expect(find.text('Volume a settimana'), findsNothing);
+    expect(find.text('Progressi per esercizio'), findsOneWidget);
+    expect(find.text('Squat'), findsOneWidget);
+    expect(tester.takeException(), isNull);
 
-    await tester.tap(find.text('Giorno A'));
-    await tester.pumpAndSettle();
-    expect(find.text('Serie 1: 8 ripetizioni, 80 kg'), findsOneWidget);
-    expect(find.text('Prescritto: 4 × 6-8, 75% 1RM, 2:30 min'), findsOneWidget);
+    // Né i singoli allenamenti né il loro dettaglio.
+    expect(find.text('Giorno A'), findsNothing);
+    expect(find.textContaining('60 minuti'), findsNothing);
+
+    final storico = coach.nucleo.allenamenti.storico(atleta.id);
+    expect(storico.totale, 1);
+    expect(storico.settimane, hasLength(12));
+    final squat = storico.esercizi.single;
+    expect(squat.misura, MisuraEsercizio.stima1Rm);
+    expect(squat.punti.single.valore, closeTo(101.33, 0.01));
   });
 
   testWidgets('mostra i pesi che l\'atleta condivide, con la media della settimana', (tester) async {
     final atleta = coach.nucleo.atleti.crea('Giulia');
+    await coach.riceviLog(atleta.id, const []);
     Map<String, Object?> peso(String giorno, num kg) => {
       'id': nuovoUuid(),
       'rev': 1,
@@ -300,6 +351,7 @@ void main() {
 
   testWidgets('la chat mostra il video di una serie e manda la risposta', (tester) async {
     final atleta = coach.nucleo.atleti.crea('Giulia');
+    await coach.riceviLog(atleta.id, const []);
     final video = Uint8List.fromList(List.generate(5000, (i) => i % 256));
     final videoId = nuovoUuid();
     coach.nucleo.messaggi.salvaParteVideo(atleta.id, videoId, 0, video);
@@ -356,6 +408,7 @@ void main() {
 
   testWidgets('notifica sul desktop gli allenamenti in arrivo', (tester) async {
     final atleta = coach.nucleo.atleti.crea('Giulia');
+    await coach.riceviLog(atleta.id, const []);
     await avviaApp(tester, coach, desktop);
     await coach.riceviLog(atleta.id, [
       {

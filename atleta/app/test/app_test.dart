@@ -32,18 +32,17 @@ void main() {
     archivio.chiudi();
   });
 
-  testWidgets('senza coach invita ad aggiungerne uno', (tester) async {
+  testWidgets('senza coach si parte dal collegamento', (tester) async {
     await tester.pumpWidget(AppAtleta(nucleo: nucleo));
     await tester.pumpAndSettle();
-    expect(find.textContaining('Nessun coach collegato'), findsOneWidget);
-    expect(find.text('Aggiungi coach'), findsOneWidget);
+    expect(find.text('Collegati al tuo coach'), findsOneWidget);
+    expect(find.text('Scansiona il QR'), findsOneWidget);
   });
 
   testWidgets('un invito incollato male mostra il messaggio del §5.4', (
     tester,
   ) async {
     await tester.pumpWidget(AppAtleta(nucleo: nucleo));
-    await tester.tap(find.text('Aggiungi coach'));
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(TextField), 'https://esempio.it');

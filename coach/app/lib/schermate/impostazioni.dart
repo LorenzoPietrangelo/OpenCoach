@@ -11,6 +11,7 @@ import '../l10n/testi.dart';
 import '../piattaforma/desktop.dart';
 import '../piattaforma/percorsi.dart';
 import '../servizi.dart';
+import 'telefono_coach.dart';
 
 /// Impostazioni (§9.1, §9.4): nome, avvio, notifiche, backup, Tor e
 /// identità.
@@ -245,6 +246,8 @@ class _SchermataImpostazioniState extends State<SchermataImpostazioni> {
             value: _preferenze.notifiche,
             onChanged: (v) => setState(() => _preferenze.notifiche = v),
           ),
+          TitoloSezione(t.telefonoCoach),
+          SezioneTelefonoCoach(coach: widget.coach, aggiornamenti: widget.aggiornamenti),
           TitoloSezione(t.backup),
           Text(
             _backupConfigurato

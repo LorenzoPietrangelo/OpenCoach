@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:path/path.dart' as p;
 import 'package:protocollo/protocollo.dart';
+import 'package:trasporto_tor/trasporto_tor.dart';
 
 import 'abbinamento.dart' as abbinamento;
 import 'archivio.dart';
@@ -11,13 +12,11 @@ import 'collegamenti.dart';
 import 'contesto.dart';
 import 'diario.dart';
 import 'modelli.dart';
-import 'orologio.dart';
 import 'pesi.dart';
 import 'pianificatore.dart';
 import 'questionari.dart';
 import 'schede.dart';
 import 'sincronizzazione.dart';
-import 'trasporto.dart';
 
 /// L'app dell'atleta senza interfaccia (§10): archivio locale, abbinamento,
 /// coda dei log e sincronizzazione. L'app Flutter lavora su queste parti e

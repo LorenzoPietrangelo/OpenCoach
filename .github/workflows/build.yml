@@ -31,7 +31,7 @@ jobs:
         run: dart pub get
 
       - name: Analisi dei pacchetti Dart
-        run: dart analyze pacchetti/protocollo coach/nucleo atleta/nucleo
+        run: dart analyze pacchetti/protocollo pacchetti/trasporto_tor coach/nucleo atleta/nucleo
 
       - name: Test del protocollo
         working-directory: pacchetti/protocollo
@@ -54,6 +54,13 @@ jobs:
 
       - name: App dell'atleta
         working-directory: atleta/app
+        run: |
+          flutter pub get
+          flutter analyze
+          flutter test
+
+      - name: App del coach
+        working-directory: coach/mobile
         run: |
           flutter pub get
           flutter analyze

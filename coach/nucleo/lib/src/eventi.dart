@@ -2,6 +2,8 @@
 sealed class EventoCoach {
   const EventoCoach(this.atletaId);
 
+  /// Vuoto negli avvenimenti del telefono del coach, che non riguardano un
+  /// atleta solo.
   final String atletaId;
 }
 
@@ -65,4 +67,28 @@ class MessaggioRicevuto extends EventoCoach {
 
   final String messaggioId;
   final bool conVideo;
+}
+
+/// Un telefono si è collegato come telefono del coach (§16.2): vede i dati di
+/// tutti gli atleti, quindi il coach lo sa sempre.
+class TelefonoCoachCollegato extends EventoCoach {
+  const TelefonoCoachCollegato(this.nomeTelefono) : super('');
+
+  final String nomeTelefono;
+}
+
+/// Il telefono del coach ha confermato il collegamento con la propria chiave.
+class TelefonoCoachConfermato extends EventoCoach {
+  const TelefonoCoachConfermato() : super('');
+}
+
+/// Un secondo telefono ha provato a usare un QR già in uso (§16.2).
+class TelefonoCoachContestato extends EventoCoach {
+  const TelefonoCoachContestato() : super('');
+}
+
+/// Il coach ha cambiato qualcosa dal telefono (§16.3), per esempio scritto un
+/// messaggio: l'interfaccia sul PC si aggiorna.
+class ModificaDalTelefonoCoach extends EventoCoach {
+  const ModificaDalTelefonoCoach(super.atletaId);
 }

@@ -2,15 +2,14 @@ import 'dart:convert';
 import 'dart:math';
 
 import 'package:protocollo/protocollo.dart';
+import 'package:trasporto_tor/trasporto_tor.dart';
 
 import 'contesto.dart';
 import 'errori.dart';
-import 'guasti.dart';
 import 'modelli.dart';
 import 'problemi.dart';
 import 'sincronizzazione.dart';
 import 'tempo.dart';
-import 'trasporto.dart';
 
 /// Voce della cassaforte con la chiave del dispositivo per l'ultimo invito
 /// usato e non ancora concluso.

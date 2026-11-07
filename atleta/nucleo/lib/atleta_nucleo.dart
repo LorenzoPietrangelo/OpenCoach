@@ -25,13 +25,10 @@ export 'src/modelli.dart'
         SchedaRicevuta,
         StatoCollegamento;
 export 'src/nucleo.dart';
-export 'src/orologio.dart';
 export 'src/pesi.dart' show PesoDelGiorno, RegistroPesi;
 export 'src/pianificatore.dart';
 export 'src/problemi.dart';
 export 'src/questionari.dart';
 export 'src/schede.dart';
 export 'src/sincronizzazione.dart';
-export 'src/tor/avviatore_processo.dart';
-export 'src/tor/trasporto_controllato.dart';
-export 'src/trasporto.dart';
+export 'package:trasporto_tor/trasporto_tor.dart' hide Guasto, TipoGuasto, classifica;

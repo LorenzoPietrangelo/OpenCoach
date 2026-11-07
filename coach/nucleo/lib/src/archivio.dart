@@ -276,4 +276,31 @@ CREATE TABLE messaggi (
 CREATE INDEX messaggi_atleta ON messaggi (atleta_id, ordine);
 CREATE INDEX messaggi_sequenza ON messaggi (atleta_id, sequenza);
 ''',
+  '''
+CREATE TABLE telefoni_coach (
+  id TEXT PRIMARY KEY,
+  chiave_pubblica TEXT NOT NULL,
+  hash_token BLOB NOT NULL UNIQUE,
+  nome TEXT NOT NULL,
+  piattaforma TEXT NOT NULL,
+  versione_app TEXT NOT NULL,
+  abbinato_il TEXT NOT NULL,
+  ultimo_contatto TEXT,
+  stato TEXT NOT NULL CHECK (stato IN ('attivo', 'revocato')),
+  revocato_il TEXT
+);
+
+CREATE TABLE inviti_telefono_coach (
+  id TEXT PRIMARY KEY,
+  segreto TEXT,
+  chiave_privata TEXT,
+  chiave_pubblica TEXT NOT NULL,
+  creato_il TEXT NOT NULL,
+  scade_il TEXT NOT NULL,
+  stato TEXT NOT NULL CHECK (
+    stato IN ('aperto', 'in_abbinamento', 'usato', 'scaduto', 'annullato')
+  ),
+  telefono_id TEXT
+);
+''',
 ];

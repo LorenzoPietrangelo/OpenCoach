@@ -109,6 +109,46 @@ class Invito {
   final UriInvito? uri;
 }
 
+/// Il telefono con cui il coach usa l'app del coach (§16).
+class TelefonoCoach {
+  const TelefonoCoach({
+    required this.id,
+    required this.nome,
+    required this.piattaforma,
+    required this.versioneApp,
+    required this.abbinatoIl,
+    required this.ultimoContatto,
+  });
+
+  factory TelefonoCoach.daRiga(Row r) => TelefonoCoach(
+    id: r['id'] as String,
+    nome: r['nome'] as String,
+    piattaforma: r['piattaforma'] as String,
+    versioneApp: r['versione_app'] as String,
+    abbinatoIl: leggiIstante(r['abbinato_il'] as String),
+    ultimoContatto: leggiIstanteFacoltativo(r['ultimo_contatto']),
+  );
+
+  final String id;
+  final String nome;
+  final String piattaforma;
+  final String versioneApp;
+  final DateTime abbinatoIl;
+  final DateTime? ultimoContatto;
+}
+
+/// QR per collegare il telefono del coach (§16.2).
+class InvitoTelefonoCoach {
+  const InvitoTelefonoCoach({required this.id, required this.scadeIl, required this.uri});
+
+  final String id;
+  final DateTime scadeIl;
+
+  /// Contenuto del QR; null quando un telefono l'ha già letto e sta finendo di
+  /// collegarsi.
+  final UriTelefonoCoach? uri;
+}
+
 /// Atleta con il telefono attivo e l'invito in corso, per l'elenco.
 class RiepilogoAtleta {
   const RiepilogoAtleta(this.atleta, this.dispositivo, this.invito);

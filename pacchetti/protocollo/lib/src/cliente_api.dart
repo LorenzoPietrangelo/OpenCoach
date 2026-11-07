@@ -6,6 +6,7 @@ import 'dart:typed_data';
 import 'limiti.dart';
 import 'messaggi.dart';
 import 'socks5.dart';
+import 'telefono_coach.dart';
 
 /// Risposta d'errore dell'API del coach (§6.4).
 class ErroreApi implements Exception {
@@ -126,14 +127,130 @@ class ClienteApi {
     autenticata: true,
   );
 
+  // Il telefono del coach (§16.3).
+
+  Future<RispostaAbbinamentoTelefono> abbinaTelefonoCoach(RichiestaAbbinamento richiesta) async =>
+      RispostaAbbinamentoTelefono.fromJson(
+        await _chiama('POST', '/v1/coach/abbinamento', corpo: richiesta.toJson()),
+      );
+
+  Future<void> confermaTelefonoCoach() =>
+      _chiama('POST', '/v1/coach/abbinamento/conferma', autenticata: true);
+
+  Future<void> scollegaTelefonoCoach() =>
+      _chiama('DELETE', '/v1/coach/telefono', autenticata: true);
+
+  /// `GET /v1/coach/atleti`: l'elenco e l'impronta dello stato.
+  Future<({List<Map<String, Object?>> atleti, String impronta})> atletiCoach() async {
+    final m = _oggetto(await _chiama('GET', '/v1/coach/atleti', autenticata: true));
+    final impronta = m['impronta'];
+    if (impronta is! String) throw const FormatException('Campo "impronta" mancante');
+    return (atleti: _elementi(m, 'atleti'), impronta: impronta);
+  }
+
+  Future<Map<String, Object?>> atletaCoach(String id) async =>
+      _oggetto(await _chiama('GET', '/v1/coach/atleti/$id', autenticata: true));
+
+  Future<PaginaDatiCoach> messaggiCoach(String atletaId, {String? prima}) =>
+      _paginaCoach('/v1/coach/atleti/$atletaId/messaggi', 'messaggi', prima);
+
+  Future<PaginaDatiCoach> allenamentiCoach(String atletaId, {String? prima}) =>
+      _paginaCoach('/v1/coach/atleti/$atletaId/allenamenti', 'allenamenti', prima);
+
+  Future<PaginaDatiCoach> questionariCoach(String atletaId) =>
+      _paginaCoach('/v1/coach/atleti/$atletaId/questionari', 'questionari', null);
+
+  /// Manda un messaggio all'atleta. Idempotente: rimandare lo stesso [id] non
+  /// lo duplica.
+  Future<Map<String, Object?>> inviaMessaggioCoach(String atletaId, String id, String testo) async => _oggetto(
+    await _chiama(
+      'POST',
+      '/v1/coach/atleti/$atletaId/messaggi',
+      corpo: {'id': id, 'testo': testo},
+      autenticata: true,
+    ),
+  );
+
+  Future<void> segnaLettiCoach(String atletaId) =>
+      _chiama('POST', '/v1/coach/atleti/$atletaId/messaggi/letti', autenticata: true);
+
+  Future<List<Map<String, Object?>>> pesiCoach(String atletaId) async => _elementi(
+    _oggetto(await _chiama('GET', '/v1/coach/atleti/$atletaId/pesi', autenticata: true)),
+    'pesi',
+  );
+
+  Future<void> segnaQuestionarioLettoCoach(String id) =>
+      _chiama('POST', '/v1/coach/questionari/$id/letto', autenticata: true);
+
+  /// `GET /v1/coach/foto/<id>`: i byte del JPEG.
+  Future<Uint8List> fotoCoach(String id) async {
+    final token = this.token;
+    if (token == null) throw StateError('Telefono non abbinato');
+    final richiesta = await _http.openUrl(
+      'GET',
+      Uri(scheme: 'http', host: '$indirizzo.onion', path: '/v1/coach/foto/$id'),
+    );
+    richiesta.headers.set(HttpHeaders.authorizationHeader, 'Bearer $token');
+    richiesta.contentLength = 0;
+    final risposta = await richiesta.close().timeout(timeoutRisposta);
+    final byte = await _leggiByte(risposta).timeout(timeoutRisposta);
+    if (risposta.statusCode >= 200 && risposta.statusCode < 300) return byte;
+    Object? json;
+    try {
+      json = jsonDecode(utf8.decode(byte));
+    } on FormatException {
+      json = null;
+    }
+    throw _errore(risposta, json);
+  }
+
+  /// `POST /v1/coach/attendi`: vero appena l'impronta è diversa da [impronta],
+  /// falso dopo [attesaS] secondi.
+  Future<bool> attendiCoach(String impronta, {int attesaS = Limiti.attesaNovitaS}) async {
+    final m = _oggetto(
+      await _chiama(
+        'POST',
+        '/v1/coach/attendi',
+        corpo: {'impronta': impronta, 'attesa_s': attesaS},
+        autenticata: true,
+      ),
+    );
+    if (m['novita'] case final bool novita) return novita;
+    throw const FormatException('Campo "novita" mancante');
+  }
+
+  Future<PaginaDatiCoach> _paginaCoach(String percorso, String chiave, String? prima) async {
+    final m = _oggetto(
+      await _chiama(
+        'GET',
+        percorso,
+        parametri: prima == null ? null : {'prima': prima},
+        autenticata: true,
+      ),
+    );
+    return PaginaDatiCoach(_elementi(m, chiave), altri: m['altri'] == true);
+  }
+
+  Map<String, Object?> _oggetto(Object? json) {
+    if (json is Map<String, Object?>) return json;
+    throw const FormatException('Atteso un oggetto JSON');
+  }
+
+  List<Map<String, Object?>> _elementi(Map<String, Object?> m, String chiave) {
+    final lista = m[chiave];
+    if (lista is List<Object?>) return lista.whereType<Map<String, Object?>>().toList();
+    throw FormatException('Campo "$chiave" mancante o non valido');
+  }
+
   Future<Object?> _chiama(
     String metodo,
     String percorso, {
     Object? corpo,
     (ContentType, Uint8List)? binario,
     bool autenticata = false,
+    Map<String, String>? parametri,
   }) async {
-    final uri = Uri(scheme: 'http', host: '$indirizzo.onion', path: percorso);
+    final uri = Uri(scheme: 'http', host: '$indirizzo.onion', path: percorso, queryParameters: parametri);
     final richiesta = await _http.openUrl(metodo, uri);
     if (autenticata) {
       final token = this.token;
@@ -161,12 +278,15 @@ class ClienteApi {
       throw ErroreApi(risposta.statusCode, 'risposta_non_valida');
     }
     if (risposta.statusCode >= 200 && risposta.statusCode < 300) return json;
+    throw _errore(risposta, json);
+  }
 
+  ErroreApi _errore(HttpClientResponse risposta, Object? json) {
     final secondi = int.tryParse(
       risposta.headers.value(HttpHeaders.retryAfterHeader) ?? '',
     );
     final errore = json is Map<String, Object?> ? json : const <String, Object?>{};
-    throw ErroreApi(
+    return ErroreApi(
       risposta.statusCode,
       errore['errore'] is String ? errore['errore'] as String : 'sconosciuto',
       messaggio: errore['messaggio'] is String ? errore['messaggio'] as String : '',
@@ -174,7 +294,10 @@ class ClienteApi {
     );
   }
 
-  Future<String> _leggiCorpo(HttpClientResponse risposta) async {
+  Future<String> _leggiCorpo(HttpClientResponse risposta) async =>
+      utf8.decode(await _leggiByte(risposta));
+
+  Future<Uint8List> _leggiByte(HttpClientResponse risposta) async {
     final byte = BytesBuilder(copy: false);
     await for (final parte in risposta) {
       byte.add(parte);
@@ -182,6 +305,6 @@ class ClienteApi {
         throw ErroreApi(risposta.statusCode, 'risposta_troppo_grande');
       }
     }
-    return utf8.decode(byte.takeBytes());
+    return byte.takeBytes();
   }
 }

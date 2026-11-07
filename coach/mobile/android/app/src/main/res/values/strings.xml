@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nome_app">OpenCoach Coach</string>
+    <!-- Canale delle notifiche (§16.4). -->
+    <string name="canale_novita">Messaggi e risposte degli atleti</string>
+    <string name="novita_schermo_bloccato">Ci sono novità dai tuoi atleti</string>
+</resources>

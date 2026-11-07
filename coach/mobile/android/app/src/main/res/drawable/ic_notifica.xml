@@ -1,0 +1,12 @@
+<!-- Icona piccola delle notifiche: l'anello del logo di Open Coach (strumenti/genera_icone.dart).
+     Android la colora da sé: conta solo la forma. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:strokeColor="#FFFFFFFF"
+        android:strokeWidth="3.85"
+        android:pathData="M12,3.42a8.58,8.58 0,1 1,0 17.16a8.58,8.58 0,1 1,0 -17.16" />
+</vector>

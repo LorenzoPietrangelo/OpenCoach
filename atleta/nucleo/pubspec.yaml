@@ -13,6 +13,8 @@ dependencies:
   protocollo:
     path: ../../pacchetti/protocollo
   sqlite3: ^3.3.1
+  trasporto_tor:
+    path: ../../pacchetti/trasporto_tor
 
 dev_dependencies:
   coach_nucleo:

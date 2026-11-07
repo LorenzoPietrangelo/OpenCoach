@@ -19,6 +19,7 @@ Questo documento definisce la versione 1 del sistema descritto in «Architettura
 | --- | --- | --- |
 | Programma del coach | Windows 10+, macOS 12+, Linux x86_64 | Server: Tor, onion service, API HTTP, archivio, interfaccia del coach |
 | App dell'atleta | Android 8.0+ (API 26), iOS 16+ | Client: Tor incorporato, archivio locale, esecuzione delle schede |
+| App del coach (§16) | Android 8.0+ (API 26) | Client del programma del coach: Tor incorporato, nessun archivio, chat e dati degli atleti in lettura |
 | Rete Tor | — | Trasporto. Non è un componente del progetto |
 
 Distribuzione:
@@ -33,6 +34,7 @@ Distribuzione:
 | Coach | Utente del programma desktop. Un'installazione corrisponde a un coach. |
 | Atleta | Persona seguita dal coach. Esiste solo nell'archivio del coach, non ha un account. |
 | Dispositivo | Telefono dell'atleta abbinato al coach. In v1 un atleta ha al massimo un dispositivo attivo. |
+| Telefono del coach | Telefono su cui il coach usa l'app del coach (§16). Non è un dispositivo: non appartiene a un atleta e vede i dati di tutti. Ce n'è al massimo uno attivo. |
 | Invito | Autorizzazione monouso e a scadenza per abbinare un dispositivo a un atleta. Si consegna come QR o link. |
 | Scheda | Programma di allenamento scritto dal coach per un atleta, composto da sedute. |
 | Revisione | Versione pubblicata di una scheda. Ogni ripubblicazione crea una revisione nuova. |
@@ -52,6 +54,7 @@ Distribuzione:
 | Segreto d'invito | 32 byte casuali | Programma | Nel QR e sul PC finché l'invito è aperto, per poter mostrare di nuovo il QR | Come l'invito |
 | Chiave del dispositivo | X25519 (client authorization Tor) | App, durante l'abbinamento | Privata: solo sul telefono. Pubblica: tra i client autorizzati del servizio | Fino alla revoca |
 | Token del dispositivo | 32 byte casuali | Programma, durante l'abbinamento | Telefono; sul PC solo l'hash SHA-256 | Fino alla revoca |
+| Chiave e token del telefono del coach (§16) | Come quelli del dispositivo | App del coach e programma | Come quelli del dispositivo | Fino alla revoca |
 
 Regole:
 
@@ -126,7 +129,7 @@ Il coach genera un nuovo invito per lo stesso atleta. Il nuovo dispositivo sosti
 - HTTP/1.1 sopra l'onion service, porta virtuale 80. Niente TLS: cifratura end-to-end e autenticazione del server le fornisce Tor, perché l'indirizzo è la chiave pubblica del coach.
 - Il server HTTP ascolta solo su `127.0.0.1`, su una porta casuale scelta all'avvio. Non deve essere raggiungibile da nessun'altra interfaccia.
 - Il server rifiuta con 421 le richieste con `Host` diverso da `<onion>.onion` e con 403 quelle con intestazione `Origin`. Così una pagina web aperta sul PC del coach non può chiamare la porta locale.
-- La client authorization v3 è sempre attiva: solo chi possiede una chiave autorizzata (invito aperto o dispositivo attivo) può decifrare il descrittore e raggiungere il servizio.
+- La client authorization v3 è sempre attiva: solo chi possiede una chiave autorizzata (invito aperto, dispositivo attivo o telefono del coach, §16) può decifrare il descrittore e raggiungere il servizio.
 - L'app si collega via SOCKS5 lasciando la risoluzione del nome a Tor, con gli errori SOCKS estesi attivi (`ExtendedErrors`) per distinguere i guasti (§7.5).
 
 ### 6.2 Convenzioni
@@ -660,6 +663,7 @@ Notifiche desktop, disattivabili: log ricevuto, abbinamento completato, question
 | Atleta | Le proprie schede e i propri log. Non vede gli altri atleti né l'indirizzo IP del coach |
 | Coach | I dati dei propri atleti. Non vede l'indirizzo IP degli atleti |
 | Chi accede al PC del coach | Tutti i dati del coach. È fuori dal modello di minaccia; si consiglia la cifratura del disco |
+| Chi ruba il telefono del coach | Niente, se non supera il blocco dell'app prima che il coach revochi il telefono dal PC. Sul telefono restano solo i messaggi in coda e il token (§16.4) |
 | Il sito di un video di un esercizio (per esempio YouTube) | Quando l'atleta tocca «Guarda il video», l'indirizzo IP del telefono e quale video guarda: il video arriva senza Tor. Non vede il coach né il collegamento con lui |
 
 ### 11.2 Misure
@@ -668,7 +672,7 @@ Notifiche desktop, disattivabili: log ricevuto, abbinamento completato, question
 - Il controllo d'accesso è doppio: la client authorization decide chi può raggiungere il servizio, il token identifica il dispositivo. La revoca vale subito per il token e, a livello Tor, dalla ripubblicazione del servizio.
 - Inviti monouso e a scadenza. Il segreto d'invito resta sul PC solo finché l'invito è aperto, il token solo come hash; i confronti avvengono in tempo costante.
 - Ogni richiesta è validata contro lo schema e rispetta i limiti del §6.2.
-- Via onion il programma espone solo gli endpoint del §6.3. Nessun file, nessuna funzione di amministrazione.
+- Via onion il programma espone solo gli endpoint del §6.3 e, al solo telefono del coach, quelli del §16.3. Nessun file, nessuna funzione di amministrazione: il telefono legge i dati e scrive messaggi, ma non tocca schede, atleti, chiavi o backup.
 - I log tecnici restano in locale, non contengono token, chiavi né il contenuto di schede e log, e ruotano a 10 MB.
 - Nessuna libreria di terze parti che usi la rete (analisi, segnalazione errori, pubblicità).
 
@@ -701,6 +705,7 @@ Anche le risposte ai questionari e le foto del corpo possono essere dati sulla s
 - Senza lo sviluppatore il sistema continua a funzionare, ma non per sempre. La rete Tor può smettere di accettare versioni troppo vecchie del client e gli store possono nascondere le app non aggiornate ai loro requisiti. L'opzione per usare un `tor` esterno (§9.2) allunga la vita del programma del coach.
 - Se il coach perde la chiave d'identità senza un backup, cambia indirizzo e tutti gli atleti devono riabbinarsi. Lo storico sul PC è perso; gli atleti conservano i propri log sul telefono.
 - Due PC attivi con la stessa identità si contendono il servizio e dividono i log tra due archivi.
+- L'app del coach (§16) dipende dal PC come gli atleti: con il PC spento o sospeso non mostra niente e i messaggi scritti restano in coda. Senza notifiche push, con l'app chiusa i messaggi si scoprono con la sync in background, che Android può rimandare.
 
 ## 14. Fuori ambito per la v1
 
@@ -709,7 +714,8 @@ Anche le risposte ai questionari e le foto del corpo possono essere dati sulla s
 - Chat o commenti tra coach e atleta.
 - Video che passano da Tor, e foto fuori dai questionari. I link ai video degli esercizi (§8.1) e le foto dei questionari (§8.6) ci sono.
 - Bridge Tor (obfs4, Snowflake).
-- Accesso del coach da più PC o dal telefono.
+- Accesso del coach da più PC. Dal telefono c'è l'app del coach (§16), senza editor delle schede e senza video.
+- Telefono del coach come server, al posto del PC: le schermate dell'app leggono da un'unica interfaccia, così si potrà aggiungere, ma va prima provato quanto Tor resiste in background su Android.
 - Aggiornamento automatico del programma del coach.
 - Importazione di dati da altri sistemi o dalla versione basata su Nostr.
 
@@ -718,3 +724,57 @@ Anche le risposte ai questionari e le foto del corpo possono essere dati sulla s
 - OnionShare: Tor incluso in un programma desktop, onion service persistenti, client authorization gestita dalla porta di controllo.
 - Briar: Tor incorporato su Android, sincronizzazione quando i dispositivi sono online insieme, casella postale.
 - Specifiche di Tor: rend-spec-v3 (client authorization), control-spec (`ADD_ONION`, `DEL_ONION`, `HS_DESC`, `STATUS_GENERAL`), proposta 304 (errori SOCKS estesi).
+
+## 16. App del coach
+
+L'app con cui il coach, lontano dal PC, risponde agli atleti e guarda i loro dati. Si aggiunge entro la v1 del protocollo.
+
+### 16.1 Regole
+
+- Il programma del coach resta l'unico server e l'unico archivio. L'app ne è un client, come quella dell'atleta: non esiste un secondo archivio da riconciliare (§13).
+- Il coach ha al massimo un telefono attivo. Collegarne uno nuovo revoca il precedente.
+- Il telefono del coach non è un dispositivo (§3): sta in tabelle proprie, con token propri. Il token di un atleta non vale sugli endpoint del §16.3, e il token del coach non vale su quelli del §6.3.
+- Può leggere i dati degli atleti, scrivere messaggi e segnare come letti messaggi e risposte. Non può creare o modificare atleti e schede, mandare questionari, né toccare inviti, chiavi o backup.
+- I video della chat restano sul PC: l'app dice che c'è un video e che si guarda da lì.
+
+### 16.2 Abbinamento
+
+- Il coach apre «Collega il mio telefono» nelle impostazioni del programma, che mostra un QR valido 1 ora. Il QR non si copia e non si manda: questo telefono vede i dati di tutti gli atleti, e il QR sullo schermo costringe a essere davanti al PC.
+- Formato: `opencoach://telefono?v=1&o=<onion>&i=<id>&s=<segreto>&k=<chiave>`, con gli stessi campi del §5.2. L'app dell'atleta non lo accetta, e l'app del coach non accetta gli inviti degli atleti.
+- Il flusso è quello del §5.3, sugli endpoint del §16.3. Ripetere l'abbinamento con la stessa chiave dà un token nuovo; con un'altra chiave dà 409 `invito_in_uso` e il programma lo segnala sempre al coach.
+- Il programma avvisa sempre quando un telefono si collega, mostra quello collegato e permette di revocarlo. La revoca vale come quella di un dispositivo (§9.3). «Reimposta identità» revoca anche questo telefono.
+
+### 16.3 Endpoint
+
+Tutti con `Authorization: Bearer <token>` del telefono del coach, tranne l'abbinamento. Convenzioni e codici di stato sono quelli del §6, con un limite proprio di 120 richieste al minuto. Un `<id>` di atleta sconosciuto dà 404.
+
+| Richiesta | Corpo o parametri | Risposta |
+| --- | --- | --- |
+| `POST /v1/coach/abbinamento` | Come `POST /v1/abbinamento`, senza token | `{ "telefono_id", "token", "nome_coach" }` |
+| `POST /v1/coach/abbinamento/conferma` | Vuoto | 204. Idempotente |
+| `DELETE /v1/coach/telefono` | Vuoto | 204. Il coach scollega il telefono dall'app |
+| `GET /v1/coach/atleti` | | `{ "atleti": [ … ], "impronta": "…" }`: gli atleti non archiviati, in ordine di nome. Per ognuno `id`, `nome`, `telefono_collegato`, `ultimo_contatto`, `non_letti`, `risposte_nuove`, `ultimo_messaggio`, `ultimo_allenamento` |
+| `GET /v1/coach/atleti/<id>` | | Gli stessi campi, più `note`, `allenamenti_totali`, `schede` (`id`, `titolo`, `stato`, `revisione`, `ricevuta_il`) |
+| `GET /v1/coach/atleti/<id>/messaggi` | `?prima=<id>` facoltativo | `{ "messaggi": [ … ], "altri": bool }`: gli ultimi, dal più vecchio, fino a 200 e sotto i limiti del §6.2 |
+| `POST /v1/coach/atleti/<id>/messaggi` | `{ "id", "testo" }`, con `id` UUID generato dall'app | Il messaggio. Idempotente: rimandare lo stesso `id` non lo duplica. 409 se l'`id` è già usato da altro |
+| `POST /v1/coach/atleti/<id>/messaggi/letti` | Vuoto | 204 |
+| `GET /v1/coach/atleti/<id>/allenamenti` | `?prima=<id>` facoltativo | `{ "allenamenti": [ … ], "altri": bool }`: i log dal più recente, fino a 50 e sotto i limiti del §6.2 |
+| `GET /v1/coach/atleti/<id>/pesi` | | `{ "pesi": [ { "giorno", "kg" } ] }`, dal più vecchio |
+| `GET /v1/coach/atleti/<id>/questionari` | | `{ "questionari": [ { "id", "titolo", "contenuto", "inviato_il", "stato", "risposta", "risposto_il", "letto" } ], "altri": bool }`, dal più recente |
+| `POST /v1/coach/questionari/<id>/letto` | Vuoto | 204 |
+| `GET /v1/coach/foto/<id>` | | La foto, `image/jpeg` |
+| `POST /v1/coach/attendi` | `{ "impronta": "…", "attesa_s": 25 }` | `{ "novita": bool }`. Vero appena l'impronta è diversa, falso dopo l'attesa, al massimo 25 s. Come `POST /v1/attendi`: una per telefono, non cambia niente |
+
+L'`impronta` riassume lo stato dei dati che l'app mostra: messaggi, non letti, log, pesi, questionari. Due impronte uguali vogliono dire che non c'è niente di nuovo da chiedere.
+
+Un messaggio scritto dal telefono è uguale a uno scritto dal PC: l'autore è il coach e arriva all'atleta con la sync (§7.3).
+
+### 16.4 Comportamento dell'app
+
+- **Blocco:** all'apertura, e dopo 5 minuti in background, l'app chiede l'impronta o il blocco schermo del telefono. Se il telefono non ha un blocco schermo l'app lo dice e resta usabile.
+- **Sul telefono:** token e chiave nella cassaforte (§4), i messaggi in coda cifrati allo stesso modo, e per ogni atleta quanti non letti ha già annunciato. Tutto il resto, nomi e messaggi compresi, sta in memoria e sparisce con il processo. Backup del sistema disattivati.
+- **Coda:** un messaggio scritto con il PC irraggiungibile resta in coda e parte da solo, in primo piano o in background, con lo stesso `id`. L'app lo mostra come «in attesa».
+- **In primo piano:** l'app tiene un `POST /v1/coach/attendi` in sospeso e rilegge i dati appena cambiano. Se il coach non è raggiungibile ritenta dopo 30 s, 2 e 5 minuti.
+- **In background:** lavoro periodico con WorkManager, predefinito ogni 15 minuti (impostabile: disattivato, 15, 30 o 60 minuti), solo con rete e batteria non scarica. Manda i messaggi in coda e controlla le novità.
+- **Notifiche:** dicono chi ha scritto o risposto e quanti sono, mai il testo: possono comparire sullo schermo bloccato.
+- **Telefono revocato:** alla risposta 401 l'app cancella token e coda e torna alla schermata di collegamento.

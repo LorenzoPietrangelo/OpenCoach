@@ -203,14 +203,14 @@ class ProgrammaCoach {
   }
 
   void _avviaControlli() {
-    nucleo.inviti.chiudiScaduti();
+    void chiudiScaduti() {
+      nucleo.inviti.chiudiScaduti();
+      nucleo.telefonoCoach.chiudiScaduti();
+    }
+
+    chiudiScaduti();
     _timer
-      ..add(
-        Timer.periodic(
-          const Duration(minutes: 1),
-          (_) => nucleo.inviti.chiudiScaduti(),
-        ),
-      )
+      ..add(Timer.periodic(const Duration(minutes: 1), (_) => chiudiScaduti()))
       ..add(Timer.periodic(const Duration(hours: 1), (_) => _backupAutomatico()));
     unawaited(_backupAutomatico());
     final eseguibile = _eseguibileTor;

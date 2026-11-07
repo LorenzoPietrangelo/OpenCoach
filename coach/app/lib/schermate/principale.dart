@@ -83,14 +83,17 @@ class _PrincipaleState extends State<Principale> {
     setState(() {});
   }
 
-  /// Notifiche sul desktop (§9.3). L'invito usato da un secondo telefono si
-  /// segnala sempre: il link può essere stato intercettato.
+  /// Notifiche sul desktop (§9.3). L'invito usato da un secondo telefono e il
+  /// telefono del coach che si collega si segnalano sempre: il link può essere
+  /// stato intercettato, e quel telefono vede i dati di tutti (§16.2).
   void _notifica(EventoCoach evento) {
     if (!mounted) return;
     final t = Testi.of(context);
     final nome = widget.coach.nucleo.atleti.cerca(evento.atletaId)?.nome ?? '';
     final (String, String)? testo = switch (evento) {
       InvitoContestato() => (t.notificaInvitoContestatoTitolo, t.notificaInvitoContestato(nome)),
+      TelefonoCoachCollegato(:final nomeTelefono) => (t.nomeApp, t.notificaTelefonoCoach(nomeTelefono)),
+      TelefonoCoachContestato() => (t.notificaTelefonoContestatoTitolo, t.notificaTelefonoContestato),
       _ when !_preferenze.notifiche => null,
       LogRicevuto(eliminato: false) => (t.nomeApp, t.notificaLogRicevuto(nome)),
       QuestionarioRisposto(:final titolo) => (t.nomeApp, t.notificaQuestionarioRisposto(nome, titolo)),

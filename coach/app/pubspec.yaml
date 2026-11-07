@@ -1,7 +1,7 @@
 name: coach_app
 description: "Programma del coach di Open Coach."
 publish_to: 'none'
-version: 1.4.1+6
+version: 1.5.0+7
 
 environment:
   sdk: ^3.11.5

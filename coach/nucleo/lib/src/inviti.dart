@@ -114,14 +114,19 @@ class GestioneInviti {
     return chiusi;
   }
 
-  /// Chiavi pubbliche X25519 che il servizio onion deve autorizzare:
-  /// inviti in corso e dispositivi attivi (§6.1).
+  /// Chiavi pubbliche X25519 che il servizio onion deve autorizzare: inviti
+  /// in corso, dispositivi attivi e telefono del coach (§6.1, §16).
   List<String> chiaviAutorizzate() => [
     for (final riga in _db.select(
       'SELECT chiave_pubblica FROM inviti '
-      "WHERE stato IN ('aperto', 'in_abbinamento') AND scade_il > ? "
+      "WHERE stato IN ('aperto', 'in_abbinamento') AND scade_il > ?1 "
       'UNION '
       "SELECT chiave_pubblica FROM dispositivi WHERE stato = 'attivo' "
+      'UNION '
+      'SELECT chiave_pubblica FROM inviti_telefono_coach '
+      "WHERE stato IN ('aperto', 'in_abbinamento') AND scade_il > ?1 "
+      'UNION '
+      "SELECT chiave_pubblica FROM telefoni_coach WHERE stato = 'attivo' "
       'ORDER BY chiave_pubblica',
       [istante(_c.adesso())],
     ))

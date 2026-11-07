@@ -9,3 +9,4 @@ workspace:
   - pacchetti/protocollo
   - coach/nucleo
   - atleta/nucleo
+  - pacchetti/trasporto_tor

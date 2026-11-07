@@ -174,7 +174,8 @@ void main() {
     ]);
     expect(orologio.attese, hasLength(2));
 
-    // Già avviato: stessa connessione, solo il controllo del bootstrap.
+    // Già avviato: stessa connessione, il controllo del bootstrap e il proxy
+    // riletto, che dopo DisableNetwork può essere su un'altra porta.
     controllo.comandi.clear();
     await tor.avvia();
     expect(controllo.connessioni, 1);
@@ -182,6 +183,7 @@ void main() {
     expect(controllo.comandi, [
       'SETCONF DisableNetwork=0',
       'GETINFO status/bootstrap-phase',
+      'GETINFO net/listeners/socks',
     ]);
   });
 

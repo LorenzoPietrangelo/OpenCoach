@@ -3,12 +3,12 @@
   Prepara un rilascio di Open Coach per la pagina dei download.
 
 .DESCRIPTION
-  Compila il programma del coach per Windows e l'app dell'atleta per Android, crea l'installer,
-  copia i due file nella cartella della pagina dei download con le loro impronte SHA-256 e ne
-  conserva una copia nell'archivio dei rilasci. La cartella della pagina si carica poi sulla sua
-  repo GitHub, collegata a Vercel (decisione 0003).
+  Compila il programma del coach per Windows, l'app dell'atleta e l'app del coach per Android, crea
+  l'installer, copia i tre file nella cartella della pagina dei download con le loro impronte
+  SHA-256 e ne conserva una copia nell'archivio dei rilasci. La cartella della pagina si carica poi
+  sulla sua repo GitHub, collegata a Vercel (decisione 0003).
 
-  Il numero di versione deve essere già lo stesso nei due pubspec.yaml e nelle costanti
+  Il numero di versione deve essere già lo stesso nei tre pubspec.yaml e nelle costanti
   versioneProgramma e versioneApp: lo script lo controlla, non lo cambia.
 
 .EXAMPLE
@@ -67,8 +67,10 @@ Passo "Versioni nel codice"
 $versioni = @(
   @('coach/app/pubspec.yaml', '(?m)^version:\s*([0-9.]+)\+'),
   @('atleta/app/pubspec.yaml', '(?m)^version:\s*([0-9.]+)\+'),
+  @('coach/mobile/pubspec.yaml', '(?m)^version:\s*([0-9.]+)\+'),
   @('coach/app/lib/main.dart', "versioneProgramma = '([^']+)'"),
-  @('atleta/app/lib/main.dart', "versioneApp = '([^']+)'")
+  @('atleta/app/lib/main.dart', "versioneApp = '([^']+)'"),
+  @('coach/mobile/lib/main.dart', "versioneApp = '([^']+)'")
 )
 foreach ($v in $versioni) {
   $testo = [IO.File]::ReadAllText((Join-Path $repo $v[0]))
@@ -90,8 +92,10 @@ $apksigner = Join-Path $buildTools.FullName 'apksigner.bat'
 
 $coach = Join-Path $repo 'coach\app'
 $atleta = Join-Path $repo 'atleta\app'
+$telefonoCoach = Join-Path $repo 'coach\mobile'
 $exe = Join-Path $coach "build\installer\OpenCoach-$Versione-windows-x64.exe"
 $apk = Join-Path $atleta 'build\app\outputs\flutter-apk\app-release.apk'
+$apkCoach = Join-Path $telefonoCoach 'build\app\outputs\flutter-apk\app-release.apk'
 
 if (-not $SenzaCompilare) {
   Passo "Controlli prima della compilazione"
@@ -114,42 +118,54 @@ if (-not $SenzaCompilare) {
 
   Passo "App dell'atleta per Android"
   Esegui $atleta $Flutter @('build', 'apk', '--release')
+
+  Passo "App del coach per Android"
+  Esegui $telefonoCoach $Flutter @('build', 'apk', '--release')
 }
 
 Passo "Controllo dei file"
 if (-not (Test-Path $exe)) { Ferma "Installer non trovato: $exe" }
 if (-not (Test-Path $apk)) { Ferma "APK non trovato: $apk" }
+if (-not (Test-Path $apkCoach)) { Ferma "APK non trovato: $apkCoach" }
 
-# Windows PowerShell trasforma in errori le righe che i programmi esterni scrivono su stderr, anche
-# solo avvisi: per questi due conta il codice di uscita.
-$ErrorActionPreference = 'Continue'
-$badging = (& $aapt2 dump badging $apk 2>$null) -join "`n"
-$esitoBadging = $LASTEXITCODE
-$firma = (& $apksigner verify --print-certs $apk 2>&1 | ForEach-Object { "$_" }) -join "`n"
-$esitoFirma = $LASTEXITCODE
-$ErrorActionPreference = 'Stop'
+# Release, alla versione giusta e firmato con la chiave dei rilasci precedenti.
+function ControllaApk([string]$file) {
+  # Windows PowerShell trasforma in errori le righe che i programmi esterni scrivono su stderr, anche
+  # solo avvisi: per questi due conta il codice di uscita.
+  $ErrorActionPreference = 'Continue'
+  $badging = (& $aapt2 dump badging $file 2>$null) -join "`n"
+  $esitoBadging = $LASTEXITCODE
+  $firma = (& $apksigner verify --print-certs $file 2>&1 | ForEach-Object { "$_" }) -join "`n"
+  $esitoFirma = $LASTEXITCODE
+  $ErrorActionPreference = 'Stop'
 
-if ($esitoBadging -ne 0) { Ferma "aapt2 non legge l'APK: $apk" }
-if ($badging -match 'application-debuggable') { Ferma "L'APK è debuggabile: serve la build release." }
-$nomeVersioneApk = [regex]::Match($badging, "versionName='([^']+)'").Groups[1].Value
-if ($nomeVersioneApk -ne $Versione) { Ferma "L'APK è la versione $nomeVersioneApk, non $Versione." }
+  if ($esitoBadging -ne 0) { Ferma "aapt2 non legge l'APK: $file" }
+  if ($badging -match 'application-debuggable') { Ferma "L'APK è debuggabile: serve la build release ($file)." }
+  $nomeVersione = [regex]::Match($badging, "versionName='([^']+)'").Groups[1].Value
+  if ($nomeVersione -ne $Versione) { Ferma "L'APK $file è la versione $nomeVersione, non $Versione." }
 
-if ($esitoFirma -ne 0) { Ferma "Firma dell'APK non valida:`n$firma" }
-$certificato = [regex]::Match($firma, 'Signer #1 certificate SHA-256 digest: ([0-9a-f]+)').Groups[1].Value
-if ($certificato -ne $certificatoAtteso) {
-  Ferma ("L'APK è firmato con un'altra chiave ($certificato): sui telefoni non si installerebbe " +
-    "come aggiornamento. Metti il file debug.keystore salvato in $env:USERPROFILE\.android e ricompila.")
+  if ($esitoFirma -ne 0) { Ferma "Firma dell'APK non valida ($file):`n$firma" }
+  $certificato = [regex]::Match($firma, 'Signer #1 certificate SHA-256 digest: ([0-9a-f]+)').Groups[1].Value
+  if ($certificato -ne $certificatoAtteso) {
+    Ferma ("L'APK $file è firmato con un'altra chiave ($certificato): sui telefoni non si installerebbe " +
+      "come aggiornamento. Metti il file debug.keystore salvato in $env:USERPROFILE\.android e ricompila.")
+  }
+  Write-Host "APK:       $file (versione $nomeVersione, firmato con la chiave attesa, non debuggabile)"
 }
+
 Write-Host "Installer: $exe"
-Write-Host "APK:       $apk (versione $nomeVersioneApk, firmato con la chiave attesa, non debuggabile)"
+ControllaApk $apk
+ControllaApk $apkCoach
 
 Passo "Archivio del rilascio"
 $nomeExe = "OpenCoach-$Versione-windows-x64.exe"
 $nomeApk = "OpenCoach-atleta-$Versione.apk"
+$nomeApkCoach = "OpenCoach-coach-$Versione.apk"
 $cartellaArchivio = Join-Path $Archivio $Versione
 New-Item -ItemType Directory -Force $cartellaArchivio | Out-Null
 Copy-Item $exe (Join-Path $cartellaArchivio $nomeExe) -Force
 Copy-Item $apk (Join-Path $cartellaArchivio $nomeApk) -Force
+Copy-Item $apkCoach (Join-Path $cartellaArchivio $nomeApkCoach) -Force
 Write-Host $cartellaArchivio
 
 Passo "Pagina dei download"
@@ -159,10 +175,15 @@ New-Item -ItemType Directory -Force $cartellaFile | Out-Null
 Get-ChildItem $cartellaFile -File | Remove-Item -Force
 Copy-Item $exe (Join-Path $cartellaFile $nomeExe)
 Copy-Item $apk (Join-Path $cartellaFile $nomeApk)
+Copy-Item $apkCoach (Join-Path $cartellaFile $nomeApkCoach)
 
 $fileExe = Get-Item (Join-Path $cartellaFile $nomeExe)
 $fileApk = Get-Item (Join-Path $cartellaFile $nomeApk)
+$fileApkCoach = Get-Item (Join-Path $cartellaFile $nomeApkCoach)
 $valori = @{
+  '{{NOME_APK_COACH}}'       = $nomeApkCoach
+  '{{DIMENSIONE_APK_COACH}}' = Dimensione $fileApkCoach.Length
+  '{{SHA256_APK_COACH}}'     = (Get-FileHash $fileApkCoach.FullName -Algorithm SHA256).Hash.ToLower()
   '{{VERSIONE}}'       = $Versione
   '{{DATA}}'           = (Get-Date).ToString('d MMMM yyyy', $italiano)
   '{{NOME_EXE}}'       = $nomeExe
@@ -189,7 +210,7 @@ if (Test-Path $cartellaImmagini) { Remove-Item $cartellaImmagini -Recurse -Force
 New-Item -ItemType Directory $cartellaImmagini | Out-Null
 Copy-Item (Join-Path $modello 'immagini\*.jpg') $cartellaImmagini
 
-foreach ($file in @($fileExe, $fileApk)) {
+foreach ($file in @($fileExe, $fileApk, $fileApkCoach)) {
   if ($file.Length -ge 100MB) {
     Ferma "$($file.Name) pesa $(Dimensione $file.Length): GitHub e Vercel non accettano file oltre 100 MB."
   }
@@ -199,4 +220,5 @@ Passo "Fatto"
 Write-Host "Rilascio $Versione pronto in $Sito"
 Write-Host ("  {0}  {1}  {2}" -f $nomeExe, $valori['{{DIMENSIONE_EXE}}'], $valori['{{SHA256_EXE}}'])
 Write-Host ("  {0}  {1}  {2}" -f $nomeApk, $valori['{{DIMENSIONE_APK}}'], $valori['{{SHA256_APK}}'])
+Write-Host ("  {0}  {1}  {2}" -f $nomeApkCoach, $valori['{{DIMENSIONE_APK_COACH}}'], $valori['{{SHA256_APK_COACH}}'])
 Write-Host "Ora, in $Sito, fai commit e push sulla repo collegata a Vercel."

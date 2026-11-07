@@ -13,6 +13,10 @@ abstract final class Limiti {
   /// Una foto di un questionario, già compressa dall'app (§8.6).
   static const fotoMassima = 1536 * 1024;
   static const richiesteAlMinutoPerDispositivo = 30;
+
+  /// Il telefono del coach apre più pagine e scarica le foto una per una
+  /// (§16.3).
+  static const richiesteAlMinutoPerTelefonoCoach = 120;
   static const abbinamentiAlMinuto = 10;
   static const syncContemporanee = 10;
 

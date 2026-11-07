@@ -1,0 +1,205 @@
+package org.opencoach.coach_mobile
+
+import android.Manifest
+import android.app.Activity
+import android.app.ActivityManager
+import android.content.ComponentName
+import android.content.Context
+import android.content.Intent
+import android.content.ServiceConnection
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.os.Build
+import android.os.IBinder
+import android.provider.Settings
+import io.flutter.FlutterInjector
+import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.embedding.engine.dart.DartExecutor
+import io.flutter.plugin.common.MethodChannel
+import java.io.File
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.withTimeout
+import org.torproject.jni.TorService
+
+/**
+ * Un solo motore Flutter per processo, usato dall'attività e dai controlli in
+ * background (§16.4): due tor nello stesso processo non possono convivere.
+ *
+ * Se lo chiede l'attività il motore parte da `main`; se lo chiede un controllo
+ * in background parte da `avvioInBackground`, senza interfaccia, e la mostra se
+ * poi si apre l'app. Va usato dal thread principale.
+ */
+object MotoreFlutter {
+    private const val CANALE_TOR = "org.opencoach.coach/tor"
+    private const val CANALE_BACKGROUND = "org.opencoach.coach/background"
+
+    /** Tempo concesso al codice Dart per aprire la cassaforte. */
+    private const val ATTESA_PRONTO_MS = 60_000L
+
+    private var motore: FlutterEngine? = null
+    private var canale: MethodChannel? = null
+    private var conInterfaccia = false
+    private var pronto = CompletableDeferred<Unit>()
+    private var collegamentoTor: ServiceConnection? = null
+
+    /** Il permesso per le notifiche è stato chiesto prima che l'attività partisse. */
+    private var permessoInSospeso = false
+
+    /** L'attività visibile, per chiedere i permessi. */
+    var attivita: Activity? = null
+        set(valore) {
+            field = valore
+            if (valore != null && permessoInSospeso) chiediPermessoNotifiche()
+        }
+
+    /** Il motore per l'attività: quello del processo, o uno nuovo da `main`. */
+    fun perAttivita(context: Context): FlutterEngine {
+        val esistente = motore
+        if (esistente == null) {
+            conInterfaccia = true
+            return crea(context, avvio = null)
+        }
+        if (!conInterfaccia) {
+            conInterfaccia = true
+            // Se il codice Dart non è ancora pronto, lo saprà dalla risposta a «pronto».
+            if (pronto.isCompleted) canale?.invokeMethod("mostraInterfaccia", null)
+        }
+        return esistente
+    }
+
+    /**
+     * Fa il controllo in background, creando il motore senza interfaccia se non
+     * c'è. Restituisce le notifiche da mostrare.
+     */
+    suspend fun controllaInBackground(context: Context): List<Map<String, Any?>> {
+        if (motore == null) crea(context, avvio = "avvioInBackground")
+        withTimeout(ATTESA_PRONTO_MS) { pronto.await() }
+        val esito = CompletableDeferred<Any?>()
+        canale!!.invokeMethod(
+            "controllaInBackground",
+            null,
+            object : MethodChannel.Result {
+                override fun success(risultato: Any?) {
+                    esito.complete(risultato)
+                }
+
+                override fun error(codice: String, messaggio: String?, dettagli: Any?) {
+                    esito.completeExceptionally(IllegalStateException("$codice: $messaggio"))
+                }
+
+                override fun notImplemented() {
+                    esito.completeExceptionally(IllegalStateException("controllo in background non gestito"))
+                }
+            },
+        )
+        @Suppress("UNCHECKED_CAST")
+        return esito.await() as? List<Map<String, Any?>> ?: emptyList()
+    }
+
+    /** [avvio] è la funzione Dart da cui partire; null per `main`. */
+    private fun crea(context: Context, avvio: String?): FlutterEngine {
+        val app = context.applicationContext
+        // Il motore inizializza il loader di Flutter: i punti d'ingresso Dart
+        // si possono costruire solo dopo.
+        val nuovo = FlutterEngine(app)
+        val messaggi = nuovo.dartExecutor.binaryMessenger
+        MethodChannel(messaggi, CANALE_TOR).setMethodCallHandler { chiamata, risultato ->
+            when (chiamata.method) {
+                "avvia" -> {
+                    avviaTor(app)
+                    risultato.success(socketDiControllo(app).absolutePath)
+                }
+                else -> risultato.notImplemented()
+            }
+        }
+        val background = MethodChannel(messaggi, CANALE_BACKGROUND)
+        background.setMethodCallHandler { chiamata, risultato ->
+            when (chiamata.method) {
+                "pronto" -> {
+                    pronto.complete(Unit)
+                    risultato.success(conInterfaccia)
+                }
+                "pianifica" -> {
+                    PianificazioneControlli.aggiorna(app, chiamata.argument<Boolean>("attiva") == true)
+                    risultato.success(null)
+                }
+                "frequenza" -> risultato.success(PianificazioneControlli.minuti(app))
+                "impostaFrequenza" -> {
+                    PianificazioneControlli.impostaMinuti(
+                        app,
+                        chiamata.argument<Int>("minuti") ?: PianificazioneControlli.MINUTI_PREDEFINITI,
+                        chiamata.argument<Boolean>("attiva") == true,
+                    )
+                    risultato.success(null)
+                }
+                "permessoNotifiche" -> {
+                    chiediPermessoNotifiche()
+                    risultato.success(null)
+                }
+                // Con la batteria «Limitata» il sistema non esegue i lavori in
+                // background dell'app.
+                "limitata" -> risultato.success(
+                    Build.VERSION.SDK_INT >= 28 &&
+                        app.getSystemService(ActivityManager::class.java).isBackgroundRestricted,
+                )
+                "apriImpostazioniApp" -> {
+                    app.startActivity(
+                        Intent(
+                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.fromParts("package", app.packageName, null),
+                        ).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                    )
+                    risultato.success(null)
+                }
+                else -> risultato.notImplemented()
+            }
+        }
+        canale = background
+        pronto = CompletableDeferred()
+        motore = nuovo
+        nuovo.dartExecutor.executeDartEntrypoint(
+            if (avvio == null) {
+                DartExecutor.DartEntrypoint.createDefault()
+            } else {
+                DartExecutor.DartEntrypoint(
+                    FlutterInjector.instance().flutterLoader().findAppBundlePath(),
+                    avvio,
+                )
+            },
+        )
+        return nuovo
+    }
+
+    /**
+     * Tor resta legato al processo: con l'app chiusa il trasporto gli toglie
+     * la rete (`DisableNetwork`), e il sistema lo chiude insieme al processo.
+     */
+    private fun avviaTor(app: Context) {
+        if (collegamentoTor != null) return
+        val nuovo = object : ServiceConnection {
+            override fun onServiceConnected(nome: ComponentName?, servizio: IBinder?) {}
+
+            override fun onServiceDisconnected(nome: ComponentName?) {}
+        }
+        app.bindService(Intent(app, TorService::class.java), nuovo, Context.BIND_AUTO_CREATE)
+        collegamentoTor = nuovo
+    }
+
+    /**
+     * La porta di controllo che TorService passa a tor (--ControlSocket): un
+     * socket Unix nella sua cartella dati, accessibile solo all'app.
+     */
+    private fun socketDiControllo(app: Context) =
+        File(File(app.getDir("TorService", Context.MODE_PRIVATE), "data"), "ControlSocket")
+
+    /** Da Android 13 le notifiche chiedono un permesso. */
+    private fun chiediPermessoNotifiche() {
+        if (Build.VERSION.SDK_INT < 33) return
+        val visibile = attivita
+        permessoInSospeso = visibile == null
+        if (visibile == null) return
+        val permesso = Manifest.permission.POST_NOTIFICATIONS
+        if (visibile.checkSelfPermission(permesso) == PackageManager.PERMISSION_GRANTED) return
+        visibile.requestPermissions(arrayOf(permesso), 1)
+    }
+}

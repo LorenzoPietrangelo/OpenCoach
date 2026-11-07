@@ -112,6 +112,10 @@ class TrasportoTorControllato implements TrasportoTor {
       if (!identical(_configurato, controllo)) {
         await _configuraProxy(controllo);
         _configurato = controllo;
+      } else {
+        // Con DisableNetwork tor chiude il proxy, e riaprendolo su una porta
+        // `auto` ne sceglie un'altra: il proxy si rilegge.
+        await _leggiProxy(controllo);
       }
       for (final indirizzo in List.of(_chiavi.keys)) {
         await _aggiungiChiave(controllo, indirizzo);
@@ -215,6 +219,10 @@ class TrasportoTorControllato implements TrasportoTor {
         await imposta('auto');
       }
     }
+    await _leggiProxy(controllo);
+  }
+
+  Future<void> _leggiProxy(ConnessioneControllo controllo) async {
     final ascolto = await controllo.getInfo(['net/listeners/socks']);
     _impostaProxy(ascolto['net/listeners/socks'] ?? '');
   }

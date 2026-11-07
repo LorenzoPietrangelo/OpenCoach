@@ -1,0 +1,70 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools">
+    <!-- Tor incorporato (§10.1). -->
+    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Notifiche dei messaggi nuovi trovati in background (§16.4). -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Blocco dell'app con l'impronta o il blocco schermo (§16.4). -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
+    <!-- Scansione del QR sul PC (§16.2). -->
+    <uses-permission android:name="android.permission.CAMERA"/>
+    <uses-feature
+        android:name="android.hardware.camera.any"
+        android:required="false"
+        tools:replace="android:required"/>
+    <uses-feature android:name="android.hardware.camera" android:required="false"/>
+    <!-- Il plugin della fotocamera dichiara anche microfono e memoria esterna,
+         e quest'ultima implica la lettura: per leggere un QR non servono. -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" tools:node="remove"/>
+    <uses-permission android:name="android.permission.WRITE_EXTERNAL_STORAGE" tools:node="remove"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE" tools:node="remove"/>
+    <!-- Chiavi, token e messaggi in coda non devono finire nei backup né passare
+         a un nuovo telefono (§4, §16.4). -->
+    <application
+        android:label="OpenCoach Coach"
+        android:name="${applicationName}"
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:fullBackupContent="false"
+        android:dataExtractionRules="@xml/data_extraction_rules">
+        <activity
+            android:name=".MainActivity"
+            android:exported="true"
+            android:launchMode="singleTask"
+            android:taskAffinity=""
+            android:theme="@style/LaunchTheme"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|smallestScreenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
+            android:hardwareAccelerated="true"
+            android:windowSoftInputMode="adjustResize">
+            <meta-data
+              android:name="io.flutter.embedding.android.NormalTheme"
+              android:resource="@style/NormalTheme"
+              />
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+            <!-- Il link di prova della build di debug lo passa MainActivity al
+                 codice Dart: con il motore del processo già avviato, Flutter da
+                 solo perderebbe quello che apre l'app. -->
+            <meta-data
+                android:name="flutter_deeplinking_enabled"
+                android:value="false"/>
+        </activity>
+        <!-- flutter_zxing porta con sé image_picker, che chiede a Google Play
+             services di installare il selettore di foto. L'app non sceglie
+             foto: la richiesta si toglie. -->
+        <service
+            android:name="com.google.android.gms.metadata.ModuleDependencies"
+            tools:node="remove" />
+        <meta-data
+            android:name="flutterEmbedding"
+            android:value="2" />
+    </application>
+    <queries>
+        <intent>
+            <action android:name="android.intent.action.PROCESS_TEXT"/>
+            <data android:mimeType="text/plain"/>
+        </intent>
+    </queries>
+</manifest>

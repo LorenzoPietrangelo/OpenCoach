@@ -120,6 +120,84 @@ class TestiIt extends Testi {
   }
 
   @override
+  String notificaTelefonoCoach(String telefono) {
+    return 'Il tuo telefono è collegato: $telefono. Se non sei stato tu, scollegalo subito dalle impostazioni.';
+  }
+
+  @override
+  String get notificaTelefonoContestatoTitolo =>
+      'Attenzione: QR usato due volte';
+
+  @override
+  String get notificaTelefonoContestato =>
+      'Un secondo telefono ha provato a usare il QR del tuo telefono. Il QR può essere stato fotografato: controlla quale telefono è collegato.';
+
+  @override
+  String get telefonoCoach => 'Il mio telefono';
+
+  @override
+  String get telefonoCoachSpiegazione =>
+      'Con l\'app del coach rispondi agli atleti e guardi i loro dati anche dal telefono. Il telefono parla con questo PC attraverso Tor: funziona solo mentre il PC è acceso con il programma aperto.';
+
+  @override
+  String get collegaTelefonoCoach => 'Collega il mio telefono';
+
+  @override
+  String telefonoCoachCollegato(String telefono) {
+    return 'Collegato: $telefono';
+  }
+
+  @override
+  String telefonoCoachDettagli(String quando, String contatto) {
+    return 'Collegato il $quando. Ultimo contatto: $contatto.';
+  }
+
+  @override
+  String get telefonoCoachMaiVisto => 'mai';
+
+  @override
+  String get scollegaTelefonoCoach => 'Scollega il mio telefono';
+
+  @override
+  String scollegaTelefonoCoachTitolo(String telefono) {
+    return 'Scollegare $telefono?';
+  }
+
+  @override
+  String get scollegaTelefonoCoachTesto =>
+      'Il telefono smette subito di vedere i dati dei tuoi atleti. Fallo se lo perdi o te lo rubano. I messaggi che ha ancora in coda non partiranno.';
+
+  @override
+  String get qrTelefonoCoachTitolo => 'Collega il tuo telefono';
+
+  @override
+  String get qrTelefonoCoachSpiegazione =>
+      'Apri l\'app del coach sul telefono e inquadra questo QR. Chi lo inquadra vede i dati di tutti i tuoi atleti: non fotografarlo e non mostrarlo a nessuno.';
+
+  @override
+  String qrTelefonoCoachValido(String quando) {
+    return 'Valido fino alle $quando';
+  }
+
+  @override
+  String get qrTelefonoCoachInCorso =>
+      'Telefono trovato: sta finendo di collegarsi…';
+
+  @override
+  String qrTelefonoCoachFatto(String telefono) {
+    return 'Telefono collegato: $telefono';
+  }
+
+  @override
+  String get sostituireTelefonoCoachTitolo =>
+      'Sostituire il telefono collegato?';
+
+  @override
+  String sostituireTelefonoCoachTesto(String telefono) {
+    return 'Puoi avere un solo telefono collegato: quando il nuovo inquadra il QR, $telefono smette di funzionare.';
+  }
+
+  @override
   String get notificaInvitoContestatoTitolo =>
       'Attenzione: invito usato due volte';
 

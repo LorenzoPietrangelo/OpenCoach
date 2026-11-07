@@ -4,17 +4,16 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:protocollo/protocollo.dart';
+import 'package:trasporto_tor/trasporto_tor.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 import 'chat.dart';
 import 'contesto.dart';
-import 'guasti.dart';
 import 'modelli.dart';
 import 'pesi.dart';
 import 'problemi.dart';
 import 'schede.dart';
 import 'tempo.dart';
-import 'trasporto.dart';
 
 /// Sincronizzazione con i coach, lato app (§7.3).
 ///

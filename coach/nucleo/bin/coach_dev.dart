@@ -27,6 +27,7 @@ Comandi:
   questionario <nome>
                    manda all'atleta un questionario di prova con 2 foto
   risposte <nome>  risposte ai questionari, con il peso delle foto
+  telefono         nuovo QR del telefono del coach, come testo
   esci''';
 
 Future<void> main(List<String> argomenti) async {
@@ -137,6 +138,11 @@ Future<void> main(List<String> argomenti) async {
                 ? 'Nessun peso condiviso'
                 : [for (final p in pesi) '${formattaData(p.giorno)} ${p.kg} kg'].join(', '),
           );
+        case 'telefono':
+          final invito = await nucleo.telefonoCoach.creaInvito();
+          stdout
+            ..writeln('Valido fino a ${invito.scadeIl.toLocal()}:')
+            ..writeln(invito.uri);
         case 'log':
           final atleta = _atleta(nucleo, nome);
           for (final a in nucleo.allenamenti.elenco(atleta.id)) {
@@ -180,6 +186,10 @@ String _descrivi(NucleoCoach nucleo, EventoCoach e) {
     DispositivoSincronizzato() => '$atleta ha sincronizzato',
     QuestionarioRisposto(:final titolo) => '$atleta ha risposto a «$titolo»',
     MessaggioRicevuto(:final conVideo) => '$atleta ha scritto in chat${conVideo ? ', con un video' : ''}',
+    TelefonoCoachCollegato(:final nomeTelefono) => 'Telefono del coach collegato: $nomeTelefono',
+    TelefonoCoachConfermato() => 'Il telefono del coach ha confermato il collegamento',
+    TelefonoCoachContestato() => 'ATTENZIONE: un secondo telefono ha usato il QR del telefono del coach',
+    ModificaDalTelefonoCoach() => 'Modifica dal telefono del coach: $atleta',
   };
 }
 

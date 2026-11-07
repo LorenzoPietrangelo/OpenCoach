@@ -20,7 +20,9 @@ import 'pesi.dart';
 import 'questionari.dart';
 import 'schede.dart';
 import 'sincronizzazione.dart';
+import 'telefono_coach.dart';
 import 'tempo.dart';
+import 'vista_telefono.dart';
 
 /// Il programma del coach senza rete: archivio e regole di abbinamento e
 /// sincronizzazione. Il server HTTP e Tor gli stanno attorno.
@@ -62,6 +64,16 @@ class NucleoCoach {
   late final questionari = GestioneQuestionari(contesto);
   late final allenamenti = GestioneAllenamenti(contesto, schede);
   late final abbinamento = ServizioAbbinamento(contesto);
+  late final telefonoCoach = GestioneTelefonoCoach(contesto, inviti);
+  late final vistaTelefono = VistaTelefonoCoach(
+    contesto,
+    atleti: atleti,
+    messaggi: messaggi,
+    allenamenti: allenamenti,
+    pesi: pesi,
+    questionari: questionari,
+    schede: schede,
+  );
   late final sincronizzazione = _budgetPagina == null
       ? ServizioSincronizzazione(contesto, schede, questionari, messaggi)
       : ServizioSincronizzazione(contesto, schede, questionari, messaggi, budgetPagina: _budgetPagina);
@@ -87,6 +99,15 @@ class NucleoCoach {
       );
       archivio.db.execute(
         "UPDATE inviti SET stato = 'annullato', segreto = NULL, "
+        "chiave_privata = NULL WHERE stato IN ('aperto', 'in_abbinamento')",
+      );
+      archivio.db.execute(
+        "UPDATE telefoni_coach SET stato = 'revocato', revocato_il = ? "
+        "WHERE stato = 'attivo'",
+        [istante(ora)],
+      );
+      archivio.db.execute(
+        "UPDATE inviti_telefono_coach SET stato = 'annullato', segreto = NULL, "
         "chiave_privata = NULL WHERE stato IN ('aperto', 'in_abbinamento')",
       );
       archivio.rigeneraEpoca();

@@ -49,13 +49,15 @@ class GestioneMessaggi {
   void segnaLetti(String atletaId) =>
       _db.execute("UPDATE messaggi SET letto = 1 WHERE atleta_id = ? AND autore = 'atleta'", [atletaId]);
 
-  /// Manda un messaggio all'atleta: arriva alla sua sync successiva.
-  Messaggio invia(String atletaId, String testo) {
+  /// Manda un messaggio all'atleta: arriva alla sua sync successiva. L'[id] lo
+  /// sceglie il telefono del coach, che così può ritentare senza doppioni
+  /// (§16.3).
+  Messaggio invia(String atletaId, String testo, {String? id}) {
     final pulito = testo.trim();
     if (pulito.isEmpty || pulito.length > LimitiChat.testo) {
       throw const OperazioneNonValida('Il messaggio deve avere da 1 a 4000 caratteri');
     }
-    final id = nuovoUuid();
+    final idMessaggio = id ?? nuovoUuid();
     final ora = _c.adesso();
     _c.archivio.transazione(() {
       if (_db.select('SELECT 1 FROM atleti WHERE id = ?', [atletaId]).isEmpty) {
@@ -64,10 +66,10 @@ class GestioneMessaggi {
       _db.execute(
         'INSERT INTO messaggi (id, atleta_id, autore, testo, inviato_il, ordine, sequenza, letto) '
         "VALUES (?, ?, 'coach', ?, ?, ?, ?, 1)",
-        [id, atletaId, pulito, formattaDataOra(ora), istante(ora), _c.archivio.prossimaSequenza()],
+        [idMessaggio, atletaId, pulito, formattaDataOra(ora), istante(ora), _c.archivio.prossimaSequenza()],
       );
     });
-    return _daRiga(_db.select('SELECT * FROM messaggi WHERE id = ?', [id]).first);
+    return _daRiga(_db.select('SELECT * FROM messaggi WHERE id = ?', [idMessaggio]).first);
   }
 
   /// Il file del video del messaggio, se c'è ancora.

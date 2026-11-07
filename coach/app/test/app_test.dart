@@ -441,6 +441,70 @@ void main() {
     expect(find.text('Raggiungibile'), findsOneWidget);
   });
 
+  testWidgets('dalle impostazioni si collega e si scollega il telefono del coach', (tester) async {
+    await avviaApp(tester, coach, desktop);
+    await tester.tap(find.text('Impostazioni'));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(find.text('Collega il mio telefono'), 200);
+    await tester.tap(find.text('Collega il mio telefono'));
+    await tester.pump();
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    });
+    await tester.pumpAndSettle();
+    expect(find.text('Collega il tuo telefono'), findsOneWidget);
+    final invito = coach.nucleo.telefonoCoach.invitoInCorso()!;
+    // Il QR non si copia e il suo testo non si vede (§16.2).
+    expect(find.textContaining('opencoach://'), findsNothing);
+    expect(find.text('Copia il link'), findsNothing);
+
+    // Un telefono inquadra il QR mentre il dialogo è aperto.
+    await tester.runAsync(() async {
+      coach.nucleo.telefonoCoach.abbina(
+        RichiestaAbbinamento(
+          invitoId: invito.uri!.id,
+          segreto: invito.uri!.segreto,
+          chiaveDispositivo: (await CoppiaX25519.genera()).pubblicaBase32,
+          dispositivo: const DatiDispositivo(nome: 'Galaxy', piattaforma: 'android', versioneApp: '1.5.0'),
+        ),
+      );
+    });
+    await tester.pumpAndSettle();
+    expect(find.text('Telefono trovato: sta finendo di collegarsi…'), findsOneWidget);
+    expect(desktop.notifiche.single, contains('Il tuo telefono è collegato: Galaxy'));
+    coach.nucleo.telefonoCoach.conferma(coach.nucleo.telefonoCoach.attivo()!);
+    await tester.pumpAndSettle();
+    expect(find.text('Telefono collegato: Galaxy'), findsOneWidget);
+    await tester.tap(find.text('Chiudi'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Collegato: Galaxy'), findsOneWidget);
+    await tester.tap(find.text('Scollega il mio telefono'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, 'Scollega'));
+    await tester.pumpAndSettle();
+    expect(coach.nucleo.telefonoCoach.attivo(), isNull);
+    expect(find.text('Collegato: Galaxy'), findsNothing);
+  });
+
+  testWidgets('un QR chiuso senza che nessuno l\'abbia letto si annulla', (tester) async {
+    await avviaApp(tester, coach, desktop);
+    await tester.tap(find.text('Impostazioni'));
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(find.text('Collega il mio telefono'), 200);
+    await tester.tap(find.text('Collega il mio telefono'));
+    await tester.pump();
+    await tester.runAsync(() async {
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    });
+    await tester.pumpAndSettle();
+    expect(coach.nucleo.telefonoCoach.invitoInCorso(), isNotNull);
+    await tester.tap(find.text('Chiudi'));
+    await tester.pumpAndSettle();
+    expect(coach.nucleo.telefonoCoach.invitoInCorso(), isNull);
+  });
+
   testWidgets('dalle impostazioni si cambia la sospensione e si reimposta l\'identità', (tester) async {
     await avviaApp(tester, coach, desktop);
     await tester.tap(find.text('Impostazioni'));

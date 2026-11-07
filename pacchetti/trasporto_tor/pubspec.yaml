@@ -1,0 +1,15 @@
+name: trasporto_tor
+description: Tor incorporato nelle app di Open Coach, comandato dalla porta di controllo. Lo usano l'app dell'atleta e l'app del coach.
+publish_to: none
+version: 1.0.0
+resolution: workspace
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  protocollo:
+    path: ../protocollo
+
+dev_dependencies:
+  lints: ^6.0.0

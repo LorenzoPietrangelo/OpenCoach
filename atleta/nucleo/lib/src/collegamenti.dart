@@ -2,15 +2,14 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:protocollo/protocollo.dart';
+import 'package:trasporto_tor/trasporto_tor.dart';
 
 import 'contesto.dart';
 import 'errori.dart';
-import 'guasti.dart';
 import 'modelli.dart';
 import 'problemi.dart';
 import 'sincronizzazione.dart';
 import 'tempo.dart';
-import 'trasporto.dart';
 
 /// Coach a cui il telefono è o è stato abbinato (§10.2). L'app può essere
 /// abbinata a più coach insieme; schede e log restano separati per coach.

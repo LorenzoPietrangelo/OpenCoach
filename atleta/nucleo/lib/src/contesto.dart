@@ -3,13 +3,12 @@ import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:protocollo/protocollo.dart';
+import 'package:trasporto_tor/trasporto_tor.dart';
 import 'package:sqlite3/sqlite3.dart';
 
 import 'archivio.dart';
 import 'cassaforte.dart';
 import 'modelli.dart';
-import 'orologio.dart';
-import 'trasporto.dart';
 
 /// Ciò che condividono le parti del nucleo dell'app: archivio, cassaforte,
 /// Tor, orologio e avvisi di cambiamento.

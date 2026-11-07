@@ -15,5 +15,6 @@ export 'src/messaggi.dart';
 export 'src/onion.dart';
 export 'src/questionari.dart';
 export 'src/socks5.dart';
+export 'src/telefono_coach.dart';
 export 'src/validazione.dart';
 export 'src/versione.dart';

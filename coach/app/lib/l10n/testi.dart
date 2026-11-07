@@ -297,6 +297,120 @@ abstract class Testi {
   /// **'{nome} ha collegato {telefono}'**
   String notificaAbbinato(String nome, String telefono);
 
+  /// No description provided for @notificaTelefonoCoach.
+  ///
+  /// In it, this message translates to:
+  /// **'Il tuo telefono è collegato: {telefono}. Se non sei stato tu, scollegalo subito dalle impostazioni.'**
+  String notificaTelefonoCoach(String telefono);
+
+  /// No description provided for @notificaTelefonoContestatoTitolo.
+  ///
+  /// In it, this message translates to:
+  /// **'Attenzione: QR usato due volte'**
+  String get notificaTelefonoContestatoTitolo;
+
+  /// No description provided for @notificaTelefonoContestato.
+  ///
+  /// In it, this message translates to:
+  /// **'Un secondo telefono ha provato a usare il QR del tuo telefono. Il QR può essere stato fotografato: controlla quale telefono è collegato.'**
+  String get notificaTelefonoContestato;
+
+  /// No description provided for @telefonoCoach.
+  ///
+  /// In it, this message translates to:
+  /// **'Il mio telefono'**
+  String get telefonoCoach;
+
+  /// No description provided for @telefonoCoachSpiegazione.
+  ///
+  /// In it, this message translates to:
+  /// **'Con l\'app del coach rispondi agli atleti e guardi i loro dati anche dal telefono. Il telefono parla con questo PC attraverso Tor: funziona solo mentre il PC è acceso con il programma aperto.'**
+  String get telefonoCoachSpiegazione;
+
+  /// No description provided for @collegaTelefonoCoach.
+  ///
+  /// In it, this message translates to:
+  /// **'Collega il mio telefono'**
+  String get collegaTelefonoCoach;
+
+  /// No description provided for @telefonoCoachCollegato.
+  ///
+  /// In it, this message translates to:
+  /// **'Collegato: {telefono}'**
+  String telefonoCoachCollegato(String telefono);
+
+  /// No description provided for @telefonoCoachDettagli.
+  ///
+  /// In it, this message translates to:
+  /// **'Collegato il {quando}. Ultimo contatto: {contatto}.'**
+  String telefonoCoachDettagli(String quando, String contatto);
+
+  /// No description provided for @telefonoCoachMaiVisto.
+  ///
+  /// In it, this message translates to:
+  /// **'mai'**
+  String get telefonoCoachMaiVisto;
+
+  /// No description provided for @scollegaTelefonoCoach.
+  ///
+  /// In it, this message translates to:
+  /// **'Scollega il mio telefono'**
+  String get scollegaTelefonoCoach;
+
+  /// No description provided for @scollegaTelefonoCoachTitolo.
+  ///
+  /// In it, this message translates to:
+  /// **'Scollegare {telefono}?'**
+  String scollegaTelefonoCoachTitolo(String telefono);
+
+  /// No description provided for @scollegaTelefonoCoachTesto.
+  ///
+  /// In it, this message translates to:
+  /// **'Il telefono smette subito di vedere i dati dei tuoi atleti. Fallo se lo perdi o te lo rubano. I messaggi che ha ancora in coda non partiranno.'**
+  String get scollegaTelefonoCoachTesto;
+
+  /// No description provided for @qrTelefonoCoachTitolo.
+  ///
+  /// In it, this message translates to:
+  /// **'Collega il tuo telefono'**
+  String get qrTelefonoCoachTitolo;
+
+  /// No description provided for @qrTelefonoCoachSpiegazione.
+  ///
+  /// In it, this message translates to:
+  /// **'Apri l\'app del coach sul telefono e inquadra questo QR. Chi lo inquadra vede i dati di tutti i tuoi atleti: non fotografarlo e non mostrarlo a nessuno.'**
+  String get qrTelefonoCoachSpiegazione;
+
+  /// No description provided for @qrTelefonoCoachValido.
+  ///
+  /// In it, this message translates to:
+  /// **'Valido fino alle {quando}'**
+  String qrTelefonoCoachValido(String quando);
+
+  /// No description provided for @qrTelefonoCoachInCorso.
+  ///
+  /// In it, this message translates to:
+  /// **'Telefono trovato: sta finendo di collegarsi…'**
+  String get qrTelefonoCoachInCorso;
+
+  /// No description provided for @qrTelefonoCoachFatto.
+  ///
+  /// In it, this message translates to:
+  /// **'Telefono collegato: {telefono}'**
+  String qrTelefonoCoachFatto(String telefono);
+
+  /// No description provided for @sostituireTelefonoCoachTitolo.
+  ///
+  /// In it, this message translates to:
+  /// **'Sostituire il telefono collegato?'**
+  String get sostituireTelefonoCoachTitolo;
+
+  /// No description provided for @sostituireTelefonoCoachTesto.
+  ///
+  /// In it, this message translates to:
+  /// **'Puoi avere un solo telefono collegato: quando il nuovo inquadra il QR, {telefono} smette di funzionare.'**
+  String sostituireTelefonoCoachTesto(String telefono);
+
   /// No description provided for @notificaInvitoContestatoTitolo.
   ///
   /// In it, this message translates to:

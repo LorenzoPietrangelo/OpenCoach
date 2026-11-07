@@ -11,6 +11,8 @@ import 'limitatore.dart';
 import 'modelli.dart';
 import 'nucleo.dart';
 
+part 'server_telefono.dart';
+
 const _percorsi = {
   '/v1/info',
   '/v1/abbinamento',
@@ -41,12 +43,17 @@ class ServerCoach {
        _limiteAbbinamenti = LimitatoreFrequenza(
          massimo: Limiti.abbinamentiAlMinuto,
          adesso: adesso,
+       ),
+       _limiteTelefonoCoach = LimitatoreFrequenza(
+         massimo: Limiti.richiesteAlMinutoPerTelefonoCoach,
+         adesso: adesso,
        );
 
   final NucleoCoach _nucleo;
   final void Function(String) _registra;
   final LimitatoreFrequenza _limitePerDispositivo;
   final LimitatoreFrequenza _limiteAbbinamenti;
+  final LimitatoreFrequenza _limiteTelefonoCoach;
   HttpServer? _server;
   var _inCorso = 0;
   var _syncInCorso = 0;
@@ -126,6 +133,9 @@ class ServerCoach {
     // locale: i browser mandano sempre Origin, l'app mai (§6.1).
     if (richiesta.headers.value('origin') != null) {
       throw const ErroreHttp(403, CodiceErrore.origineVietata);
+    }
+    if (richiesta.uri.path.startsWith(_prefissoCoach)) {
+      return _instradaTelefono(richiesta);
     }
 
     switch ((richiesta.method, richiesta.uri.path)) {

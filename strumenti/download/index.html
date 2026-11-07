@@ -425,6 +425,21 @@
               versione sopra quella vecchia. Disinstallando, i tuoi dati restano in
               <code>%APPDATA%\OpenCoach</code>: si cancellano solo a mano.</p>
           </details>
+          <details>
+            <summary>Anche dal telefono, se vuoi</summary>
+            <p>Con l'app del coach rispondi ai tuoi atleti e guardi allenamenti, peso e questionari
+              dal telefono. È un telecomando del PC: funziona mentre il PC è acceso con il programma
+              aperto. Android 8.0 o successivo.</p>
+            <ol>
+              <li>Installala come l'app dell'atleta: <a href="file/{{NOME_APK_COACH}}" download>{{NOME_APK_COACH}}</a>
+                · {{DIMENSIONE_APK_COACH}}.</li>
+              <li>Sul PC apri Impostazioni → Il mio telefono → <strong>Collega il mio telefono</strong> e
+                inquadra il QR con l'app.</li>
+            </ol>
+            <div class="avviso" role="note"><strong>Chi inquadra quel QR vede i dati di tutti i tuoi
+              atleti</strong>: non fotografarlo. Se perdi il telefono, scollegalo dalle impostazioni del
+              programma.</div>
+          </details>
         </article>
 
         <article class="scheda" id="atleta" aria-labelledby="titolo-atleta">
@@ -465,6 +480,8 @@
         <code class="impronta">{{SHA256_EXE}}</code>
         <p>Impronta SHA-256 di <code>{{NOME_APK}}</code>:</p>
         <code class="impronta">{{SHA256_APK}}</code>
+        <p>Impronta SHA-256 di <code>{{NOME_APK_COACH}}</code>:</p>
+        <code class="impronta">{{SHA256_APK_COACH}}</code>
         <p>Su Windows apri PowerShell nella cartella dei download e scrivi
           <code>Get-FileHash .\{{NOME_EXE}}</code>, oppure lo stesso comando con il nome dell'APK:
           il risultato deve essere uguale a quello qui sopra.</p>

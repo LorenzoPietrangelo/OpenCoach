@@ -1,0 +1,33 @@
+name: coach_mobile
+description: "App del coach di Open Coach (§16): chat e dati degli atleti dal telefono."
+publish_to: 'none'
+# La versione che l'app dichiara al programma del coach, la stessa del rilascio.
+version: 1.5.0+7
+
+environment:
+  sdk: ^3.11.5
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  flutter_secure_storage: ^11.2.0
+  flutter_zxing: ^3.1.0
+  intl: any
+  local_auth: ^3.0.0
+  protocollo:
+    path: ../../pacchetti/protocollo
+  trasporto_tor:
+    path: ../../pacchetti/trasporto_tor
+
+dev_dependencies:
+  coach_nucleo:
+    path: ../nucleo
+  flutter_lints: ^6.0.0
+  flutter_test:
+    sdk: flutter
+
+flutter:
+  generate: true
+  uses-material-design: true

@@ -23,6 +23,8 @@ export 'src/programma_coach.dart';
 export 'src/registro.dart';
 export 'src/schede.dart' show GestioneSchede;
 export 'src/server_http.dart';
+export 'src/telefono_coach.dart' show GestioneTelefonoCoach;
+export 'src/vista_telefono.dart' show VistaTelefonoCoach;
 export 'src/tor/controllo_tor.dart';
 export 'src/tor/processo_tor.dart';
 export 'src/tor/servizio_onion.dart';

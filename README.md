@@ -10,6 +10,8 @@ Programma per coach e app per atleti, senza server: il PC del coach fa da server
 | Nucleo del programma del coach | `coach/nucleo` | Fatto: archivio SQLite, atleti, inviti, abbinamento, schede, sync, server HTTP, gestione di Tor, backup cifrato e ripristino, esportazioni JSON e CSV, «Reimposta identità», registro tecnico; provato sulla rete Tor vera |
 | Interfaccia del programma del coach (Flutter desktop) | `coach/app` | Scritta e provata con i test dei widget: primo avvio, atleti, inviti con QR, telefono e revoca, editor delle schede, allenamenti ricevuti, stato del servizio, impostazioni (backup, ripristino, Tor esterno, «Reimposta identità»), area di notifica, finestra che si riduce, avvio automatico, notifiche. Provata come programma Windows: abbinamento e sync con un telefono sulla rete Tor vera. L'installer si crea, ma non è ancora stato provato su un PC. Gli eseguibili non sono firmati, quindi con Smart App Control attivo Windows non li lascia partire. Dopo una sospensione del PC il servizio torna raggiungibile solo quando Tor ci arriva da solo (§9.1 da completare) |
 | Nucleo dell'app dell'atleta | `atleta/nucleo` | Fatto: archivio SQLite, abbinamento, coda dei log, sync, stati e ritentativi per l'interfaccia, esecuzione degli allenamenti, trasporto Tor sulla porta di controllo, provato sulla rete Tor vera con `atleta_dev` |
+| Trasporto Tor delle app | `pacchetti/trasporto_tor` | Fatto: Tor comandato dalla porta di controllo e classificazione dei guasti, usato dalle due app |
+| App del coach (Flutter, §16) | `coach/mobile` | Scritta su Android: collegamento con il QR mostrato dal PC, elenco degli atleti con i non letti, chat con la coda dei messaggi, allenamenti, peso, questionari con le foto, note e schede in lettura, blocco con impronta o blocco schermo, controlli in background con WorkManager. È un telecomando: i dati restano sul PC e passano da Tor. Le schermate leggono da `FonteDatiCoach`, così un giorno il telefono potrà fare da server. Provata con i test dei widget e sulla rete Tor vera dal PC; non ancora su un telefono |
 | App dell'atleta (Flutter) | `atleta/app` | Fatta su Android: elenco dei coach, abbinamento con il QR o con il link (incollato o aperto da un'altra app), schede con l'archivio, esecuzione degli allenamenti con il timer di recupero, storico con modifica, eliminazione e rinvio dei rifiutati, impostazioni con i coach collegati, lo scollegamento, la frequenza della sync e l'esportazione JSON. Cassaforte su Keystore e Keychain, Tor su Android con tor-android, provato su un telefono (abbinamento e sync sulla rete Tor vera), sync in background con WorkManager e notifiche delle schede nuove, consiglio sulla batteria. Provata su telefono ed emulatore, anche la build release: abbinamento con la barra d'avanzamento, schede, allenamenti, scollegamento. Tor e sync in background su iOS da fare |
 
 ## Requisiti
@@ -55,6 +57,28 @@ flutter build apk --debug
 
 La build da distribuire è `flutter build apk --release`: non è debuggabile, e R8 riduce e rinomina il codice Java. Il codice nativo di tor usa per nome campi e metodi di `TorService`, e tor-android non porta regole per R8: le mette `android/app/proguard-rules.pro`, senza le quali l'app release si chiude appena parte Tor. Per ora anche la release è firmata con la chiave di debug del PC che la compila (il `TODO` in `android/app/build.gradle.kts`): prima di distribuirla va creata una chiave di firma propria, perché Android aggiorna un'app solo con la stessa chiave.
 
+App del coach per il telefono (§16), con Flutter, come l'app dell'atleta:
+
+```
+cd coach/mobile
+flutter pub get
+flutter test
+flutter build apk --debug
+```
+
+Prova sulla rete Tor vera, con il codice dell'app e un `tor` in un processo al posto di tor-android:
+
+```
+cd coach/mobile
+OPENCOACH_TOR=<percorso di tor.exe> flutter test test/tor_reale_test.dart
+```
+
+Nella build di debug il QR del PC si può aprire come link, senza fotocamera: `coach_dev` lo stampa con il comando `telefono`, e va trattato come un link d'invito. Nella build release il filtro non c'è e il QR si inquadra e basta. Un controllo in background subito:
+
+```
+adb shell am broadcast -n org.opencoach.coach_mobile/.ControlloDiProva
+```
+
 Programma del coach, con Flutter. Anche questo ha le sue dipendenze:
 
 ```
@@ -68,13 +92,13 @@ Per `flutter build windows` servono Visual Studio Build Tools con il carico di l
 
 L'installer si crea con Inno Setup 6 dopo la build: `iscc /DVersione=1.0.0 installer\opencoach.iss` dalla cartella `coach/app`. Installa per il solo utente, senza privilegi di amministratore, e alla disinstallazione lascia i dati in `%APPDATA%\OpenCoach`.
 
-Un rilascio porta installer e APK, sempre insieme e con lo stesso numero, sulla pagina dei download (vedi [CONTEXT.md](CONTEXT.md) e le decisioni in `docs/wizspec/decisions`). Prima si aggiorna la versione nei due `pubspec.yaml` e nelle costanti `versioneProgramma` e `versioneApp`, poi:
+Un rilascio porta installer e i due APK, sempre insieme e con lo stesso numero, sulla pagina dei download (vedi [CONTEXT.md](CONTEXT.md) e le decisioni in `docs/wizspec/decisions`). Prima si aggiorna la versione nei tre `pubspec.yaml` e nelle costanti `versioneProgramma` e `versioneApp` (una per app), poi:
 
 ```
 powershell -ExecutionPolicy Bypass -File strumenti\rilascio.ps1 -Versione 1.1.0
 ```
 
-Lo script controlla le versioni, compila tutto, verifica che l'APK sia release e firmato con la chiave di debug già usata per i rilasci precedenti, conserva una copia in `C:\dev\opencoach-rilasci\<versione>` e prepara la pagina in `C:\dev\opencoach-download`, con le impronte SHA-256. Quella cartella si carica sulla sua repo GitHub, collegata a Vercel. Il modello della pagina sta in `strumenti/download`. Con `-SenzaCompilare` rigenera la pagina dai file già compilati.
+Lo script controlla le versioni, compila tutto, verifica che gli APK siano release e firmati con la chiave di debug già usata per i rilasci precedenti, conserva una copia in `C:\dev\opencoach-rilasci\<versione>` e prepara la pagina in `C:\dev\opencoach-download`, con le impronte SHA-256. Quella cartella si carica sulla sua repo GitHub, collegata a Vercel. Il modello della pagina sta in `strumenti/download`. Con `-SenzaCompilare` rigenera la pagina dai file già compilati.
 
 Senza Visual Studio in locale, la build la fa GitHub: il flusso `.github/workflows/build.yml` esegue tutti i test su Linux, poi su Windows scarica il Tor Expert Bundle, ne verifica la somma SHA-256 con l'elenco ufficiale, compila il programma e crea l'installer, che si scarica dagli artifact dell'esecuzione. Parte a ogni push su `master` e si può avviare a mano.
 

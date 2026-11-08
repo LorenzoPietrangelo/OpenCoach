@@ -5,6 +5,7 @@ import '../l10n/testi.dart';
 import 'allenamenti.dart';
 import 'atleti.dart';
 import 'chat.dart';
+import 'cibo.dart';
 import 'peso.dart';
 import 'questionari.dart';
 import 'scheda.dart';
@@ -21,7 +22,7 @@ class SchermataAtleta extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = Testi.of(context);
     return DefaultTabController(
-      length: 5,
+      length: 6,
       child: Scaffold(
         appBar: AppBar(
           title: Text(nome),
@@ -32,6 +33,7 @@ class SchermataAtleta extends StatelessWidget {
               Tab(text: t.sezioneChat),
               Tab(text: t.sezioneAllenamenti),
               Tab(text: t.sezionePeso),
+              Tab(text: t.sezioneCibo),
               Tab(text: t.sezioneQuestionari),
               Tab(text: t.sezioneScheda),
             ],
@@ -50,6 +52,7 @@ class SchermataAtleta extends StatelessWidget {
                             SezioneChat(stato: stato, atletaId: atletaId),
                             SezioneAllenamenti(stato: stato, atletaId: atletaId),
                             SezionePeso(stato: stato, atletaId: atletaId),
+                            SezioneCibo(stato: stato, atletaId: atletaId),
                             SezioneQuestionari(stato: stato, atletaId: atletaId),
                             SezioneScheda(stato: stato, atletaId: atletaId),
                           ],

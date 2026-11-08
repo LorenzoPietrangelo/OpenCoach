@@ -437,6 +437,77 @@ class TestiIt extends Testi {
   String get tuttiIPesi => 'Tutti i pesi';
 
   @override
+  String get schedaCibo => 'Cibo';
+
+  @override
+  String get nessunCibo =>
+      'L\'atleta non ti ha ancora condiviso cosa mangia. Lo registra nell\'app, nella sezione Cibo, dalla versione 1.6.0.';
+
+  @override
+  String get obiettivoCibo => 'Obiettivo giornaliero';
+
+  @override
+  String get nessunObiettivoCibo =>
+      'Nessun obiettivo. Puoi fissare le calorie e, se vuoi, i macronutrienti: l\'atleta li vede nell\'app.';
+
+  @override
+  String get fissaObiettivo => 'Fissa l\'obiettivo';
+
+  @override
+  String get modificaObiettivo => 'Modifica';
+
+  @override
+  String get togliObiettivo => 'Togli l\'obiettivo';
+
+  @override
+  String get obiettivoSpiegazione =>
+      'Un obiettivo indicativo che l\'atleta vede accanto a quello che mangia. Le calorie sono obbligatorie, i macronutrienti no.';
+
+  @override
+  String get obiettivoNonValido =>
+      'Le calorie vanno da 500 a 8000, i grammi da 0 a 1000.';
+
+  @override
+  String get calorie => 'Calorie';
+
+  @override
+  String get proteine => 'Proteine';
+
+  @override
+  String get carboidrati => 'Carboidrati';
+
+  @override
+  String get grassi => 'Grassi';
+
+  @override
+  String get mediaCiboSettimana => 'Media degli ultimi 7 giorni registrati';
+
+  @override
+  String get legendaGraficoCibo =>
+      'Le calorie di ogni giorno delle ultime 4 settimane; la linea è l\'obiettivo.';
+
+  @override
+  String get giorniCibo => 'Giorni';
+
+  @override
+  String get pastoColazione => 'Colazione';
+
+  @override
+  String get pastoPranzo => 'Pranzo';
+
+  @override
+  String get pastoCena => 'Cena';
+
+  @override
+  String get pastoSpuntini => 'Spuntini';
+
+  @override
+  String get fonteOpenFoodFacts => 'Open Food Facts';
+
+  @override
+  String get fonteAtleta => 'scritto dall\'atleta';
+
+  @override
   String get nuovoQuestionario => 'Nuovo questionario';
 
   @override

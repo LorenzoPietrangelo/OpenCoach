@@ -8,6 +8,7 @@ import 'abbinamento.dart' as abbinamento;
 import 'archivio.dart';
 import 'cassaforte.dart';
 import 'chat.dart';
+import 'cibo.dart';
 import 'collegamenti.dart';
 import 'contesto.dart';
 import 'diario.dart';
@@ -15,6 +16,7 @@ import 'modelli.dart';
 import 'pesi.dart';
 import 'pianificatore.dart';
 import 'questionari.dart';
+import 'ricerca_cibo.dart';
 import 'schede.dart';
 import 'sincronizzazione.dart';
 
@@ -66,6 +68,11 @@ class NucleoAtleta {
     contesto,
     cambiato: (coachId) => pianificatore.logCambiato(coachId),
   );
+  late final cibo = RegistroCibo(
+    contesto,
+    cambiato: (coachId) => pianificatore.logCambiato(coachId),
+  );
+  late final ricercaCibo = RicercaCibo(contesto, sync);
   late final questionari = QuestionariRicevuti(
     contesto,
     cambiato: (coachId) => pianificatore.logCambiato(coachId),
@@ -130,6 +137,11 @@ class NucleoAtleta {
     if (coachId == null)
       'pesi': [
         for (final p in pesi.elenco()) {'giorno': formattaData(p.giorno), 'kg': p.kg},
+      ],
+    if (coachId == null)
+      'cibo': [
+        for (final g in cibo.elenco())
+          {'giorno': formattaData(g.giorno), 'voci': [for (final v in g.voci) v.toJson()]},
       ],
   };
 

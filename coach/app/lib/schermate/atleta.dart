@@ -9,6 +9,7 @@ import '../l10n/testi.dart';
 import '../piattaforma/desktop.dart';
 import '../servizi.dart';
 import 'chat.dart';
+import 'cibo.dart';
 import 'peso.dart';
 import 'schede.dart';
 import 'storico.dart';
@@ -82,7 +83,7 @@ class DettaglioAtleta extends StatelessWidget {
       );
     }
     return DefaultTabController(
-      length: 4,
+      length: 5,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -109,6 +110,7 @@ class DettaglioAtleta extends StatelessWidget {
               Tab(text: t.schedaSchede),
               Tab(text: t.schedaStorico),
               Tab(text: t.schedaPeso),
+              Tab(text: t.schedaCibo),
               Tab(
                 child: Badge(
                   isLabelVisible: daLeggere > 0,
@@ -125,6 +127,7 @@ class DettaglioAtleta extends StatelessWidget {
                 PannelloSchede(atleta: atleta, coach: coach, aggiornamenti: aggiornamenti),
                 PannelloStorico(atleta: atleta, coach: coach, aggiornamenti: aggiornamenti),
                 PannelloPeso(atleta: atleta, coach: coach, aggiornamenti: aggiornamenti),
+                PannelloCibo(atleta: atleta, coach: coach, aggiornamenti: aggiornamenti),
                 PannelloChat(atleta: atleta, coach: coach, desktop: desktop, aggiornamenti: aggiornamenti),
               ],
             ),

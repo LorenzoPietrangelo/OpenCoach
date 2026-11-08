@@ -102,6 +102,9 @@ if (-not $SenzaCompilare) {
   if (-not (Test-Path (Join-Path $coach 'windows\tor\tor.exe'))) {
     Ferma "Manca Tor in coach\app\windows\tor: copia lì la cartella tor del Tor Expert Bundle."
   }
+  if (-not (Test-Path (Join-Path $coach 'windows\cibo\catalogo_italia.sqlite'))) {
+    Ferma "Manca il catalogo dei cibi: da coach\nucleo esegui 'dart run bin/genera_catalogo_cibo.dart'."
+  }
   if (-not (Test-Path $Iscc)) { Ferma "Inno Setup non trovato: $Iscc" }
   $aperto = Get-Process OpenCoach -ErrorAction SilentlyContinue |
     Where-Object { $_.Path -like "$coach\build\*" }

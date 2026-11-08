@@ -13,6 +13,9 @@ abstract final class CodiceErrore {
   static const troppeRichieste = 'troppe_richieste';
   static const occupato = 'occupato';
   static const erroreInterno = 'errore_interno';
+
+  /// Il programma del coach non ha il catalogo dei cibi (§10.3).
+  static const catalogoAssente = 'catalogo_assente';
 }
 
 /// Motivi di rifiuto di un singolo log in `log_rifiutati` (§6.3).

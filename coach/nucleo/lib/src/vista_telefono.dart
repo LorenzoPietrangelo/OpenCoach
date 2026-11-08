@@ -6,6 +6,7 @@ import 'package:sqlite3/sqlite3.dart';
 import 'allenamenti.dart';
 import 'atleti.dart';
 import 'chat.dart';
+import 'cibo.dart';
 import 'contesto.dart';
 import 'errori.dart';
 import 'eventi.dart';
@@ -24,6 +25,7 @@ class VistaTelefonoCoach {
     required GestioneMessaggi messaggi,
     required GestioneAllenamenti allenamenti,
     required GestionePesi pesi,
+    required GestioneCibo cibo,
     required GestioneQuestionari questionari,
     required GestioneSchede schede,
     int budgetPagina = _budgetPredefinito,
@@ -31,6 +33,7 @@ class VistaTelefonoCoach {
        _messaggi = messaggi,
        _allenamenti = allenamenti,
        _pesi = pesi,
+       _cibo = cibo,
        _questionari = questionari,
        _schede = schede,
        _budgetPagina = budgetPagina;
@@ -40,6 +43,7 @@ class VistaTelefonoCoach {
   final GestioneMessaggi _messaggi;
   final GestioneAllenamenti _allenamenti;
   final GestionePesi _pesi;
+  final GestioneCibo _cibo;
   final GestioneQuestionari _questionari;
   final GestioneSchede _schede;
   final int _budgetPagina;
@@ -48,6 +52,7 @@ class VistaTelefonoCoach {
   static const _budgetPredefinito = 1536 * 1024;
   static const _messaggiPerPagina = 200;
   static const _allenamentiPerPagina = 50;
+  static const _giornatePerPagina = 28;
 
   Database get _db => _c.archivio.db;
 
@@ -61,6 +66,8 @@ SELECT
   (SELECT COUNT(*) FROM messaggi WHERE autore = 'atleta' AND letto = 0) AS non_letti,
   (SELECT COUNT(*) || '.' || COALESCE(SUM(rev), 0) FROM log) AS log,
   (SELECT COUNT(*) || '.' || COALESCE(SUM(rev), 0) FROM pesi) AS pesi,
+  (SELECT COUNT(*) || '.' || COALESCE(SUM(rev), 0) FROM giornate) AS giornate,
+  (SELECT COUNT(*) || '.' || COALESCE(MAX(sequenza), 0) FROM obiettivi_cibo) AS obiettivi,
   (SELECT COUNT(*) FROM questionari_inviati) AS questionari,
   (SELECT COUNT(*) FROM questionari_inviati WHERE stato = 'risposto') AS risposti,
   (SELECT COUNT(*) FROM questionari_inviati WHERE stato = 'risposto' AND letto = 0) AS nuovi,
@@ -73,6 +80,8 @@ SELECT
       r['non_letti'],
       r['log'],
       r['pesi'],
+      r['giornate'],
+      r['obiettivi'],
       r['questionari'],
       r['risposti'],
       r['nuovi'],
@@ -185,6 +194,22 @@ SELECT
         for (final p in _pesi.elenco(atletaId)) {'giorno': formattaData(p.giorno), 'kg': p.kg},
       ],
     };
+  }
+
+  /// `GET /v1/coach/atleti/<id>/cibo`: l'obiettivo e le giornate prima del
+  /// giorno [prima], dalla più recente, fino a 28 e fin dove stanno nella
+  /// risposta.
+  Map<String, Object?> cibo(String atletaId, {String? prima}) {
+    _esistente(atletaId);
+    final limite = prima == null ? null : analizzaData(prima);
+    if (prima != null && limite == null) throw const ErroreHttp(400, CodiceErrore.richiestaNonValida);
+    final giornate = [
+      for (final g in _cibo.elenco(atletaId).reversed)
+        if (limite == null || g.giorno.isBefore(limite))
+          {'giorno': formattaData(g.giorno), 'voci': [for (final v in g.voci) v.toJson()]},
+    ];
+    final (scelte, altre) = _riempi(giornate, _giornatePerPagina);
+    return {'obiettivo': _cibo.obiettivo(atletaId)?.toJson(), 'giornate': scelte, 'altri': altre};
   }
 
   /// `GET /v1/coach/atleti/<id>/questionari`: dal più recente, fin dove sta

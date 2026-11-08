@@ -108,6 +108,27 @@ class FonteFinta implements FonteDatiCoach {
   ];
 
   @override
+  Future<CiboAtleta> cibo(String atletaId, {String? prima}) async => CiboAtleta.daJson({
+    'obiettivo': {'kcal': 2200, 'proteine_g': 140},
+    'giornate': [
+      {
+        'giorno': '2026-11-05',
+        'voci': [
+          {
+            'id': '11111111-1111-4111-8111-111111111111',
+            'pasto': 'pranzo',
+            'nome': 'Pasta di semola',
+            'fonte': 'open_food_facts',
+            'grammi': 80,
+            'per_100g': {'kcal': 353, 'proteine': 12, 'carboidrati': 72, 'grassi': 1.5},
+          },
+        ],
+      },
+    ],
+    'altri': false,
+  });
+
+  @override
   Future<List<QuestionarioAtleta>> questionari(String atletaId) async => [
     QuestionarioAtleta.daJson({
       'id': 'q1',
@@ -322,6 +343,14 @@ void main() {
     await tester.pumpAndSettle(const Duration(milliseconds: 100), EnginePhase.sendSemanticsUpdate, const Duration(seconds: 2));
     expect(find.text('Ultimo peso'), findsOneWidget);
     expect(find.text('70,5 kg'), findsWidgets);
+
+    await tester.tap(find.text('Cibo'));
+    await tester.pumpAndSettle(const Duration(milliseconds: 100), EnginePhase.sendSemanticsUpdate, const Duration(seconds: 2));
+    expect(find.text('Obiettivo: 2.200 kcal · P 140 g'), findsOneWidget);
+    expect(find.text('05/11/2026'), findsOneWidget);
+    await tester.tap(find.text('05/11/2026'));
+    await tester.pumpAndSettle(const Duration(milliseconds: 100), EnginePhase.sendSemanticsUpdate, const Duration(seconds: 2));
+    expect(find.text('Pasta di semola'), findsOneWidget);
 
     await tester.tap(find.text('Questionari'));
     await tester.pumpAndSettle(const Duration(milliseconds: 100), EnginePhase.sendSemanticsUpdate, const Duration(seconds: 2));

@@ -5,6 +5,7 @@ import 'atleti.dart';
 import 'contesto.dart';
 import 'errori.dart';
 import 'modelli.dart';
+import 'cibo.dart';
 import 'pesi.dart';
 import 'schede.dart';
 
@@ -18,7 +19,7 @@ class GestioneEsportazioni {
   final GestioneAllenamenti _allenamenti;
 
   /// Tutti i dati dell'atleta in JSON: anagrafica, schede con le revisioni
-  /// pubblicate, allenamenti, pesi. Le note private del coach ci sono solo con
+  /// pubblicate, allenamenti, pesi, cibo. Le note private del coach ci sono solo con
   /// [notePrivate], perché l'esportazione può finire all'atleta.
   Map<String, Object?> json(String atletaId, {bool notePrivate = false}) {
     final atleta = _atleta(atletaId);
@@ -57,6 +58,13 @@ class GestioneEsportazioni {
         for (final p in GestionePesi(_c).elenco(atletaId))
           {'giorno': formattaData(p.giorno), 'kg': p.kg},
       ],
+      'cibo': {
+        'obiettivo': GestioneCibo(_c).obiettivo(atletaId)?.toJson(),
+        'giornate': [
+          for (final g in GestioneCibo(_c).elenco(atletaId))
+            {'giorno': formattaData(g.giorno), 'voci': [for (final v in g.voci) v.toJson()]},
+        ],
+      },
     };
   }
 

@@ -24,6 +24,9 @@ abstract interface class FonteDatiCoach {
 
   Future<List<PesoGiorno>> pesi(String atletaId);
 
+  /// L'obiettivo del cibo e le giornate prima del giorno [prima].
+  Future<CiboAtleta> cibo(String atletaId, {String? prima});
+
   Future<List<QuestionarioAtleta>> questionari(String atletaId);
 
   Future<void> segnaQuestionarioLetto(String id);

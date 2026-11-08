@@ -3,10 +3,12 @@ import 'dart:convert';
 import 'dart:io';
 import 'dart:typed_data';
 
+import 'cibo.dart';
 import 'limiti.dart';
 import 'messaggi.dart';
 import 'socks5.dart';
 import 'telefono_coach.dart';
+import 'validazione.dart';
 
 /// Risposta d'errore dell'API del coach (§6.4).
 class ErroreApi implements Exception {
@@ -111,6 +113,23 @@ class ClienteApi {
 
   /// `PUT /v1/foto/<id>`: una foto di un questionario, in JPEG (§8.6).
   /// Idempotente: ricaricare la stessa foto non cambia nulla.
+  /// `GET /v1/cibo`: i prodotti del catalogo del coach che contengono le
+  /// parole di [testo] (§10.3). Quelli non conformi si saltano.
+  Future<List<ProdottoCibo>> cercaCibo(String testo) async {
+    final m = _oggetto(await _chiama('GET', '/v1/cibo', parametri: {'q': testo}, autenticata: true));
+    return [
+      if (m['prodotti'] case final List<Object?> prodotti)
+        for (final p in prodotti)
+          if (validaProdottoCibo(p).isEmpty) ProdottoCibo.fromJson(p! as Map<String, Object?>),
+    ];
+  }
+
+  /// `GET /v1/cibo/<codice>`: il prodotto con quel codice a barre, o null.
+  Future<ProdottoCibo?> ciboPerCodice(String codice) async {
+    final p = _oggetto(await _chiama('GET', '/v1/cibo/$codice', autenticata: true))['prodotto'];
+    return p != null && validaProdottoCibo(p).isEmpty ? ProdottoCibo.fromJson(p as Map<String, Object?>) : null;
+  }
+
   Future<void> caricaFoto(String id, Uint8List jpeg) => _chiama(
     'PUT',
     '/v1/foto/$id',
@@ -177,6 +196,17 @@ class ClienteApi {
   Future<List<Map<String, Object?>>> pesiCoach(String atletaId) async => _elementi(
     _oggetto(await _chiama('GET', '/v1/coach/atleti/$atletaId/pesi', autenticata: true)),
     'pesi',
+  );
+
+  /// `GET /v1/coach/atleti/<id>/cibo`: l'obiettivo e le giornate prima del
+  /// giorno [prima], dalla più recente.
+  Future<Map<String, Object?>> ciboCoach(String atletaId, {String? prima}) async => _oggetto(
+    await _chiama(
+      'GET',
+      '/v1/coach/atleti/$atletaId/cibo',
+      parametri: prima == null ? null : {'prima': prima},
+      autenticata: true,
+    ),
   );
 
   Future<void> segnaQuestionarioLettoCoach(String id) =>

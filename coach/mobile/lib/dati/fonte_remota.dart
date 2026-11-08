@@ -121,6 +121,10 @@ class FonteRemota implements FonteDatiCoach {
   });
 
   @override
+  Future<CiboAtleta> cibo(String atletaId, {String? prima}) =>
+      _chiama((api) async => CiboAtleta.daJson(await api.ciboCoach(atletaId, prima: prima)));
+
+  @override
   Future<List<QuestionarioAtleta>> questionari(String atletaId) => _chiama((api) async {
     final pagina = await api.questionariCoach(atletaId);
     return [for (final q in pagina.elementi) QuestionarioAtleta.daJson(q)];

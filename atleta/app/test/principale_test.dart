@@ -30,12 +30,12 @@ void main() {
     'domande': const <Object?>[],
   };
 
-  testWidgets('con il coach ci sono subito Allenamento, Chat e Peso', (tester) async {
+  testWidgets('con il coach ci sono subito Allenamento, Chat, Cibo e Peso', (tester) async {
     final coach = telefono.aggiungiCoach('Marco Bianchi');
     telefono.aggiungiScheda(coach, schedaForza());
     await apri(tester);
 
-    expect(find.byType(NavigationDestination), findsNWidgets(3));
+    expect(find.byType(NavigationDestination), findsNWidgets(4));
     expect(find.text('Marco Bianchi'), findsOneWidget);
     expect(find.text('Forza – blocco 2'), findsOneWidget);
     expect(find.text('Allenamento libero'), findsOneWidget);
@@ -44,6 +44,10 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Peso di oggi'), findsOneWidget);
     expect(find.text('Allenamento libero'), findsNothing);
+
+    await tester.tap(find.text('Cibo'));
+    await tester.pumpAndSettle();
+    expect(find.text('Colazione'), findsOneWidget);
 
     await tester.tap(find.text('Chat'));
     await tester.pumpAndSettle();

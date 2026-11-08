@@ -248,6 +248,40 @@ class AllenamentoAtleta {
   }
 }
 
+/// L'obiettivo del cibo e le giornate dell'atleta (§8.8), dalla più recente.
+class CiboAtleta {
+  const CiboAtleta({required this.obiettivo, required this.giornate, required this.altri});
+
+  /// Le giornate non conformi al protocollo si saltano: meglio mostrare le
+  /// altre che niente.
+  factory CiboAtleta.daJson(Map<String, Object?> m) => CiboAtleta(
+    obiettivo: switch (m['obiettivo']) {
+      final Map<String, Object?> o when validaObiettivoCibo(o).isEmpty => ObiettivoCibo.fromJson(o),
+      _ => null,
+    },
+    giornate: [
+      if (m['giornate'] case final List<Object?> giornate)
+        for (final g in giornate)
+          if (g case {'giorno': final String giorno, 'voci': final List<Object?> voci}
+              when validaGiornata({
+                'id': '00000000-0000-4000-8000-000000000000',
+                'rev': 1,
+                'eliminato': false,
+                'giorno': giorno,
+                'voci': voci,
+              }).isEmpty)
+            GiornataCibo.fromJson({'giorno': giorno, 'voci': voci}),
+    ],
+    altri: m['altri'] == true,
+  );
+
+  final ObiettivoCibo? obiettivo;
+  final List<GiornataCibo> giornate;
+
+  /// Ci sono altre giornate più vecchie.
+  final bool altri;
+}
+
 class PesoGiorno {
   const PesoGiorno(this.giorno, this.kg);
 

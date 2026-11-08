@@ -24,7 +24,7 @@ sealed class Cursore {
       final dopo = parti[5].isEmpty ? null : parti[5];
       if (istantanea != null &&
           istantanea >= 0 &&
-          fase != null && fase >= 0 && fase <= 4 &&
+          fase != null && fase >= 0 && fase <= 5 &&
           (dopo == null || uuidValido(dopo))) {
         return CursoreCompleto(parti[2], istantanea, fase, dopo);
       }
@@ -51,7 +51,7 @@ class CursoreCompleto extends Cursore {
   final int istantanea;
 
   /// 0 mentre invia le schede, 1 i log, 2 i pesi, 3 i questionari, 4 la
-  /// chat.
+  /// chat, 5 le giornate del cibo.
   final int fase;
 
   /// Ultimo id già inviato nella fase corrente.

@@ -13,7 +13,7 @@ import 'piattaforma/cassaforte_sicura.dart';
 import 'piattaforma/qr_di_prova.dart';
 
 /// Versione inviata al programma del coach: la stessa del pubspec.
-const versioneApp = '1.5.0';
+const versioneApp = '1.6.0';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

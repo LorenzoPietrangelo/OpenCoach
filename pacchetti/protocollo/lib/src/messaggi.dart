@@ -1,6 +1,8 @@
 import 'casuale.dart';
 import 'chiavi.dart';
+import 'cibo.dart';
 import 'invito.dart';
+import 'validazione.dart';
 import 'versione.dart';
 
 // Corpi delle richieste e delle risposte dell'API (§6.3). Ogni `fromJson`
@@ -207,6 +209,8 @@ class RichiestaSync {
     this.pesiCondivisi,
     this.risposte = const [],
     this.messaggi = const [],
+    this.giornate = const [],
+    this.ciboCondiviso,
   });
 
   factory RichiestaSync.fromJson(Object? json) {
@@ -225,6 +229,8 @@ class RichiestaSync {
       pesiCondivisi: _campo<bool?>(m, 'pesi_condivisi'),
       risposte: m.containsKey('risposte') ? _lista<Object?>(m, 'risposte') : const [],
       messaggi: m.containsKey('messaggi') ? _lista<Object?>(m, 'messaggi') : const [],
+      giornate: m.containsKey('giornate') ? _lista<Object?>(m, 'giornate') : const [],
+      ciboCondiviso: _campo<bool?>(m, 'cibo_condiviso'),
     );
   }
 
@@ -246,6 +252,13 @@ class RichiestaSync {
   /// Messaggi della chat scritti dall'atleta (§8.7).
   final List<Object?> messaggi;
 
+  /// Giornate del diario del cibo (§8.8), validate una per una come i pesi.
+  final List<Object?> giornate;
+
+  /// Falso se l'atleta non condivide il cibo con questo coach: il coach
+  /// cancella le giornate che ha. Null da un'app che non conosce il cibo.
+  final bool? ciboCondiviso;
+
   Map<String, Object?> toJson() => {
     'epoca': epoca,
     'cursore': cursore,
@@ -255,6 +268,8 @@ class RichiestaSync {
     'pesi_condivisi': ?pesiCondivisi,
     'risposte': risposte,
     'messaggi': messaggi,
+    'giornate': giornate,
+    'cibo_condiviso': ?ciboCondiviso,
   };
 }
 
@@ -354,10 +369,18 @@ class RispostaSync {
     this.messaggiAccettati,
     this.messaggiRifiutati = const [],
     this.messaggi = const [],
+    this.giornateAccettate,
+    this.giornate = const [],
+    this.conObiettivoCibo = false,
+    this.obiettivoCibo,
   });
 
   factory RispostaSync.fromJson(Object? json) {
     final m = _oggetto(json);
+    final obiettivo = m['obiettivo_cibo'];
+    if (obiettivo != null && validaObiettivoCibo(obiettivo).isNotEmpty) {
+      throw const FormatException('Campo "obiettivo_cibo" non valido');
+    }
     return RispostaSync(
       epoca: _campo<String>(m, 'epoca'),
       completo: _campo<bool>(m, 'completo'),
@@ -402,6 +425,16 @@ class RispostaSync {
           ? _lista<Object?>(m, 'messaggi_rifiutati').map(LogRifiutato.fromJson).toList()
           : const [],
       messaggi: m.containsKey('messaggi') ? _lista<Map<String, Object?>>(m, 'messaggi') : const [],
+      giornateAccettate: m.containsKey('giornate_accettate')
+          ? _lista<Object?>(m, 'giornate_accettate').map(LogConfermato.fromJson).toList()
+          : null,
+      giornate: m.containsKey('giornate')
+          ? _lista<Object?>(m, 'giornate').map(LogConfermato.fromJson).toList()
+          : const [],
+      conObiettivoCibo: m.containsKey('obiettivo_cibo'),
+      obiettivoCibo: obiettivo == null
+          ? null
+          : ObiettivoCibo.fromJson(obiettivo as Map<String, Object?>),
     );
   }
 
@@ -447,6 +480,22 @@ class RispostaSync {
   /// nella completa tutti, anche quelli dell'atleta (§8.7).
   final List<Map<String, Object?>> messaggi;
 
+  /// Giornate del cibo salvate, con la `rev`. Null da un programma che non
+  /// conosce il cibo: l'app smette di mandargliele.
+  final List<LogConfermato>? giornateAccettate;
+
+  /// Solo nello stato completo: `id` e `rev` di tutte le giornate che il
+  /// coach ha dell'atleta (§7.3).
+  final List<LogConfermato> giornate;
+
+  /// Vero se la risposta contiene `obiettivo_cibo`: nella completa c'è
+  /// sempre, nell'incrementale solo se è cambiato. Senza il campo l'app tiene
+  /// l'obiettivo che ha.
+  final bool conObiettivoCibo;
+
+  /// L'obiettivo del coach; null, con [conObiettivoCibo], se l'ha tolto.
+  final ObiettivoCibo? obiettivoCibo;
+
   Map<String, Object?> toJson() => {
     'epoca': epoca,
     'completo': completo,
@@ -467,5 +516,9 @@ class RispostaSync {
     'messaggi_accettati': ?messaggiAccettati,
     'messaggi_rifiutati': [for (final r in messaggiRifiutati) r.toJson()],
     'messaggi': messaggi,
+    if (giornateAccettate case final accettate?)
+      'giornate_accettate': [for (final g in accettate) g.toJson()],
+    'giornate': [for (final g in giornate) g.toJson()],
+    if (conObiettivoCibo) 'obiettivo_cibo': obiettivoCibo?.toJson(),
   };
 }

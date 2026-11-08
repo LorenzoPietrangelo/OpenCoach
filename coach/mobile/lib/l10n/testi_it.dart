@@ -190,6 +190,36 @@ class TestiIt extends Testi {
   String get sezionePeso => 'Peso';
 
   @override
+  String get sezioneCibo => 'Cibo';
+
+  @override
+  String get ciboVuoto => 'L\'atleta non condivide con te cosa mangia.';
+
+  @override
+  String ciboObiettivo(String valori) {
+    return 'Obiettivo: $valori';
+  }
+
+  @override
+  String get ciboSenzaObiettivo =>
+      'Nessun obiettivo: lo fissi dal programma sul PC.';
+
+  @override
+  String get ciboAltri => 'Altri giorni';
+
+  @override
+  String get pastoColazione => 'Colazione';
+
+  @override
+  String get pastoPranzo => 'Pranzo';
+
+  @override
+  String get pastoCena => 'Cena';
+
+  @override
+  String get pastoSpuntini => 'Spuntini';
+
+  @override
   String get sezioneQuestionari => 'Questionari';
 
   @override

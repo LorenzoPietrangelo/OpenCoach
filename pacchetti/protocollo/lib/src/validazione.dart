@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'casuale.dart';
+import 'cibo.dart';
 import 'date.dart';
 
 /// Dimensione in byte della codifica JSON UTF-8 di [valore].
@@ -35,6 +36,109 @@ List<String> validaPeso(Object? peso) {
   v.data(m, 'giorno', '', obbligatorio: true);
   v.numero(m, 'kg', '', obbligatorio: true, minimo: pesoMinimoKg, massimo: pesoMassimoKg);
   v.dataOra(m, 'modificato_il', '');
+  return v.errori;
+}
+
+/// Problemi di una giornata del diario del cibo inviata dall'app (§8.8).
+/// Lista vuota se è valida.
+List<String> validaGiornata(Object? giornata) {
+  final v = _Verifica();
+  final m = v.oggetto(giornata, 'giornata');
+  if (m == null) return v.errori;
+  v.uuid(m, 'id', '', obbligatorio: true);
+  v.intero(m, 'rev', '', obbligatorio: true, minimo: 1, massimo: 0x7fffffff);
+  v.booleano(m, 'eliminato', '', obbligatorio: true);
+  if (m['eliminato'] == true) return v.errori;
+  v.data(m, 'giorno', '', obbligatorio: true);
+  v.dataOra(m, 'modificato_il', '');
+  final voci = v.lista(
+    m,
+    'voci',
+    '',
+    obbligatoria: true,
+    minimo: 1,
+    massimo: LimitiCibo.vociPerGiornata,
+  );
+  final id = <Object?>{};
+  for (final (i, elemento) in (voci ?? const <Object?>[]).indexed) {
+    final pv = 'voci[$i]';
+    final voce = v.oggetto(elemento, pv);
+    if (voce == null) continue;
+    v.uuid(voce, 'id', pv, obbligatorio: true);
+    if (!id.add(voce['id'])) v.errore('$pv.id', 'id ripetuto');
+    v.scelta(voce, 'pasto', pv, pastiCibo.toSet(), obbligatorio: true);
+    v.testo(voce, 'nome', pv, obbligatorio: true, nonVuoto: true, massimo: LimitiCibo.nomeMassimo);
+    v.testo(voce, 'marca', pv, massimo: LimitiCibo.marcaMassima);
+    final codice = voce['codice'];
+    if (codice != null && (codice is! String || !RegExp(r'^\d{8,14}$').hasMatch(codice))) {
+      v.errore('$pv.codice', 'deve avere da 8 a 14 cifre');
+    }
+    v.scelta(voce, 'fonte', pv, FonteCibo.tutte, obbligatorio: true);
+    v.numero(
+      voce,
+      'grammi',
+      pv,
+      obbligatorio: true,
+      minimo: LimitiCibo.grammiMinimi,
+      massimo: LimitiCibo.grammiMassimi,
+    );
+    final pp = '$pv.per_100g';
+    if (voce['per_100g'] == null) {
+      v.errore(pp, 'obbligatorio');
+      continue;
+    }
+    final valori = v.oggetto(voce['per_100g'], pp);
+    if (valori == null) continue;
+    v.numero(valori, 'kcal', pp, obbligatorio: true, minimo: 0, massimo: LimitiCibo.kcalPer100gMassime);
+    for (final macro in const ['proteine', 'carboidrati', 'grassi']) {
+      v.numero(valori, macro, pp, minimo: 0, massimo: 100);
+    }
+  }
+  return v.errori;
+}
+
+/// Problemi di un prodotto del catalogo dei cibi come lo manda il programma
+/// del coach (§10.3).
+List<String> validaProdottoCibo(Object? prodotto) {
+  final v = _Verifica();
+  final m = v.oggetto(prodotto, 'prodotto');
+  if (m == null) return v.errori;
+  final codice = m['codice'];
+  if (codice is! String || !RegExp(r'^\d{8,14}$').hasMatch(codice)) {
+    v.errore('codice', 'deve avere da 8 a 14 cifre');
+  }
+  v.testo(m, 'nome', '', obbligatorio: true, nonVuoto: true, massimo: LimitiCibo.nomeMassimo);
+  v.testo(m, 'marca', '', massimo: LimitiCibo.marcaMassima);
+  v.numero(m, 'porzione_g', '', minimo: LimitiCibo.grammiMinimi, massimo: LimitiCibo.grammiMassimi);
+  if (m['per_100g'] == null) {
+    v.errore('per_100g', 'obbligatorio');
+    return v.errori;
+  }
+  final valori = v.oggetto(m['per_100g'], 'per_100g');
+  if (valori == null) return v.errori;
+  v.numero(valori, 'kcal', 'per_100g', obbligatorio: true, minimo: 0, massimo: LimitiCibo.kcalPer100gMassime);
+  for (final macro in const ['proteine', 'carboidrati', 'grassi']) {
+    v.numero(valori, macro, 'per_100g', minimo: 0, massimo: 100);
+  }
+  return v.errori;
+}
+
+/// Problemi dell'obiettivo del cibo fissato dal coach (§8.8).
+List<String> validaObiettivoCibo(Object? obiettivo) {
+  final v = _Verifica();
+  final m = v.oggetto(obiettivo, 'obiettivo_cibo');
+  if (m == null) return v.errori;
+  v.intero(
+    m,
+    'kcal',
+    '',
+    obbligatorio: true,
+    minimo: LimitiCibo.kcalObiettivoMinime,
+    massimo: LimitiCibo.kcalObiettivoMassime,
+  );
+  for (final macro in const ['proteine_g', 'carboidrati_g', 'grassi_g']) {
+    v.intero(m, macro, '', minimo: 0, massimo: LimitiCibo.grammiObiettivoMassimi);
+  }
   return v.errori;
 }
 

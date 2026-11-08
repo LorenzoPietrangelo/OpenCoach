@@ -4,7 +4,9 @@ library;
 
 export 'src/allenamenti.dart' show EsercizioStorico, GestioneAllenamenti, MisuraEsercizio, SettimanaStorico, StoricoAtleta, rirDaTesto, stima1Rm;
 export 'src/archivio.dart' show Archivio, Impostazioni;
+export 'src/catalogo_cibo.dart';
 export 'src/chat.dart' show GestioneMessaggi;
+export 'src/cibo.dart' show GestioneCibo;
 export 'src/atleti.dart' show GestioneAtleti;
 export 'src/backup.dart';
 export 'src/dispositivi.dart' show GestioneDispositivi;

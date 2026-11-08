@@ -2,7 +2,7 @@ name: coach_mobile
 description: "App del coach di Open Coach (§16): chat e dati degli atleti dal telefono."
 publish_to: 'none'
 # La versione che l'app dichiara al programma del coach, la stessa del rilascio.
-version: 1.5.0+7
+version: 1.6.0+8
 
 environment:
   sdk: ^3.11.5

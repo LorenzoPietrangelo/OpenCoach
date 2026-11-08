@@ -393,6 +393,60 @@ abstract class Testi {
   /// **'Peso'**
   String get sezionePeso;
 
+  /// No description provided for @sezioneCibo.
+  ///
+  /// In it, this message translates to:
+  /// **'Cibo'**
+  String get sezioneCibo;
+
+  /// No description provided for @ciboVuoto.
+  ///
+  /// In it, this message translates to:
+  /// **'L\'atleta non condivide con te cosa mangia.'**
+  String get ciboVuoto;
+
+  /// No description provided for @ciboObiettivo.
+  ///
+  /// In it, this message translates to:
+  /// **'Obiettivo: {valori}'**
+  String ciboObiettivo(String valori);
+
+  /// No description provided for @ciboSenzaObiettivo.
+  ///
+  /// In it, this message translates to:
+  /// **'Nessun obiettivo: lo fissi dal programma sul PC.'**
+  String get ciboSenzaObiettivo;
+
+  /// No description provided for @ciboAltri.
+  ///
+  /// In it, this message translates to:
+  /// **'Altri giorni'**
+  String get ciboAltri;
+
+  /// No description provided for @pastoColazione.
+  ///
+  /// In it, this message translates to:
+  /// **'Colazione'**
+  String get pastoColazione;
+
+  /// No description provided for @pastoPranzo.
+  ///
+  /// In it, this message translates to:
+  /// **'Pranzo'**
+  String get pastoPranzo;
+
+  /// No description provided for @pastoCena.
+  ///
+  /// In it, this message translates to:
+  /// **'Cena'**
+  String get pastoCena;
+
+  /// No description provided for @pastoSpuntini.
+  ///
+  /// In it, this message translates to:
+  /// **'Spuntini'**
+  String get pastoSpuntini;
+
   /// No description provided for @sezioneQuestionari.
   ///
   /// In it, this message translates to:

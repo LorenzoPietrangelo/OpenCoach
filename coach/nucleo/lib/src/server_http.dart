@@ -7,6 +7,7 @@ import 'dart:typed_data';
 import 'package:protocollo/protocollo.dart';
 
 import 'errori.dart';
+import 'catalogo_cibo.dart';
 import 'limitatore.dart';
 import 'modelli.dart';
 import 'nucleo.dart';
@@ -20,10 +21,14 @@ const _percorsi = {
   '/v1/sync',
   '/v1/attendi',
   '/v1/dispositivo',
+  '/v1/cibo',
 };
 
 /// `PUT /v1/foto/<id>` (§8.6).
 const _prefissoFoto = '/v1/foto/';
+
+/// `GET /v1/cibo/<codice>` (§10.3).
+final _percorsoCibo = RegExp(r'^/v1/cibo/(\d{8,14})$');
 
 /// `PUT /v1/video/<id>/<parte>` (§8.7).
 final _percorsoVideo = RegExp(r'^/v1/video/([0-9a-f-]{36})/(\d{1,2})$');
@@ -207,6 +212,20 @@ class ServerCoach {
         _nucleo.messaggi.salvaParteVideo(dispositivo.atletaId, trovato[1]!, int.parse(trovato[2]!), dati);
         await _rispondi(richiesta, 204, null);
 
+      case ('GET', '/v1/cibo'):
+        _autentica(richiesta);
+        await _leggiCorpo(richiesta);
+        final prodotti = _catalogo().cerca(richiesta.uri.queryParameters['q'] ?? '');
+        await _rispondi(richiesta, 200, {
+          'prodotti': [for (final p in prodotti) p.toJson()],
+        });
+
+      case ('GET', final percorso) when _percorsoCibo.hasMatch(percorso):
+        _autentica(richiesta);
+        await _leggiCorpo(richiesta);
+        final prodotto = _catalogo().perCodice(_percorsoCibo.firstMatch(percorso)![1]!);
+        await _rispondi(richiesta, 200, {'prodotto': prodotto?.toJson()});
+
       case ('DELETE', '/v1/dispositivo'):
         final dispositivo = _autentica(richiesta);
         await _leggiCorpo(richiesta);
@@ -254,6 +273,10 @@ class ServerCoach {
       }
     }
   }
+
+  /// Il catalogo dei cibi (§10.3), o 404 se il programma non ce l'ha.
+  CatalogoCibo _catalogo() =>
+      _nucleo.catalogoCibo ?? (throw const ErroreHttp(404, CodiceErrore.catalogoAssente));
 
   Dispositivo _autentica(HttpRequest richiesta) {
     final dispositivo = _nucleo.dispositivi.autentica(

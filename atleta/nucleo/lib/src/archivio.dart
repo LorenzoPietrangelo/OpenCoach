@@ -175,4 +175,54 @@ CREATE INDEX messaggi_ordine ON messaggi (coach_id, ordine);
 
 ALTER TABLE coach ADD COLUMN chat_supportata INTEGER;
 ''',
+  '''
+CREATE TABLE giornate (
+  giorno TEXT PRIMARY KEY,
+  id TEXT NOT NULL UNIQUE,
+  rev INTEGER NOT NULL,
+  eliminato INTEGER NOT NULL,
+  voci TEXT,
+  modificato_il TEXT NOT NULL
+);
+
+CREATE TABLE giornate_inviate (
+  coach_id INTEGER NOT NULL REFERENCES coach (id) ON DELETE CASCADE,
+  giornata_id TEXT NOT NULL,
+  rev INTEGER NOT NULL,
+  PRIMARY KEY (coach_id, giornata_id)
+);
+
+ALTER TABLE coach ADD COLUMN condividi_cibo INTEGER NOT NULL DEFAULT 1;
+ALTER TABLE coach ADD COLUMN cibo_supportato INTEGER;
+ALTER TABLE coach ADD COLUMN obiettivo_cibo TEXT;
+''',
+  '''
+CREATE TABLE alimenti (
+  chiave TEXT PRIMARY KEY,
+  nome TEXT NOT NULL,
+  marca TEXT,
+  codice TEXT,
+  fonte TEXT NOT NULL,
+  per_100g TEXT NOT NULL,
+  porzione REAL,
+  uso INTEGER NOT NULL
+);
+CREATE INDEX alimenti_codice ON alimenti (codice);
+CREATE INDEX alimenti_uso ON alimenti (uso);
+
+INSERT OR REPLACE INTO alimenti
+SELECT
+  COALESCE(json_extract(v.value, '\$.codice'),
+    'n:' || lower(json_extract(v.value, '\$.nome')) || '|' || lower(COALESCE(json_extract(v.value, '\$.marca'), ''))),
+  json_extract(v.value, '\$.nome'),
+  json_extract(v.value, '\$.marca'),
+  json_extract(v.value, '\$.codice'),
+  json_extract(v.value, '\$.fonte'),
+  json(json_extract(v.value, '\$.per_100g')),
+  json_extract(v.value, '\$.grammi'),
+  ROW_NUMBER() OVER (ORDER BY g.giorno, v.key)
+FROM giornate g, json_each(g.voci) v
+WHERE g.eliminato = 0
+ORDER BY g.giorno, v.key;
+''',
 ];

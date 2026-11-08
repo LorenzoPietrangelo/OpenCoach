@@ -13,6 +13,7 @@ export 'src/abbinamento.dart'
 export 'src/archivio.dart';
 export 'src/cassaforte.dart';
 export 'src/chat.dart' show ChatCoach, MessaggioChat, StatoMessaggio, cancellaMetadatiMp4, compattaMp4;
+export 'src/cibo.dart' show AlimentoCibo, RegistroCibo;
 export 'src/collegamenti.dart';
 export 'src/diario.dart';
 export 'src/errori.dart';
@@ -29,6 +30,7 @@ export 'src/pesi.dart' show PesoDelGiorno, RegistroPesi;
 export 'src/pianificatore.dart';
 export 'src/problemi.dart';
 export 'src/questionari.dart';
+export 'src/ricerca_cibo.dart';
 export 'src/schede.dart';
 export 'src/sincronizzazione.dart';
 export 'package:trasporto_tor/trasporto_tor.dart' hide Guasto, TipoGuasto, classifica;

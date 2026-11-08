@@ -74,6 +74,8 @@ class CoachCollegato {
     this.condividePesi = true,
     this.pesiSupportati,
     this.chatSupportata,
+    this.condivideCibo = true,
+    this.ciboSupportato,
   });
 
   factory CoachCollegato.daRiga(Row r) => CoachCollegato(
@@ -102,6 +104,11 @@ class CoachCollegato {
       _ => null,
     },
     chatSupportata: switch (r['chat_supportata']) {
+      final int valore => valore == 1,
+      _ => null,
+    },
+    condivideCibo: r['condividi_cibo'] == 1,
+    ciboSupportato: switch (r['cibo_supportato']) {
       final int valore => valore == 1,
       _ => null,
     },
@@ -148,6 +155,12 @@ class CoachCollegato {
   /// Se il programma del coach riceve i messaggi della chat (§8.7), come
   /// [pesiSupportati].
   final bool? chatSupportata;
+
+  /// L'atleta condivide il diario del cibo con questo coach (§8.8).
+  final bool condivideCibo;
+
+  /// Se il programma del coach riceve il cibo, come [pesiSupportati].
+  final bool? ciboSupportato;
 }
 
 /// Scheda ricevuta da un coach, in sola lettura (§8.1).

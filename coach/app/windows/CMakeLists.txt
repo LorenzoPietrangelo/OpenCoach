@@ -116,3 +116,12 @@ if(EXISTS "${OPENCOACH_TOR_DIR}")
     DESTINATION "${CMAKE_INSTALL_PREFIX}"
     COMPONENT Runtime)
 endif()
+
+# Open Coach: il catalogo dei cibi (§10.3), generato da
+# coach/nucleo/bin/genera_catalogo_cibo.dart in windows/cibo.
+set(OPENCOACH_CIBO_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cibo")
+if(EXISTS "${OPENCOACH_CIBO_DIR}")
+  install(DIRECTORY "${OPENCOACH_CIBO_DIR}"
+    DESTINATION "${CMAKE_INSTALL_PREFIX}"
+    COMPONENT Runtime)
+endif()

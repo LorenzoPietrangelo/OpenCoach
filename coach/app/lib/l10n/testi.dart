@@ -795,6 +795,138 @@ abstract class Testi {
   /// **'Tutti i pesi'**
   String get tuttiIPesi;
 
+  /// No description provided for @schedaCibo.
+  ///
+  /// In it, this message translates to:
+  /// **'Cibo'**
+  String get schedaCibo;
+
+  /// No description provided for @nessunCibo.
+  ///
+  /// In it, this message translates to:
+  /// **'L\'atleta non ti ha ancora condiviso cosa mangia. Lo registra nell\'app, nella sezione Cibo, dalla versione 1.6.0.'**
+  String get nessunCibo;
+
+  /// No description provided for @obiettivoCibo.
+  ///
+  /// In it, this message translates to:
+  /// **'Obiettivo giornaliero'**
+  String get obiettivoCibo;
+
+  /// No description provided for @nessunObiettivoCibo.
+  ///
+  /// In it, this message translates to:
+  /// **'Nessun obiettivo. Puoi fissare le calorie e, se vuoi, i macronutrienti: l\'atleta li vede nell\'app.'**
+  String get nessunObiettivoCibo;
+
+  /// No description provided for @fissaObiettivo.
+  ///
+  /// In it, this message translates to:
+  /// **'Fissa l\'obiettivo'**
+  String get fissaObiettivo;
+
+  /// No description provided for @modificaObiettivo.
+  ///
+  /// In it, this message translates to:
+  /// **'Modifica'**
+  String get modificaObiettivo;
+
+  /// No description provided for @togliObiettivo.
+  ///
+  /// In it, this message translates to:
+  /// **'Togli l\'obiettivo'**
+  String get togliObiettivo;
+
+  /// No description provided for @obiettivoSpiegazione.
+  ///
+  /// In it, this message translates to:
+  /// **'Un obiettivo indicativo che l\'atleta vede accanto a quello che mangia. Le calorie sono obbligatorie, i macronutrienti no.'**
+  String get obiettivoSpiegazione;
+
+  /// No description provided for @obiettivoNonValido.
+  ///
+  /// In it, this message translates to:
+  /// **'Le calorie vanno da 500 a 8000, i grammi da 0 a 1000.'**
+  String get obiettivoNonValido;
+
+  /// No description provided for @calorie.
+  ///
+  /// In it, this message translates to:
+  /// **'Calorie'**
+  String get calorie;
+
+  /// No description provided for @proteine.
+  ///
+  /// In it, this message translates to:
+  /// **'Proteine'**
+  String get proteine;
+
+  /// No description provided for @carboidrati.
+  ///
+  /// In it, this message translates to:
+  /// **'Carboidrati'**
+  String get carboidrati;
+
+  /// No description provided for @grassi.
+  ///
+  /// In it, this message translates to:
+  /// **'Grassi'**
+  String get grassi;
+
+  /// No description provided for @mediaCiboSettimana.
+  ///
+  /// In it, this message translates to:
+  /// **'Media degli ultimi 7 giorni registrati'**
+  String get mediaCiboSettimana;
+
+  /// No description provided for @legendaGraficoCibo.
+  ///
+  /// In it, this message translates to:
+  /// **'Le calorie di ogni giorno delle ultime 4 settimane; la linea è l\'obiettivo.'**
+  String get legendaGraficoCibo;
+
+  /// No description provided for @giorniCibo.
+  ///
+  /// In it, this message translates to:
+  /// **'Giorni'**
+  String get giorniCibo;
+
+  /// No description provided for @pastoColazione.
+  ///
+  /// In it, this message translates to:
+  /// **'Colazione'**
+  String get pastoColazione;
+
+  /// No description provided for @pastoPranzo.
+  ///
+  /// In it, this message translates to:
+  /// **'Pranzo'**
+  String get pastoPranzo;
+
+  /// No description provided for @pastoCena.
+  ///
+  /// In it, this message translates to:
+  /// **'Cena'**
+  String get pastoCena;
+
+  /// No description provided for @pastoSpuntini.
+  ///
+  /// In it, this message translates to:
+  /// **'Spuntini'**
+  String get pastoSpuntini;
+
+  /// No description provided for @fonteOpenFoodFacts.
+  ///
+  /// In it, this message translates to:
+  /// **'Open Food Facts'**
+  String get fonteOpenFoodFacts;
+
+  /// No description provided for @fonteAtleta.
+  ///
+  /// In it, this message translates to:
+  /// **'scritto dall\'atleta'**
+  String get fonteAtleta;
+
   /// No description provided for @nuovoQuestionario.
   ///
   /// In it, this message translates to:

@@ -7,7 +7,9 @@ import 'abbinamento.dart';
 import 'allenamenti.dart';
 import 'archivio.dart';
 import 'atleti.dart';
+import 'catalogo_cibo.dart';
 import 'chat.dart';
+import 'cibo.dart';
 import 'contesto.dart';
 import 'dispositivi.dart';
 import 'errori.dart';
@@ -61,6 +63,11 @@ class NucleoCoach {
   late final schede = GestioneSchede(contesto);
   late final libreria = GestioneLibreria(contesto, schede);
   late final pesi = GestionePesi(contesto);
+  late final cibo = GestioneCibo(contesto);
+
+  /// Il catalogo dei cibi accanto al programma (§10.3); null se manca, e
+  /// allora `GET /v1/cibo` risponde 404 `catalogo_assente`.
+  CatalogoCibo? catalogoCibo;
   late final questionari = GestioneQuestionari(contesto);
   late final allenamenti = GestioneAllenamenti(contesto, schede);
   late final abbinamento = ServizioAbbinamento(contesto);
@@ -71,6 +78,7 @@ class NucleoCoach {
     messaggi: messaggi,
     allenamenti: allenamenti,
     pesi: pesi,
+    cibo: cibo,
     questionari: questionari,
     schede: schede,
   );

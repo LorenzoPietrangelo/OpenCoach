@@ -6,6 +6,7 @@ import 'package:path/path.dart' as p;
 
 import 'archivio.dart';
 import 'backup.dart';
+import 'catalogo_cibo.dart';
 import 'errori.dart';
 import 'identita.dart';
 import 'nucleo.dart';
@@ -48,6 +49,7 @@ class ProgrammaCoach {
     required String cartellaDati,
     required Portachiavi portachiavi,
     String? eseguibileTor,
+    String? catalogoCibo,
     String versioneProgramma = '1.0.0',
     void Function(String)? registra,
     bool registroSuFile = true,
@@ -80,6 +82,18 @@ class ProgrammaCoach {
         versioneProgramma: versioneProgramma,
         cartellaVideo: p.join(cartellaDati, 'video'),
       );
+      // Il catalogo dei cibi accanto al programma (§10.3): senza, gli atleti
+      // scrivono gli alimenti a mano.
+      if (catalogoCibo != null) {
+        try {
+          final catalogo = nucleo.catalogoCibo = CatalogoCibo.apri(catalogoCibo);
+          scrivi('Catalogo dei cibi: ${catalogo.prodotti} prodotti, generato il ${catalogo.generatoIl}');
+        } on Object catch (e) {
+          scrivi('Catalogo dei cibi non leggibile: $e');
+        }
+      } else {
+        scrivi('Catalogo dei cibi assente');
+      }
       final server = ServerCoach(nucleo, registra: scrivi);
       await server.avvia();
       late final ProgrammaCoach programma;
@@ -290,6 +304,7 @@ class ProgrammaCoach {
     await _tor?.ferma();
     await _server.chiudi();
     await nucleo.chiudi();
+    nucleo.catalogoCibo?.chiudi();
     _archivio.chiudi();
     _registra('Programma chiuso');
     await _statoTor.close();

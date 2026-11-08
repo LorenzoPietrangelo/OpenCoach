@@ -14,7 +14,7 @@ import 'schermate/principale.dart';
 import 'servizi.dart';
 
 /// Versione del programma, la stessa del pubspec.
-const versioneProgramma = '1.5.0';
+const versioneProgramma = '1.6.0';
 
 Future<void> main(List<String> argomenti) async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -55,6 +55,7 @@ class _Avvio {
         cartellaDati: cartellaDati,
         portachiavi: portachiavi,
         eseguibileTor: tor,
+        catalogoCibo: trovaCatalogoCibo(),
         versioneProgramma: versioneProgramma,
         registra: debugPrint,
       );

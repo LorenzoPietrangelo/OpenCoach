@@ -10,6 +10,7 @@ import 'package:sqlite3/sqlite3.dart';
 import 'chat.dart';
 import 'contesto.dart';
 import 'modelli.dart';
+import 'cibo.dart';
 import 'pesi.dart';
 import 'problemi.dart';
 import 'schede.dart';
@@ -188,6 +189,29 @@ class MotoreSync {
     }
   }
 
+  /// Una chiamata all'API del coach fuori dalla sync, per esempio la ricerca
+  /// nel catalogo dei cibi (§10.3), con la stessa chiave e lo stesso token.
+  /// Lancia [TorNonParte], [ErroreApi] o gli errori di rete e di Tor.
+  Future<T> chiamaCoach<T>(int coachId, Future<T> Function(ClienteApi api) chiamata) async {
+    final coach = _c.coach(coachId);
+    if (coach == null || coach.stato != StatoCollegamento.attivo) {
+      throw StateError('Il coach non è collegato');
+    }
+    if (!await _c.rete.disponibile()) throw const TorNonParte();
+    await _c.tor.avvia();
+    final credenziali = await _c.credenziali(coachId);
+    if (credenziali == null || credenziali.dispositivoId != coach.dispositivoId) {
+      throw StateError('Mancano le credenziali del coach');
+    }
+    await _c.assicuraChiave(coach.indirizzo, credenziali.chiave);
+    final canale = _Canale(_c, coach.indirizzo, credenziali.token);
+    try {
+      return await chiamata(canale.api);
+    } finally {
+      canale.chiudi();
+    }
+  }
+
   /// Chiude subito l'attesa di novità in corso con [coachId], se c'è.
   void annullaAttesa(int coachId) {
     _turniAttesa[coachId] = (_turniAttesa[coachId] ?? 0) + 1;
@@ -355,6 +379,10 @@ class MotoreSync {
       final pesi = condivide && _pesiSupportati(coach.id) != false
           ? pesiInCoda(_db, coach.id)
           : const <Map<String, Object?>>[];
+      final condivideCibo = _condivideCibo(coach.id);
+      final giornate = condivideCibo && _ciboSupportato(coach.id) != false
+          ? giornateInCoda(_db, coach.id, byte: budgetRichiesta ~/ 2)
+          : const <Map<String, Object?>>[];
       // Le risposte ai questionari partono dopo le loro foto (§8.6).
       await _caricaFoto(coach.id, canale);
       final risposte = _risposteInCoda(coach.id);
@@ -378,6 +406,8 @@ class MotoreSync {
           pesiCondivisi: condivide,
           risposte: risposte,
           messaggi: messaggi,
+          giornate: giornate,
+          ciboCondiviso: condivideCibo,
         );
       } on ErroreApi catch (e) {
         if (e.stato != 413 || lotto.isEmpty) rethrow;
@@ -395,6 +425,7 @@ class MotoreSync {
       var progressi = _c.archivio.transazione(
         () =>
             _applicaEsitiPesi(coach.id, prima, pesi) +
+            _applicaEsitiGiornate(coach.id, prima, giornate) +
             _applicaEsitiRisposte(coach.id, prima, risposte) +
             _applicaEsitiMessaggi(coach.id, prima, messaggi),
       );
@@ -443,7 +474,11 @@ class MotoreSync {
       // Punto 5: se restano log, pesi, risposte o messaggi in coda si torna
       // al punto 2.
       if (!_ciSonoInCoda(coach.id)) return;
-      if ((lotto.isNotEmpty || pesi.isNotEmpty || risposte.isNotEmpty || messaggi.isNotEmpty) &&
+      if ((lotto.isNotEmpty ||
+              pesi.isNotEmpty ||
+              giornate.isNotEmpty ||
+              risposte.isNotEmpty ||
+              messaggi.isNotEmpty) &&
           progressi == 0) {
         _c.registra('Il coach non ha confermato né rifiutato quello che gli è stato inviato');
         return;
@@ -461,6 +496,8 @@ class MotoreSync {
     bool? pesiCondivisi,
     List<Map<String, Object?>> risposte = const [],
     List<Map<String, Object?>> messaggi = const [],
+    List<Map<String, Object?>> giornate = const [],
+    bool? ciboCondiviso,
   }) => _conRitentativi(
     coachId,
     () => canale.api.sincronizza(
@@ -473,6 +510,8 @@ class MotoreSync {
         pesiCondivisi: pesiCondivisi,
         risposte: risposte,
         messaggi: messaggi,
+        giornate: giornate,
+        ciboCondiviso: ciboCondiviso,
       ),
     ),
   );
@@ -701,6 +740,52 @@ class MotoreSync {
     return progressi;
   }
 
+  bool _condivideCibo(int coachId) =>
+      _db.select('SELECT condividi_cibo FROM coach WHERE id = ?', [coachId]).firstOrNull?['condividi_cibo'] == 1;
+
+  bool? _ciboSupportato(int coachId) {
+    final valore = _db.select('SELECT cibo_supportato FROM coach WHERE id = ?', [
+      coachId,
+    ]).firstOrNull?['cibo_supportato'];
+    return valore is int ? valore == 1 : null;
+  }
+
+  /// Giornate confermate dal coach, come i pesi. Una risposta senza
+  /// `giornate_accettate` viene da un programma che non conosce il cibo.
+  int _applicaEsitiGiornate(
+    int coachId,
+    RispostaSync r,
+    List<Map<String, Object?>> inviate,
+  ) {
+    final accettate = r.giornateAccettate;
+    _db.execute('UPDATE coach SET cibo_supportato = ? WHERE id = ?', [
+      accettate == null ? 0 : 1,
+      coachId,
+    ]);
+    if (accettate == null) return 0;
+    final rev = {for (final g in inviate) g['id'] as String: g['rev'] as int};
+    var progressi = 0;
+    for (final confermata in accettate) {
+      if (rev[confermata.id] != confermata.rev) continue;
+      progressi++;
+      _db.execute(
+        'INSERT INTO giornate_inviate (coach_id, giornata_id, rev) VALUES (?, ?, ?) '
+        'ON CONFLICT (coach_id, giornata_id) DO UPDATE SET rev = MAX(rev, excluded.rev)',
+        [coachId, confermata.id, confermata.rev],
+      );
+    }
+    return progressi;
+  }
+
+  /// L'obiettivo del cibo fissato dal coach, se la risposta lo contiene.
+  void _salvaObiettivo(int coachId, bool presente, ObiettivoCibo? obiettivo) {
+    if (!presente) return;
+    _db.execute('UPDATE coach SET obiettivo_cibo = ? WHERE id = ?', [
+      obiettivo == null ? null : jsonEncode(obiettivo.toJson()),
+      coachId,
+    ]);
+  }
+
   /// Esegue [chiamata] ritentando dopo 429 e 503 secondo `Retry-After` e
   /// dopo gli altri 5xx con attesa crescente (§6.4).
   Future<T> _conRitentativi<T>(int coachId, Future<T> Function() chiamata) async {
@@ -756,7 +841,10 @@ class MotoreSync {
           ).isNotEmpty) ||
       (_condividePesi(coachId) &&
           _pesiSupportati(coachId) != false &&
-          pesiInCoda(_db, coachId, massimo: 1).isNotEmpty);
+          pesiInCoda(_db, coachId, massimo: 1).isNotEmpty) ||
+      (_condivideCibo(coachId) &&
+          _ciboSupportato(coachId) != false &&
+          giornateInCoda(_db, coachId, massimo: 1).isNotEmpty);
 
   /// Controlla che la risposta si possa salvare così com'è. Se non è
   /// conforme al protocollo non si applica nulla: meglio fermarsi che
@@ -876,6 +964,7 @@ class MotoreSync {
         esito.messaggiNuovi.add(messaggio['id']! as String);
       }
     }
+    _salvaObiettivo(coachId, r.conObiettivoCibo, r.obiettivoCibo);
     _salvaPosizione(coachId, r.epoca, r.cursore);
   }
 
@@ -997,6 +1086,21 @@ class MotoreSync {
         }
       }
     }
+    // Lo stesso per le giornate del cibo.
+    if (_ciboSupportato(coachId) ?? false) {
+      _db.execute('DELETE FROM giornate_inviate WHERE coach_id = ?', [coachId]);
+      if (_condivideCibo(coachId)) {
+        for (final riga in _db.select('SELECT id FROM giornate')) {
+          final delCoach = completo.giornate[riga['id']];
+          if (delCoach == null) continue;
+          _db.execute(
+            'INSERT INTO giornate_inviate (coach_id, giornata_id, rev) VALUES (?, ?, ?)',
+            [coachId, riga['id'], delCoach],
+          );
+        }
+      }
+    }
+    _salvaObiettivo(coachId, completo.conObiettivo, completo.obiettivo);
     _salvaPosizione(coachId, completo.epoca, cursore);
   }
 
@@ -1193,6 +1297,13 @@ class _Accumulo {
   /// Tutta la chat, per id.
   final messaggi = <String, Map<String, Object?>>{};
 
+  /// `rev` di ogni giornata del cibo che il coach ha, per id.
+  final giornate = <String, int>{};
+
+  /// L'obiettivo del cibo dell'ultima pagina che lo conteneva.
+  var conObiettivo = false;
+  ObiettivoCibo? obiettivo;
+
   void aggiungi(RispostaSync pagina) {
     for (final scheda in pagina.schede) {
       schede[scheda['id'] as String] = scheda;
@@ -1208,6 +1319,13 @@ class _Accumulo {
     }
     for (final messaggio in pagina.messaggi) {
       messaggi[messaggio['id'] as String] = messaggio;
+    }
+    for (final giornata in pagina.giornate) {
+      giornate[giornata.id] = giornata.rev;
+    }
+    if (pagina.conObiettivoCibo) {
+      conObiettivo = true;
+      obiettivo = pagina.obiettivoCibo;
     }
   }
 }

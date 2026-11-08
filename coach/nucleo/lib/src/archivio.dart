@@ -303,4 +303,24 @@ CREATE TABLE inviti_telefono_coach (
   telefono_id TEXT
 );
 ''',
+  '''
+CREATE TABLE giornate (
+  id TEXT PRIMARY KEY,
+  atleta_id TEXT NOT NULL REFERENCES atleti (id) ON DELETE CASCADE,
+  rev INTEGER NOT NULL,
+  eliminato INTEGER NOT NULL,
+  giorno TEXT,
+  contenuto TEXT,
+  ricevuto_il TEXT NOT NULL
+);
+CREATE INDEX giornate_atleta ON giornate (atleta_id, giorno);
+
+CREATE TABLE obiettivi_cibo (
+  atleta_id TEXT PRIMARY KEY REFERENCES atleti (id) ON DELETE CASCADE,
+  contenuto TEXT,
+  modificato_il TEXT NOT NULL,
+  sequenza INTEGER NOT NULL
+);
+CREATE INDEX obiettivi_cibo_sequenza ON obiettivi_cibo (sequenza);
+''',
 ];

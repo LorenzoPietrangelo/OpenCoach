@@ -62,6 +62,9 @@ extension _ApiTelefonoCoach on ServerCoach {
       case ('GET', ['atleti', final id, 'pesi']):
         await _rispondi(richiesta, 200, vista.pesi(id));
 
+      case ('GET', ['atleti', final id, 'cibo']):
+        await _rispondi(richiesta, 200, vista.cibo(id, prima: prima));
+
       case ('GET', ['atleti', final id, 'questionari']):
         await _rispondi(richiesta, 200, vista.questionari(id));
 

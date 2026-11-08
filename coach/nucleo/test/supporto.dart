@@ -101,6 +101,8 @@ class TelefonoFinto {
     bool? pesiCondivisi,
     List<Object?> risposteQuestionari = const [],
     List<Object?> messaggi = const [],
+    List<Object?> giornate = const [],
+    bool? ciboCondiviso,
   }) async {
     final risposte = <RispostaSync>[];
     var cursoreRichiesta = cursore;
@@ -108,6 +110,7 @@ class TelefonoFinto {
     var pesiDaInviare = pesi;
     var risposteDaInviare = risposteQuestionari;
     var messaggiDaInviare = messaggi;
+    var giornateDaInviare = giornate;
     final schedeComplete = <String, Map<String, Object?>>{};
     final logCompleti = <String, Map<String, Object?>>{};
     while (true) {
@@ -122,6 +125,8 @@ class TelefonoFinto {
           pesiCondivisi: pesiCondivisi,
           risposte: risposteDaInviare,
           messaggi: messaggiDaInviare,
+          giornate: giornateDaInviare,
+          ciboCondiviso: ciboCondiviso,
           versioneApp: versioneApp,
         ),
       );
@@ -131,6 +136,7 @@ class TelefonoFinto {
       risposteDaInviare = const [];
       messaggiDaInviare = const [];
       pesiDaInviare = const [];
+      giornateDaInviare = const [];
       cursoreRichiesta = risposta.cursore;
       if (risposta.completo) {
         for (final s in risposta.schede) {

@@ -45,11 +45,12 @@ class ServizioSincronizzazione {
     if (richiesta.log.length > Limiti.logPerRichiesta ||
         richiesta.pesi.length > Limiti.pesiPerRichiesta ||
         richiesta.risposte.length > Limiti.rispostePerRichiesta ||
-        richiesta.messaggi.length > LimitiChat.messaggiPerRichiesta) {
+        richiesta.messaggi.length > LimitiChat.messaggiPerRichiesta ||
+        richiesta.giornate.length > LimitiCibo.giornatePerRichiesta) {
       throw const ErroreHttp(
         413,
         CodiceErrore.troppoGrande,
-        messaggio: 'Troppi log, pesi, risposte o messaggi in una richiesta',
+        messaggio: 'Troppi log, pesi, risposte, messaggi o giornate in una richiesta',
       );
     }
     final atletaId = dispositivo.atletaId;
@@ -68,6 +69,15 @@ class ServizioSincronizzazione {
       } else {
         for (final peso in richiesta.pesi) {
           _salvaPeso(atletaId, peso, pesiAccettati);
+        }
+      }
+      final giornateAccettate = <LogConfermato>[];
+      if (richiesta.ciboCondiviso == false) {
+        // L'atleta ha smesso di condividere il cibo con questo coach (§8.8).
+        _db.execute('DELETE FROM giornate WHERE atleta_id = ?', [atletaId]);
+      } else {
+        for (final giornata in richiesta.giornate) {
+          _salvaGiornata(atletaId, giornata, giornateAccettate);
         }
       }
       final risposteAccettate = <String>[];
@@ -131,6 +141,10 @@ class ServizioSincronizzazione {
         messaggiAccettati: messaggiAccettati,
         messaggiRifiutati: messaggiRifiutati,
         messaggi: pagina.messaggi,
+        giornateAccettate: giornateAccettate,
+        giornate: pagina.giornate,
+        conObiettivoCibo: pagina.conObiettivo,
+        obiettivoCibo: pagina.obiettivo,
       );
     });
 
@@ -150,7 +164,8 @@ class ServizioSincronizzazione {
     return _db.select(
       'SELECT EXISTS (SELECT 1 FROM schede WHERE atleta_id = ?1 AND sequenza > ?2) '
       'OR EXISTS (SELECT 1 FROM questionari_inviati WHERE atleta_id = ?1 AND sequenza > ?2) '
-      'OR EXISTS (SELECT 1 FROM messaggi WHERE atleta_id = ?1 AND sequenza > ?2) AS novita',
+      'OR EXISTS (SELECT 1 FROM messaggi WHERE atleta_id = ?1 AND sequenza > ?2) '
+      'OR EXISTS (SELECT 1 FROM obiettivi_cibo WHERE atleta_id = ?1 AND sequenza > ?2) AS novita',
       [atletaId, cursore.sequenza],
     ).first['novita'] == 1;
   }
@@ -251,6 +266,52 @@ class ServizioSincronizzazione {
     accettati.add(LogConfermato(id, rev));
   }
 
+  /// Salva una giornata del cibo come i pesi (§8.8): una `rev` uguale o
+  /// minore si conferma senza cambiare nulla; una giornata non valida, troppo
+  /// grande o di un altro atleta non si conferma.
+  void _salvaGiornata(String atletaId, Object? giornata, List<LogConfermato> accettati) {
+    if (validaGiornata(giornata).isNotEmpty) return;
+    if (dimensioneJson(giornata) > LimitiCibo.giornataMassima) return;
+    final m = giornata! as Map<String, Object?>;
+    final id = m['id'] as String;
+    final rev = m['rev'] as int;
+    final eliminato = m['eliminato'] as bool;
+    final esistente = _db.select('SELECT atleta_id, rev FROM giornate WHERE id = ?', [
+      id,
+    ]).firstOrNull;
+    if (esistente != null && esistente['atleta_id'] != atletaId) return;
+    if (esistente == null || (esistente['rev'] as int) < rev) {
+      _db.execute(
+        'INSERT INTO giornate (id, atleta_id, rev, eliminato, giorno, contenuto, ricevuto_il) '
+        'VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (id) DO UPDATE SET '
+        'rev = excluded.rev, eliminato = excluded.eliminato, giorno = excluded.giorno, '
+        'contenuto = excluded.contenuto, ricevuto_il = excluded.ricevuto_il',
+        [
+          id,
+          atletaId,
+          rev,
+          eliminato ? 1 : 0,
+          eliminato ? null : m['giorno'],
+          eliminato ? null : jsonEncode(m),
+          istante(_c.adesso()),
+        ],
+      );
+    }
+    accettati.add(LogConfermato(id, rev));
+  }
+
+  /// L'obiettivo del cibo dell'atleta come riga: null se il coach non l'ha
+  /// mai fissato.
+  Row? _rigaObiettivo(String atletaId) =>
+      _db.select('SELECT contenuto, sequenza FROM obiettivi_cibo WHERE atleta_id = ?', [
+        atletaId,
+      ]).firstOrNull;
+
+  static ObiettivoCibo? _obiettivo(Row? riga) => switch (riga?['contenuto']) {
+    final String contenuto => ObiettivoCibo.fromJson(jsonDecode(contenuto) as Map<String, Object?>),
+    _ => null,
+  };
+
   /// Il dispositivo ha salvato le modifiche fino a [sequenza]: per ogni
   /// scheda, l'ultima revisione entro quella sequenza risulta ricevuta.
   /// Le revisioni sostituite prima di arrivare restano senza data.
@@ -291,6 +352,13 @@ class ServizioSincronizzazione {
   /// ordine di sequenza.
   _Pagina _paginaIncrementale(String atletaId, String epoca, int sequenza) {
     final pagina = _Pagina(budgetPagina, completa: false);
+    // L'obiettivo del cibo è uno solo: c'è se è cambiato dopo il cursore.
+    final obiettivo = _rigaObiettivo(atletaId);
+    if (obiettivo != null && (obiettivo['sequenza'] as int) > sequenza) {
+      pagina
+        ..conObiettivo = true
+        ..obiettivo = _obiettivo(obiettivo);
+    }
     var ultima = sequenza;
     List<Row> dopo(String tabella) => _db.select(
       'SELECT * FROM $tabella WHERE atleta_id = ? AND sequenza > ? '
@@ -344,9 +412,12 @@ class ServizioSincronizzazione {
 
   /// Stato completo: prima tutte le schede pubblicate e archiviate, poi tutti
   /// i log, compresi gli eliminati, poi `id` e `rev` dei pesi, i
-  /// questionari senza risposta e infine tutta la chat (§6.3).
+  /// questionari senza risposta, tutta la chat e infine `id` e `rev` delle
+  /// giornate del cibo (§6.3). L'obiettivo del cibo c'è in ogni pagina.
   _Pagina _paginaCompleta(String atletaId, CursoreCompleto da) {
-    final pagina = _Pagina(budgetPagina, completa: true);
+    final pagina = _Pagina(budgetPagina, completa: true)
+      ..conObiettivo = true
+      ..obiettivo = _obiettivo(_rigaObiettivo(atletaId));
     var fase = da.fase;
     var dopo = da.dopo;
 
@@ -440,6 +511,24 @@ class ServizioSincronizzazione {
         dopo = riga['id'] as String;
       }
       if (righe.length == _righePerQuery) pagina.altro = true;
+      if (!pagina.altro) {
+        fase = 5;
+        dopo = null;
+      }
+    }
+
+    // Delle giornate, come dei pesi, basta `id` e `rev`.
+    if (fase == 5 && !pagina.altro) {
+      final righe = _db.select(
+        'SELECT id, rev FROM giornate WHERE atleta_id = ? AND id > ? ORDER BY id LIMIT ?',
+        [atletaId, dopo ?? '', _righePerQuery],
+      );
+      for (final riga in righe) {
+        final voce = LogConfermato(riga['id'] as String, riga['rev'] as int);
+        if (!pagina.aggiungiConferma(pagina.giornate, voce)) break;
+        dopo = voce.id;
+      }
+      if (righe.length == _righePerQuery) pagina.altro = true;
     }
 
     pagina.cursore = pagina.altro
@@ -463,6 +552,9 @@ class _Pagina {
   final questionari = <Map<String, Object?>>[];
   final annullati = <String>[];
   final messaggi = <Map<String, Object?>>[];
+  final giornate = <LogConfermato>[];
+  var conObiettivo = false;
+  ObiettivoCibo? obiettivo;
   late Cursore cursore;
   var altro = false;
   var _usati = 0;
@@ -475,15 +567,22 @@ class _Pagina {
     return true;
   }
 
-  bool aggiungiPeso(LogConfermato voce) {
+  bool aggiungiPeso(LogConfermato voce) => aggiungiConferma(pesi, voce);
+
+  bool aggiungiConferma(List<LogConfermato> lista, LogConfermato voce) {
     if (!_spazio(dimensioneJson(voce.toJson()))) return false;
-    pesi.add(voce);
+    lista.add(voce);
     return true;
   }
 
   bool _spazio(int dimensione) {
     final vuota =
-        schede.isEmpty && log.isEmpty && pesi.isEmpty && questionari.isEmpty && messaggi.isEmpty;
+        schede.isEmpty &&
+        log.isEmpty &&
+        pesi.isEmpty &&
+        questionari.isEmpty &&
+        messaggi.isEmpty &&
+        giornate.isEmpty;
     if (!vuota && _usati + dimensione > _budget) {
       altro = true;
       return false;

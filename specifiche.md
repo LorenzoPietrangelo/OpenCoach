@@ -9,7 +9,7 @@ Questo documento definisce la versione 1 del sistema descritto in «Architettura
 1. Il programma del coach è l'unico server del sistema e serve solo i propri atleti, tramite un onion service Tor v3 incluso nel programma.
 2. Lo sviluppatore non gestisce infrastruttura: niente server, account, telemetria, segnalazione automatica degli errori o controllo degli aggiornamenti. Tutto il traffico di rete dei due programmi passa per Tor.
 3. Ogni installazione del programma del coach è indipendente, con chiavi, indirizzo e dati propri. Nessuna funzione dipende dall'esistenza del progetto.
-4. L'app dell'atleta funziona offline; la rete serve solo a sincronizzare.
+4. L'app dell'atleta funziona offline; la rete serve solo a sincronizzare e a cercare i cibi nel catalogo del coach (§10.3).
 5. Ogni tipo di dato ha un solo autore: le schede le scrive il coach, i log l'atleta. Non ci sono conflitti di scrittura da risolvere.
 6. La sincronizzazione parte sempre dall'app dell'atleta.
 
@@ -21,6 +21,7 @@ Questo documento definisce la versione 1 del sistema descritto in «Architettura
 | App dell'atleta | Android 8.0+ (API 26), iOS 16+ | Client: Tor incorporato, archivio locale, esecuzione delle schede |
 | App del coach (§16) | Android 8.0+ (API 26) | Client del programma del coach: Tor incorporato, nessun archivio, chat e dati degli atleti in lettura |
 | Rete Tor | — | Trasporto. Non è un componente del progetto |
+| Open Food Facts | — | Database pubblico dei prodotti alimentari. Il catalogo dei cibi del programma del coach ne è una copia ridotta (§10.3). Non è un componente del progetto |
 
 Distribuzione:
 
@@ -40,6 +41,7 @@ Distribuzione:
 | Revisione | Versione pubblicata di una scheda. Ogni ripubblicazione crea una revisione nuova. |
 | Seduta | Singolo allenamento previsto dalla scheda (es. «Giorno A»), composto da esercizi. |
 | Log | Registrazione di un allenamento eseguito, scritta dall'atleta. |
+| Giornata | Diario del cibo di un giorno, scritto dall'atleta: gli alimenti mangiati, divisi per pasto (§8.8). |
 | Sync | Scambio avviato dall'app: invia i log in coda e riceve le modifiche alle schede. |
 | Cursore | Valore opaco che indica fino a quale modifica l'app è aggiornata. |
 | Epoca | Identificativo dello stato dell'archivio del coach. Cambia a ogni ripristino da backup. |
@@ -200,6 +202,8 @@ Con token.
   "log": [ /* Log, al massimo 100 */ ],
   "pesi": [ /* Peso (§8.5), al massimo 500; facoltativo */ ],
   "pesi_condivisi": true,  // facoltativo: false = l'atleta non condivide il peso con questo coach
+  "giornate": [ /* Giornata (§8.8), al massimo 100; facoltativo */ ],
+  "cibo_condiviso": true,  // facoltativo: false = l'atleta non condivide il cibo con questo coach
   "versione_app": "1.0.3"
 }
 ```
@@ -218,7 +222,10 @@ Risposta 200:
   "cursore": "…",
   "altro": false,
   "pesi_accettati": [ { "id": "…", "rev": 3 } ],
-  "pesi": [ { "id": "…", "rev": 3 } ]   // solo se completo
+  "pesi": [ { "id": "…", "rev": 3 } ],  // solo se completo
+  "giornate_accettate": [ { "id": "…", "rev": 4 } ],
+  "giornate": [ { "id": "…", "rev": 4 } ],  // solo se completo
+  "obiettivo_cibo": { "kcal": 2200, "proteine_g": 140 }  // facoltativo, vedi sotto e §8.8
 }
 ```
 
@@ -229,6 +236,8 @@ Risposta 200:
 - Codici d'errore per `log_rifiutati`: `non_valido` (schema), `troppo_grande`, `altro_atleta` (id già usato da un altro atleta).
 - I pesi (§8.5) sono un'aggiunta entro la v1. Il programma tratta i pesi ricevuti come i log e li elenca in `pesi_accettati`; un peso non valido o di un altro atleta non compare e l'app lo ritenta. Con `pesi_condivisi: false` il programma cancella tutti i pesi dell'atleta e ignora quelli inviati. Nella risposta completa `pesi` elenca `id` e `rev` di tutti i pesi che il programma ha dell'atleta, comprese le eliminazioni, dopo schede e log.
 - Una risposta senza `pesi_accettati` viene da un programma che non conosce i pesi: l'app smette di mandarglieli e lo dice all'atleta, finché una risposta successiva non contiene il campo.
+- Anche il cibo (§8.8) è un'aggiunta entro la v1, e segue le regole dei pesi: il programma tratta le giornate ricevute come i log e le elenca in `giornate_accettate`; una giornata non valida, oltre i 64 KiB o di un altro atleta non compare e l'app la ritenta. Con `cibo_condiviso: false` il programma cancella tutte le giornate dell'atleta e ignora quelle inviate. Nella risposta completa `giornate` elenca `id` e `rev` di tutte le giornate che il programma ha dell'atleta, comprese le eliminazioni, dopo la chat. Una risposta senza `giornate_accettate` viene da un programma che non conosce il cibo: l'app smette di mandargli le giornate e lo dice all'atleta, finché una risposta successiva non contiene il campo.
+- L'obiettivo del cibo riceve un numero di sequenza come le schede quando il coach lo fissa, lo cambia o lo toglie. Nella risposta incrementale `obiettivo_cibo` c'è solo se è cambiato dopo il cursore, e `null` vuol dire che il coach l'ha tolto; nella completa c'è sempre, `null` se non è fissato. Senza il campo l'app tiene l'obiettivo che ha.
 - Anche i questionari (§8.6) sono un'aggiunta entro la v1. La richiesta può contenere `risposte`, al massimo 20. Il programma salva quelle valide e le elenca in `risposte_accettate` (id del questionario); le altre vanno in `risposte_rifiutate` con `sconosciuto` (questionario inesistente o di un altro atleta), `non_valida` o `foto_mancanti` (manca almeno una delle foto indicate). Rimandare risposte già salvate le conferma senza cambiarle.
 - Un questionario mandato o annullato riceve un numero di sequenza come le schede: nella risposta incrementale `questionari` contiene quelli mandati dopo il cursore e `questionari_annullati` gli id di quelli annullati; nella completa `questionari` contiene tutti quelli ancora senza risposta, dopo i pesi.
 - Anche la chat (§8.7) è un'aggiunta entro la v1. La richiesta può contenere `messaggi` dell'atleta, al massimo 100. Il programma salva quelli validi e li elenca in `messaggi_accettati` (id); gli altri vanno in `messaggi_rifiutati` con `non_valido`, `altro_atleta` (id già usato da un altro atleta) o `video_mancante` (il programma non ha tutte le parti del video, o non corrispondono all'impronta: l'app le ricarica e ritenta). Rimandare un messaggio già salvato lo conferma.
@@ -250,6 +259,17 @@ Con token. Una foto di un questionario: corpo `image/jpeg` di al massimo 1,5 MiB
 #### `PUT /v1/video/<id>/<parte>`
 
 Con token. Una parte del video allegato a un messaggio (§8.7): corpo `application/octet-stream` di al massimo 1 MiB, `<id>` è l'id del video, un UUID generato dall'app, e `<parte>` va da 0 al numero di parti meno uno. Ogni parte tranne l'ultima è lunga esattamente 1 MiB. Risposta 204. Idempotente. Errori: 400 se la parte è vuota, 404 se `<parte>` è oltre il limite di 32 MiB, 413 se è troppo grande. Le parti si ricompongono quando arriva il messaggio che cita il video: se la dimensione e lo SHA-256 corrispondono il video si salva, altrimenti le parti si cancellano e il messaggio si rifiuta con `video_mancante`.
+
+#### `GET /v1/cibo` e `GET /v1/cibo/<codice>`
+
+Con token. La ricerca nel catalogo dei cibi del coach (§10.3): `GET /v1/cibo?q=<testo>` risponde `{ "prodotti": [ … ] }` con i prodotti che contengono tutte le parole di `q`, al massimo 30, dal più pertinente; `GET /v1/cibo/<codice>`, con un codice a barre da 8 a 14 cifre, risponde `{ "prodotto": { … } }`, o `{ "prodotto": null }` se il catalogo non ce l'ha. Un prodotto:
+
+```json
+{ "codice": "8001234567890", "nome": "Pasta di semola", "marca": "Pastificio",
+  "porzione_g": 80, "per_100g": { "kcal": 353, "proteine": 12, "carboidrati": 72, "grassi": 1.5 } }
+```
+
+`marca` e `porzione_g` sono facoltative, e `per_100g` segue le regole del §8.8. Un programma senza catalogo risponde 404 `catalogo_assente`, uno precedente alla 1.6.0 404 `non_trovato`: per l'app è lo stesso. Le chiamate contano nel limite di richieste del dispositivo (§6.2).
 
 #### `DELETE /v1/dispositivo`
 
@@ -277,6 +297,8 @@ Con token. L'atleta si scollega dal coach; il programma revoca il dispositivo. R
 | Schede e revisioni | Coach | Sola lettura sul telefono |
 | Log | Atleta | Sola lettura sul PC del coach |
 | Pesi | Atleta | Sola lettura sul PC dei coach con cui l'atleta li condivide |
+| Giornate del cibo | Atleta | Sola lettura sul PC dei coach con cui l'atleta le condivide |
+| Obiettivo del cibo | Coach | Sola lettura sul telefono |
 | Questionari | Coach | Sola lettura sul telefono, salvo le risposte |
 | Risposte ai questionari e foto | Atleta | Sola lettura sul PC del coach; inviate, non si modificano più |
 | Note private del coach sull'atleta | Coach | Non inviate |
@@ -294,17 +316,18 @@ Con token. L'atleta si scollega dal coach; il programma revoca il dispositivo. R
 Una sync con un coach:
 
 1. Avvia Tor, se non è già attivo.
-2. Prende dalla coda fino a 100 log, cioè i log con `rev` maggiore dell'ultima `rev` confermata dal coach. Se l'atleta condivide il peso con quel coach, prende anche fino a 500 pesi con `rev` maggiore dell'ultima confermata da lui, escluse le eliminazioni di pesi che il coach non ha mai ricevuto.
-3. Chiama `POST /v1/sync` con il cursore e l'epoca salvati, e con `pesi_condivisi`.
-4. Con una risposta incrementale applica in un'unica transazione locale: schede nuove o cambiate, schede eliminate, log confermati (solo se la `rev` locale è ancora quella inviata), nuovo cursore. I pesi confermati si registrano come confermati da quel coach.
-5. Se `altro` è true o restano log o pesi in coda, torna al punto 2.
+2. Prende dalla coda fino a 100 log, cioè i log con `rev` maggiore dell'ultima `rev` confermata dal coach. Se l'atleta condivide il peso con quel coach, prende anche fino a 500 pesi con `rev` maggiore dell'ultima confermata da lui, escluse le eliminazioni di pesi che il coach non ha mai ricevuto. Allo stesso modo, se gli condivide il cibo, prende fino a 100 giornate.
+3. Chiama `POST /v1/sync` con il cursore e l'epoca salvati, e con `pesi_condivisi` e `cibo_condiviso`.
+4. Con una risposta incrementale applica in un'unica transazione locale: schede nuove o cambiate, schede eliminate, log confermati (solo se la `rev` locale è ancora quella inviata), obiettivo del cibo, nuovo cursore. I pesi e le giornate confermati si registrano come confermati da quel coach.
+5. Se `altro` è true o restano log, pesi o giornate in coda, torna al punto 2.
 
 Con una risposta completa l'app accumula tutte le pagine e le applica insieme solo dopo l'ultima:
 
 - sostituisce l'insieme delle schede con quello ricevuto;
 - inserisce i log che non ha, e prende la versione del coach se ha `rev` maggiore;
 - rimette in coda i log locali assenti dalla risposta o presenti con `rev` minore. Così, dopo un ripristino del coach da backup, i telefoni reinviano i log arrivati dopo quel backup;
-- considera confermati da quel coach esattamente i pesi elencati in `pesi`, con la loro `rev`: gli altri tornano in coda per lui;
+- considera confermati da quel coach esattamente i pesi elencati in `pesi` e le giornate elencate in `giornate`, con la loro `rev`: gli altri tornano in coda per lui;
+- sostituisce l'obiettivo del cibo con quello ricevuto;
 - salva cursore ed epoca.
 
 Se una sync completa si interrompe, la successiva ricomincia da capo.
@@ -439,6 +462,8 @@ SQLite in modalità WAL nella cartella dati dell'utente (`%APPDATA%\OpenCoach`, 
 | `log` | Id, atleta, dispositivo, `rev`, contenuto, data di ricezione |
 | `libreria` | Id, nome, nome normalizzato (unico), note, link al video |
 | `pesi` | Id, atleta, `rev`, eliminato, giorno, kg, data di ricezione |
+| `giornate` | Id, atleta, `rev`, eliminato, giorno, contenuto, data di ricezione |
+| `obiettivi_cibo` | Atleta, obiettivo (vuoto se il coach l'ha tolto), data, sequenza |
 | `questionari` | Modelli scritti dal coach: id, contenuto, date |
 | `questionari_inviati` | Id, atleta, modello, contenuto al momento dell'invio, data d'invio, sequenza, stato (inviato, risposto, annullato), risposte, data di ricezione, letto |
 | `foto` | Id, atleta, questionario, JPEG, data di ricezione. Stanno nell'archivio, quindi anche nel backup cifrato |
@@ -449,7 +474,7 @@ Segreto e chiave privata d'invito si cancellano quando l'invito si chiude.
 
 SQLite nello spazio privato dell'app. Su iOS i file usano la classe di protezione `CompleteUntilFirstUserAuthentication`, così la sync in background può leggerli.
 
-Per ogni coach: indirizzo, nome, id dell'atleta e del dispositivo, cursore, epoca, data dell'ultima sync, se l'atleta gli condivide il peso e se il suo programma lo riceve; le sue schede; i log, ciascuno con la `rev` locale e l'ultima `rev` confermata; per ogni peso, l'ultima `rev` che ha confermato. I pesi stanno una volta sola, fuori dai coach. Chiavi e token sono conservati come descritto al §4.
+Per ogni coach: indirizzo, nome, id dell'atleta e del dispositivo, cursore, epoca, data dell'ultima sync, se l'atleta gli condivide il peso e se il suo programma lo riceve; le sue schede; i log, ciascuno con la `rev` locale e l'ultima `rev` confermata; per ogni peso, l'ultima `rev` che ha confermato. I pesi stanno una volta sola, fuori dai coach. Allo stesso modo: se l'atleta gli condivide il cibo e se il suo programma lo riceve, il suo obiettivo del cibo, per ogni giornata l'ultima `rev` che ha confermato; le giornate e i cibi già usati stanno una volta sola, fuori dai coach. Chiavi e token sono conservati come descritto al §4.
 
 ### 8.5 Peso
 
@@ -543,6 +568,47 @@ La chat tra coach e atleta. Un messaggio, come lo scambiano app e programma:
 - Sul PC i video stanno in file nella cartella dati, una sottocartella per atleta, e non entrano nel backup (§9.4); il coach li guarda nel programma, che li riproduce con Media Foundation di Windows, e può cancellarli, lasciando il messaggio. Sul telefono stanno nello spazio privato dell'app, esclusi dai backup del telefono.
 - Come il resto dei dati, messaggi e video passano solo dal servizio onion (§11.1): nessun server li vede.
 
+### 8.8 Cibo
+
+Una giornata, come la manda l'app:
+
+```jsonc
+{
+  "id": "…",                             // generato dall'app, uno per giorno
+  "rev": 4,
+  "eliminato": false,
+  "giorno": "2026-11-07",
+  "voci": [
+    {
+      "id": "…",                         // generato dall'app
+      "pasto": "colazione",              // "colazione" | "pranzo" | "cena" | "spuntini"
+      "nome": "Fette biscottate integrali",
+      "marca": "…",                      // facoltativa
+      "codice": "8001234567890",         // facoltativo: codice a barre, da 8 a 14 cifre
+      "fonte": "open_food_facts",        // oppure "atleta"
+      "grammi": 24,                      // da 0,1 a 5000
+      "per_100g": { "kcal": 395, "proteine": 13, "carboidrati": 68, "grassi": 5.6 }
+    }
+  ],
+  "modificato_il": "2026-11-07T08:10:00+01:00"
+}
+```
+
+- Una giornata per giorno, con le regole del peso (§8.5): correggerla incrementa `rev`, il giorno tiene lo stesso `id` anche dopo un'eliminazione, e una giornata eliminata si invia come `{ "id", "rev", "eliminato": true }`. Una giornata senza voci si elimina.
+- Ogni voce copia nome e valori dell'alimento, come il log copia i nomi degli esercizi: la giornata resta giusta anche se il prodotto cambia nel catalogo o l'atleta corregge un alimento.
+- In `per_100g` è obbligatorio solo `kcal`, da 0 a 900; `proteine`, `carboidrati` e `grassi` sono grammi da 0 a 100, e mancano quando non si conoscono. Per i liquidi 100 g valgono 100 ml, come in Open Food Facts. I totali non si inviano: li calcolano app e programma.
+- Al massimo 200 voci per giornata. Il nome ha al massimo 200 caratteri, la marca 100.
+- I pasti sono i quattro dell'elenco, sempre gli stessi.
+- `fonte` dice da dove vengono i valori: `open_food_facts` se l'atleta ha aggiunto un prodotto del catalogo del coach (§10.3), `atleta` se l'ha scritto lui.
+- Il cibo è dell'atleta, non di un coach. Per ogni coach l'atleta sceglie se condividerlo: è condiviso per default. Smettendo, alla sync successiva quel coach cancella tutte le giornate dell'atleta; ricominciando, le riceve di nuovo tutte.
+- L'app non accetta giornate per un giorno futuro.
+
+Per i prodotti che il catalogo non ha e per i piatti fatti in casa l'atleta scrive l'alimento a mano: nome, eventualmente la marca, e i valori per 100 g come sopra. Entra nella giornata con `fonte: "atleta"`.
+
+Ogni alimento che l'atleta aggiunge resta sul telefono tra i cibi già usati, con l'ultima porzione: nome, marca, codice, fonte e valori per 100 g, uno per codice a barre o, senza codice, per nome e marca. Si ritrova senza chiedere niente al coach. Togliere una voce dal diario non lo toglie da lì. I cibi già usati non si inviano al coach.
+
+L'obiettivo del cibo lo fissa il coach per l'atleta: `{ "kcal": 2200, "proteine_g": 140, "carboidrati_g": 250, "grassi_g": 70 }`. `kcal` è obbligatorio, da 500 a 8000; gli altri sono facoltativi, da 0 a 1000. È un obiettivo indicativo, non una dieta: il programma non scrive piani alimentari.
+
 ## 9. Programma del coach
 
 ### 9.1 Avvio e presenza
@@ -609,6 +675,13 @@ Peso:
 - se l'atleta lo condivide, nella sua pagina: l'ultimo peso, la media degli ultimi 7 giorni e la differenza con i 7 giorni prima, il grafico con i pesi di ogni giorno e la media mobile di 7 giorni, l'elenco;
 - i pesi sono in sola lettura ed entrano nell'esportazione JSON.
 
+Cibo (§8.8):
+
+- fissare, cambiare o togliere l'obiettivo dell'atleta: calorie e, se il coach vuole, proteine, carboidrati e grassi. L'atleta lo riceve alla sync successiva;
+- se l'atleta lo condivide, nella sua pagina: la media di calorie e macronutrienti degli ultimi 7 giorni registrati, il grafico delle calorie di ogni giorno delle ultime 4 settimane con la linea dell'obiettivo, e l'elenco dei giorni con i totali; aprendo un giorno, i pasti con le voci, i grammi e la fonte dei valori. I giorni senza giornata restano vuoti e non contano nelle medie;
+- le giornate sono in sola lettura ed entrano nell'esportazione JSON. Arrivano senza notifica: l'atleta le corregge spesso durante il giorno;
+- il catalogo dei cibi (§10.3) arriva con l'installer, accanto all'eseguibile; il programma lo apre all'avvio e risponde con quello alle ricerche degli atleti. Il registro dice quanti prodotti ha e quando è stato generato.
+
 Chat (§8.7):
 
 - nella pagina dell'atleta, la conversazione con i messaggi nuovi segnati sulla scheda e nell'elenco degli atleti; scrivere un messaggio, che l'atleta riceve alla sua sync successiva;
@@ -634,7 +707,7 @@ Notifiche desktop, disattivabili: log ricevuto, abbinamento completato, question
 
 ### 10.2 Funzioni
 
-- L'atleta ha un solo coach alla volta. Con il coach l'app si apre sulle sezioni Allenamento, Chat e Peso, e il resto sta nelle impostazioni. Il QR o il link di un altro coach, dopo conferma, collega il telefono al nuovo e solo dopo lo scollega dal precedente, così un coach irraggiungibile non lo lascia senza nessuno. Chi aveva più coach da una versione precedente sceglie all'apertura quale tenere. Di un coach precedente allenamenti e schede restano consultabili nelle impostazioni.
+- L'atleta ha un solo coach alla volta. Con il coach l'app si apre sulle sezioni Allenamento, Chat, Cibo e Peso, e il resto sta nelle impostazioni. Il QR o il link di un altro coach, dopo conferma, collega il telefono al nuovo e solo dopo lo scollega dal precedente, così un coach irraggiungibile non lo lascia senza nessuno. Chi aveva più coach da una versione precedente sceglie all'apertura quale tenere. Di un coach precedente allenamenti e schede restano consultabili nelle impostazioni.
 - Primo avvio, e dopo essersi scollegati: «Scansiona il QR del tuo coach», oppure incolla il codice. Nessun account, nessuna registrazione.
 - Allenamento: la scheda attiva; lo storico e l'archivio delle schede, due voci chiuse che si aprono con un tocco. Dettaglio delle sedute, scelta della seduta da eseguire, avviso quando arriva una nuova revisione.
 - Esecuzione: per ogni esercizio serie, ripetizioni, recupero e RIR si leggono sulla stessa riga. L'atleta scrive ripetizioni e carico effettivi (per gli esercizi a tempo, la durata della serie): una serie con almeno un valore conta come fatta, una vuota no, senza altro da segnare. Lasciando una serie compilata parte il timer di recupero previsto dal coach, che si può avviare anche a mano. Scrive anche le note. Non si chiedono né lo sforzo percepito né la durata dell'allenamento. Può aggiungere esercizi non previsti o registrare un allenamento libero. Al salvataggio il log entra in coda e parte una sync.
@@ -644,10 +717,31 @@ Notifiche desktop, disattivabili: log ricevuto, abbinamento completato, question
 - Stato della sync come al §7.5, con il tasto «Sincronizza ora».
 - Questionari (§8.6): nella chat, dov'è il momento in cui sono arrivati; quelli da compilare restano anche fissi in cima, e la sezione Chat li conta. Una sync in background che ne riceve di nuovi li annuncia con una notifica.
 - Peso (§8.5): il peso di oggi o di un altro giorno, la media degli ultimi 7 giorni, il grafico, l'elenco con correzione ed eliminazione, e l'interruttore «condividi» con il coach. Se il suo programma non riceve i pesi, l'app lo dice accanto al nome.
+- Cibo (§8.8), una sezione a sé, separata dal peso: il diario di oggi, con i giorni precedenti scorrendo la data, i quattro pasti con le loro voci e, in cima, calorie e macronutrienti del giorno, con l'obiettivo del coach se c'è. Da ogni pasto si aggiunge un alimento: tra i cibi già usati (§8.8), che compaiono subito mentre si scrive; dal catalogo del coach, per nome premendo invio o con il codice a barre (§10.3); oppure scrivendolo a mano. Poi si sceglie la porzione: grammi, o la porzione della confezione quando il catalogo la indica, con i valori ricalcolati prima di aggiungerla. Toccando una voce se ne cambiano i grammi o la si toglie. In fondo, l'interruttore «condividi» con il coach; se il suo programma non riceve il cibo, l'app lo dice accanto al nome. Cibi già usati, alimenti scritti a mano e diario funzionano anche offline e con il PC del coach spento.
 - Chat (§8.7): la sezione conta i messaggi nuovi, che diventano letti quando l'atleta la guarda. Mentre la guarda i messaggi arrivano subito (§7.4); una sync in background che riceve messaggi li annuncia con una notifica. Nell'esecuzione, accanto a ogni serie, la videocamera allega il video della serie, che parte al salvataggio.
 - Impostazioni: il coach e quelli precedenti (nome, indirizzo, ultima sync); cambiare coach; scollegarsi, che chiama `DELETE /v1/dispositivo` se il coach è raggiungibile e poi, dopo conferma, cancella i dati locali di quel coach; frequenza della sync in background (Android); esportazione dei propri dati in JSON.
 - Schede e log restano separati per coach.
 - Dopo una revoca le schede e i log di quel coach restano consultabili ed esportabili, ma non si sincronizzano più.
+- L'esportazione JSON comprende anche le giornate.
+
+### 10.3 Catalogo dei cibi
+
+I prodotti si cercano nel catalogo dei cibi che il programma del coach tiene sul PC: una copia ridotta di Open Food Facts con i prodotti venduti in Italia. Né l'app né il programma chiamano Open Food Facts mentre funzionano.
+
+- **Che cos'è:** un file SQLite in sola lettura, `cibo/catalogo_italia.sqlite` accanto all'eseguibile del programma, che arriva con l'installer. Per ogni prodotto: codice a barre, nome, marca, kcal, grassi, proteine, carboidrati e sale per 100 g, e la porzione della confezione; un indice FTS5 per la ricerca per nome e marca, senza badare ad accenti e maiuscole. Il sale è nel file ma il protocollo per ora non lo usa. Pesa circa 40 MB, per circa 220 mila prodotti.
+- **Come si fa:** `coach/nucleo/bin/genera_catalogo_cibo.dart` legge l'esportazione CSV di Open Food Facts (`en.openfoodfacts.org.products.csv.gz`, circa 1,5 GB compressi) mentre la scarica, senza salvarla, e tiene i prodotti con `en:italy` tra i paesi, un nome, un codice da 8 a 14 cifre e le calorie. Le calorie vengono da `energy-kcal_100g`, altrimenti da `energy-kj_100g` diviso 4,184; i valori fuori dagli intervalli del §8.8 si scartano. Si rigenera a ogni rilascio, e la build del programma lo mette accanto all'eseguibile (`coach/app/windows/cibo`, fuori da git).
+- **Ricerca:** l'app mostra subito i cibi già usati che corrispondono a quello che l'atleta scrive (§8.8). Premendo invio chiede al coach `GET /v1/cibo` (§6.3) e aggiunge i prodotti che non ha già. Non si interroga il coach a ogni lettera, per restare nel limite di richieste.
+- **Codice a barre:** la fotocamera legge il codice sul telefono, con una libreria che non usa la rete. L'app lo cerca tra i cibi già usati e poi con `GET /v1/cibo/<codice>`; se nessuno ce l'ha, l'atleta scrive l'alimento con il codice già compilato.
+- **Licenza:** il catalogo è un database derivato da Open Food Facts, sotto licenza ODbL. Si distribuisce intero, così com'è, dentro l'installer; la pagina dei download dice dove si trova e con quale licenza, e la sezione Cibo dell'app cita Open Food Facts e la licenza.
+
+| Situazione | Messaggio |
+| --- | --- |
+| Nessuna rete o Tor non parte | «Ricerca non disponibile ora: sei offline o Tor non parte. Puoi usare i cibi già usati o scriverlo tu.» |
+| PC del coach spento o non raggiungibile | «Il PC del coach non è raggiungibile: la ricerca funziona quando è acceso. Intanto puoi usare i cibi già usati o scriverlo tu.» |
+| Programma senza catalogo, o precedente alla 1.6.0 | «Il programma del coach non ha il catalogo dei cibi: deve aggiornarlo. Intanto puoi scriverlo tu.» |
+| Codice sconosciuto | «Questo prodotto non è nel catalogo del coach. Puoi scriverlo tu.» |
+| HTTP 429 o 503 | «Troppe ricerche. Riprova tra un minuto.» |
+| Altri errori | «La ricerca non è riuscita. Riprova più tardi.» |
 
 ## 11. Sicurezza e privacy
 
@@ -680,7 +774,7 @@ Notifiche desktop, disattivabili: log ricevuto, abbinamento completato, question
 
 I dati restano sul PC del coach e sui telefoni degli atleti. Lo sviluppatore non ne riceve nessuno. Il programma permette di esportare e cancellare tutti i dati di un atleta; l'app permette all'atleta di esportare e cancellare i propri.
 
-Il peso è un dato sulla salute: lo riceve solo il coach a cui l'atleta sceglie di condividerlo, e l'atleta può ritirarlo in ogni momento (§8.5).
+Il peso è un dato sulla salute: lo riceve solo il coach a cui l'atleta sceglie di condividerlo, e l'atleta può ritirarlo in ogni momento (§8.5). Lo stesso vale per il diario del cibo (§8.8). Le ricerche nel catalogo dei cibi arrivano solo al coach, che vede già il diario se l'atleta lo condivide (§10.3).
 
 Anche le risposte ai questionari e le foto del corpo possono essere dati sulla salute. Arrivano solo al coach che ha mandato il questionario, passando da Tor; sul suo PC stanno nell'archivio e nel backup cifrato. Chi accede al PC del coach le vede, come il resto (§11.1).
 
@@ -705,6 +799,7 @@ Anche le risposte ai questionari e le foto del corpo possono essere dati sulla s
 - Senza lo sviluppatore il sistema continua a funzionare, ma non per sempre. La rete Tor può smettere di accettare versioni troppo vecchie del client e gli store possono nascondere le app non aggiornate ai loro requisiti. L'opzione per usare un `tor` esterno (§9.2) allunga la vita del programma del coach.
 - Se il coach perde la chiave d'identità senza un backup, cambia indirizzo e tutti gli atleti devono riabbinarsi. Lo storico sul PC è perso; gli atleti conservano i propri log sul telefono.
 - Due PC attivi con la stessa identità si contendono il servizio e dividono i log tra due archivi.
+- La ricerca dei cibi ha bisogno del PC del coach acceso, come la sync. Il catalogo è fermo al rilascio del programma: i prodotti usciti dopo mancano finché non si aggiorna. I dati di Open Food Facts li inseriscono volontari e possono essere incompleti, soprattutto per gli alimenti sfusi. Senza catalogo il diario funziona con i cibi già usati e gli alimenti scritti a mano.
 - L'app del coach (§16) dipende dal PC come gli atleti: con il PC spento o sospeso non mostra niente e i messaggi scritti restano in coda. Senza notifiche push, con l'app chiusa i messaggi si scoprono con la sync in background, che Android può rimandare.
 
 ## 14. Fuori ambito per la v1
@@ -717,6 +812,7 @@ Anche le risposte ai questionari e le foto del corpo possono essere dati sulla s
 - Accesso del coach da più PC. Dal telefono c'è l'app del coach (§16), senza editor delle schede e senza video.
 - Telefono del coach come server, al posto del PC: le schermate dell'app leggono da un'unica interfaccia, così si potrà aggiungere, ma va prima provato quanto Tor resiste in background su Android.
 - Aggiornamento automatico del programma del coach.
+- Per il cibo: banche dati degli alimenti sfusi (CIQUAL, CREA), aggiornamento del catalogo senza un nuovo rilascio, il sale nel protocollo, piani alimentari scritti dal coach, foto dei pasti.
 - Importazione di dati da altri sistemi o dalla versione basata su Nostr.
 
 ## 15. Riferimenti
@@ -724,6 +820,7 @@ Anche le risposte ai questionari e le foto del corpo possono essere dati sulla s
 - OnionShare: Tor incluso in un programma desktop, onion service persistenti, client authorization gestita dalla porta di controllo.
 - Briar: Tor incorporato su Android, sincronizzazione quando i dispositivi sono online insieme, casella postale.
 - Specifiche di Tor: rend-spec-v3 (client authorization), control-spec (`ADD_ONION`, `DEL_ONION`, `HS_DESC`, `STATUS_GENERAL`), proposta 304 (errori SOCKS estesi).
+- Esportazioni di Open Food Facts (world.openfoodfacts.org/data) e licenza ODbL del database.
 
 ## 16. App del coach
 
@@ -760,12 +857,13 @@ Tutti con `Authorization: Bearer <token>` del telefono del coach, tranne l'abbin
 | `POST /v1/coach/atleti/<id>/messaggi/letti` | Vuoto | 204 |
 | `GET /v1/coach/atleti/<id>/allenamenti` | `?prima=<id>` facoltativo | `{ "allenamenti": [ … ], "altri": bool }`: i log dal più recente, fino a 50 e sotto i limiti del §6.2 |
 | `GET /v1/coach/atleti/<id>/pesi` | | `{ "pesi": [ { "giorno", "kg" } ] }`, dal più vecchio |
+| `GET /v1/coach/atleti/<id>/cibo` | `?prima=<giorno>` facoltativo | `{ "obiettivo": { … } \| null, "giornate": [ { "giorno", "voci": [ … ] } ], "altri": bool }`: l'obiettivo (§8.8) e le giornate non eliminate dalla più recente, fino a 28 e sotto i limiti del §6.2. Senza cibo condiviso `giornate` è vuoto |
 | `GET /v1/coach/atleti/<id>/questionari` | | `{ "questionari": [ { "id", "titolo", "contenuto", "inviato_il", "stato", "risposta", "risposto_il", "letto" } ], "altri": bool }`, dal più recente |
 | `POST /v1/coach/questionari/<id>/letto` | Vuoto | 204 |
 | `GET /v1/coach/foto/<id>` | | La foto, `image/jpeg` |
 | `POST /v1/coach/attendi` | `{ "impronta": "…", "attesa_s": 25 }` | `{ "novita": bool }`. Vero appena l'impronta è diversa, falso dopo l'attesa, al massimo 25 s. Come `POST /v1/attendi`: una per telefono, non cambia niente |
 
-L'`impronta` riassume lo stato dei dati che l'app mostra: messaggi, non letti, log, pesi, questionari. Due impronte uguali vogliono dire che non c'è niente di nuovo da chiedere.
+L'`impronta` riassume lo stato dei dati che l'app mostra: messaggi, non letti, log, pesi, giornate del cibo, obiettivi, questionari. Due impronte uguali vogliono dire che non c'è niente di nuovo da chiedere.
 
 Un messaggio scritto dal telefono è uguale a uno scritto dal PC: l'autore è il coach e arriva all'atleta con la sync (§7.3).
 
@@ -777,4 +875,5 @@ Un messaggio scritto dal telefono è uguale a uno scritto dal PC: l'autore è il
 - **In primo piano:** l'app tiene un `POST /v1/coach/attendi` in sospeso e rilegge i dati appena cambiano. Se il coach non è raggiungibile ritenta dopo 30 s, 2 e 5 minuti.
 - **In background:** lavoro periodico con WorkManager, predefinito ogni 15 minuti (impostabile: disattivato, 15, 30 o 60 minuti), solo con rete e batteria non scarica. Manda i messaggi in coda e controlla le novità.
 - **Notifiche:** dicono chi ha scritto o risposto e quanti sono, mai il testo: possono comparire sullo schermo bloccato.
+- **Cibo:** nella pagina dell'atleta, se lo condivide, calorie e macronutrienti di ogni giorno con l'obiettivo; aprendo un giorno, i pasti con le voci, i grammi e la fonte dei valori. In sola lettura, come il resto (§16.1): l'obiettivo si fissa dal PC.
 - **Telefono revocato:** alla risposta 401 l'app cancella token e coda e torna alla schermata di collegamento.

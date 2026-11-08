@@ -8,6 +8,7 @@ import '../piattaforma/inviti_in_arrivo.dart';
 import '../piattaforma/sync_in_background.dart';
 import 'aggiungi_coach.dart';
 import 'chat.dart';
+import 'cibo.dart';
 import 'impostazioni.dart';
 import 'pagina_coach.dart';
 import 'peso.dart';
@@ -15,7 +16,7 @@ import 'stato_sync.dart';
 
 /// La schermata da cui parte l'app (§10.2). L'atleta ha un solo coach alla
 /// volta: senza coach si collega, con il coach trova le sezioni Allenamento,
-/// Chat e Peso. Chi aveva più coach da una versione precedente ne sceglie uno.
+/// Chat, Cibo e Peso. Chi aveva più coach da una versione precedente ne sceglie uno.
 class SchermataPrincipale extends StatefulWidget {
   const SchermataPrincipale({
     super.key,
@@ -249,6 +250,7 @@ class _SezioniState extends State<_Sezioni> {
           title: Text(switch (_sezione) {
             0 => nome,
             1 => testi.chatCon(nome),
+            2 => testi.cibo,
             _ => testi.peso,
           }),
           actions: [
@@ -264,6 +266,7 @@ class _SezioniState extends State<_Sezioni> {
           children: [
             SezioneAllenamento(nucleo: _nucleo, coachId: id),
             SchermataChat(nucleo: _nucleo, coachId: id, barra: false, visibile: _sezione == 1),
+            SezioneCibo(nucleo: _nucleo, coachId: id),
             SchermataPeso(nucleo: _nucleo, barra: false),
           ],
         ),
@@ -286,6 +289,10 @@ class _SezioniState extends State<_Sezioni> {
                 child: const Icon(Icons.chat_bubble_outline),
               ),
               label: testi.chat,
+            ),
+            NavigationDestination(
+              icon: const Icon(Icons.restaurant_outlined),
+              label: testi.cibo,
             ),
             NavigationDestination(
               icon: const Icon(Icons.monitor_weight_outlined),

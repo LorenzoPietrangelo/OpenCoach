@@ -53,3 +53,17 @@ String? trovaTor(String cartellaDati) {
   }
   return null;
 }
+
+/// Il catalogo dei cibi (§10.3), nell'ordine: la variabile
+/// OPENCOACH_CATALOGO_CIBO (per lo sviluppo), quello incluso accanto al
+/// programma. Null se non c'è.
+String? trovaCatalogoCibo() {
+  final candidati = [
+    Platform.environment['OPENCOACH_CATALOGO_CIBO'],
+    p.join(p.dirname(Platform.resolvedExecutable), 'cibo', 'catalogo_italia.sqlite'),
+  ];
+  for (final candidato in candidati) {
+    if (candidato != null && File(candidato).existsSync()) return candidato;
+  }
+  return null;
+}

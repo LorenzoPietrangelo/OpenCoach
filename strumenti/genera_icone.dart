@@ -1,6 +1,8 @@
 // Genera tutte le icone di Open Coach dallo stesso logo: un cerchio verde acqua con un anello
 // bianco. Programma del coach (finestra, area di notifica, installer), app dell'atleta (Android e
-// iOS) e pagina dei download. Senza dipendenze, per non portare strumenti grafici nel progetto.
+// iOS) e pagina dei download. L'app del coach per il telefono ha i colori invertiti e un punto al
+// centro, per non confonderla con l'app dell'atleta sullo stesso telefono. Senza dipendenze, per
+// non portare strumenti grafici nel progetto.
 //
 // Dalla cartella principale della repo:
 //
@@ -22,6 +24,9 @@ const _cerchio = 0.47;
 const _anelloFuori = 0.30;
 const _anelloDentro = 0.19;
 
+/// Raggio del punto al centro dell'icona dell'app del coach.
+const _punto = 0.08;
+
 void main() {
   final repo = File.fromUri(Platform.script).parent.parent.path;
   String percorso(String relativo) => '$repo/$relativo';
@@ -38,6 +43,14 @@ void main() {
     _scrivi(
       percorso('atleta/app/android/app/src/main/res/mipmap-$nome/ic_launcher.png'),
       _png(lato),
+    );
+  });
+
+  // App del coach su Android: bianca, con anello e punto verde acqua.
+  densita.forEach((nome, lato) {
+    _scrivi(
+      percorso('coach/mobile/android/app/src/main/res/mipmap-$nome/ic_launcher.png'),
+      _png(lato, coach: true),
     );
   });
 
@@ -64,17 +77,22 @@ void _scrivi(String percorso, List<int> byte) => File(percorso).writeAsBytesSync
 
 /// Pixel RGBA di un'icona di lato [lato], con antialiasing 4×4. Con [pieno] il verde riempie tutto
 /// il quadrato e l'anello si allarga in proporzione, come se il cerchio fosse grande quanto il lato.
-Uint8List _disegna(int lato, {bool pieno = false}) {
+/// Con [coach] il cerchio è bianco e anello e punto al centro verde acqua.
+Uint8List _disegna(int lato, {bool pieno = false, bool coach = false}) {
   final pixel = Uint8List(lato * lato * 4);
   final centro = lato / 2;
   final esterno = lato * _cerchio;
   final ingrandimento = pieno ? 0.5 / _cerchio : 1.0;
   final anelloFuori = lato * _anelloFuori * ingrandimento;
   final anelloDentro = lato * _anelloDentro * ingrandimento;
+  final punto = coach ? lato * _punto * ingrandimento : 0.0;
+  const bianco = [0xff, 0xff, 0xff];
+  final fondo = coach ? bianco : _fondo;
+  final segno = coach ? _fondo : bianco;
   for (var y = 0; y < lato; y++) {
     for (var x = 0; x < lato; x++) {
       var coperto = 0;
-      var bianco = 0;
+      var segnati = 0;
       for (var sy = 0; sy < 4; sy++) {
         for (var sx = 0; sx < 4; sx++) {
           final dx = x + (sx + 0.5) / 4 - centro;
@@ -82,15 +100,18 @@ Uint8List _disegna(int lato, {bool pieno = false}) {
           final d2 = dx * dx + dy * dy;
           if (pieno || d2 <= esterno * esterno) {
             coperto++;
-            if (d2 <= anelloFuori * anelloFuori && d2 >= anelloDentro * anelloDentro) bianco++;
+            if ((d2 <= anelloFuori * anelloFuori && d2 >= anelloDentro * anelloDentro) ||
+                d2 <= punto * punto) {
+              segnati++;
+            }
           }
         }
       }
       final i = (y * lato + x) * 4;
       if (coperto == 0) continue;
-      final quotaBianca = bianco / coperto;
+      final quota = segnati / coperto;
       for (var c = 0; c < 3; c++) {
-        pixel[i + c] = (_fondo[c] + (255 - _fondo[c]) * quotaBianca).round();
+        pixel[i + c] = (fondo[c] + (segno[c] - fondo[c]) * quota).round();
       }
       pixel[i + 3] = (255 * coperto / 16).round();
     }
@@ -98,8 +119,8 @@ Uint8List _disegna(int lato, {bool pieno = false}) {
   return pixel;
 }
 
-Uint8List _png(int lato, {bool pieno = false}) {
-  final rgba = _disegna(lato, pieno: pieno);
+Uint8List _png(int lato, {bool pieno = false, bool coach = false}) {
+  final rgba = _disegna(lato, pieno: pieno, coach: coach);
   final righe = BytesBuilder();
   for (var y = 0; y < lato; y++) {
     righe

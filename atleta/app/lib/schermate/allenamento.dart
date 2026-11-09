@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../l10n/testi.dart';
+import '../piattaforma/suono.dart';
 import '../piattaforma/video.dart';
 import 'avvisi.dart';
 import 'contenuto_scheda.dart';
@@ -30,6 +31,7 @@ class SchermataAllenamento extends StatefulWidget {
     required this.allenamento,
     this.titolo,
     this.seduta,
+    this.noteScheda = '',
     this.logId,
     this.preparaVideo = preparaVideoDalTelefono,
   });
@@ -43,6 +45,10 @@ class SchermataAllenamento extends StatefulWidget {
   /// La seduta della scheda, per mostrare accanto agli esercizi la
   /// prescrizione e le note del coach.
   final Seduta? seduta;
+
+  /// Le note del coach sulla scheda: aprendo la scheda si arriva qui
+  /// direttamente, e altrimenti non si vedrebbero.
+  final String noteScheda;
 
   /// Il log dello storico da modificare; null per un allenamento nuovo.
   final String? logId;
@@ -291,8 +297,7 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
       _fineRecupero = null;
       _recuperoFinito = true;
     });
-    unawaited(HapticFeedback.vibrate());
-    unawaited(SystemSound.play(SystemSoundType.alert));
+    unawaited(suonaFineRecupero());
   }
 
   void _spostaRecupero(Duration differenza) {
@@ -564,6 +569,11 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
                   ],
                   onChanged: (id) => _cambia(() => _a.coachId = id),
                 ),
+              ),
+            if (widget.noteScheda.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.all(4),
+                child: Text(widget.noteScheda, style: tema.bodyMedium),
               ),
             if (noteSeduta.isNotEmpty)
               Padding(

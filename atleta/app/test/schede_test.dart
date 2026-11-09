@@ -1,4 +1,5 @@
 import 'package:atleta_app/app.dart';
+import 'package:atleta_app/schermate/allenamento.dart';
 import 'package:atleta_app/schermate/pagina_coach.dart';
 import 'package:atleta_app/schermate/dettaglio_scheda.dart';
 import 'package:atleta_nucleo/atleta_nucleo.dart';
@@ -52,7 +53,11 @@ void main() {
     // Senza Tor la sync non parte, e lo stato lo dice (§7.5).
     expect(find.textContaining('rete Tor'), findsOneWidget);
 
+    // Due sedute: si sceglie quale fare, oppure si guarda tutta la scheda.
     await tester.tap(find.text('Forza – blocco 2'));
+    await tester.pumpAndSettle();
+    expect(find.text('Quale seduta fai?'), findsOneWidget);
+    await tester.tap(find.text('Vedi tutta la scheda'));
     await tester.pumpAndSettle();
     expect(find.text('Revisione nuova'), findsOneWidget);
     expect(find.text('Giorno A'), findsOneWidget);
@@ -70,6 +75,44 @@ void main() {
     await tester.tap(find.byType(BackButton));
     await tester.pumpAndSettle();
     expect(find.text('Da vedere'), findsNothing);
+  });
+
+  testWidgets('toccando una scheda parte subito l\'allenamento', (
+    tester,
+  ) async {
+    final coach = telefono.aggiungiCoach('Marco Bianchi');
+    final forza = schedaForza();
+    telefono.aggiungiScheda(coach, forza);
+    final unaSeduta = schedaForza(titolo: 'Mobilità')
+      ..['sedute'] = [(forza['sedute']! as List<Object?>).last];
+    telefono.aggiungiScheda(coach, unaSeduta, vista: true);
+
+    await tester.pumpWidget(conTesti(SezioneAllenamento(nucleo: telefono.nucleo, coachId: coach)));
+    await tester.pumpAndSettle();
+
+    // Con più sedute si sceglie quale; si apre l'allenamento, non il riepilogo.
+    await tester.tap(find.text('Forza – blocco 2'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Giorno A'));
+    await tester.pumpAndSettle();
+    expect(find.byType(SchermataAllenamento), findsOneWidget);
+    expect(find.byType(DettaglioScheda), findsNothing);
+    expect(find.text('Squat'), findsOneWidget);
+    // Le note della scheda si vedono anche qui.
+    expect(find.text('Riscaldamento di 10 minuti prima di ogni seduta.'), findsOneWidget);
+    expect(
+      telefono.nucleo.schede.cerca(coach, forza['id']! as String)!.daVedere,
+      isFalse,
+    );
+    await tester.tap(find.byType(BackButton));
+    await tester.pumpAndSettle();
+
+    // Con una seduta sola si entra direttamente.
+    await tester.tap(find.text('Mobilità'));
+    await tester.pumpAndSettle();
+    expect(find.byType(SchermataAllenamento), findsOneWidget);
+    expect(find.text('Giorno B'), findsOneWidget);
+    expect(find.text('Quale seduta fai?'), findsNothing);
   });
 
   testWidgets('una scheda archiviata si consulta ma non si esegue', (

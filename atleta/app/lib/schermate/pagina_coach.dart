@@ -175,15 +175,7 @@ class _SezioneAllenamentoState extends State<SezioneAllenamento> {
     if (salvato == true) messaggi.avvisa(testi.allenamentoSalvato);
   }
 
-  Future<void> _apriScheda(SchedaRicevuta scheda) => Navigator.of(context).push(
-    MaterialPageRoute<void>(
-      builder: (_) => DettaglioScheda(
-        nucleo: _nucleo,
-        coachId: widget.coachId,
-        schedaId: scheda.id,
-      ),
-    ),
-  );
+  Future<void> _apriScheda(SchedaRicevuta scheda) => apriScheda(context, _nucleo, scheda);
 
   @override
   Widget build(BuildContext context) {

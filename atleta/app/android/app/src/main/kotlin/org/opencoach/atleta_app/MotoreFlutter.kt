@@ -135,6 +135,15 @@ object MotoreFlutter {
                 else -> risultato.notImplemented()
             }
         }
+        MethodChannel(messaggi, SuonoRecupero.CANALE).setMethodCallHandler { chiamata, risultato ->
+            when (chiamata.method) {
+                "suona" -> {
+                    SuonoRecupero.suona(app)
+                    risultato.success(null)
+                }
+                else -> risultato.notImplemented()
+            }
+        }
         val background = MethodChannel(messaggi, CANALE_BACKGROUND)
         background.setMethodCallHandler { chiamata, risultato ->
             when (chiamata.method) {

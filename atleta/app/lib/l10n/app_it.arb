@@ -306,6 +306,8 @@
   "schedaArchiviata": "Scheda archiviata: puoi consultarla ma non eseguirla.",
   "collegamentoChiuso": "Il collegamento con questo coach è chiuso: schede e allenamenti sono in sola lettura.",
   "inizia": "Inizia",
+  "qualeSeduta": "Quale seduta fai?",
+  "vediTuttaLaScheda": "Vedi tutta la scheda",
   "serieRipetizioni": "{serie} × {ripetizioni}",
   "@serieRipetizioni": {
     "placeholders": {

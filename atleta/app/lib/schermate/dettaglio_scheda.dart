@@ -9,6 +9,115 @@ import 'allenamento.dart';
 import 'contenuto_scheda.dart';
 import 'formati.dart';
 
+/// Apre una scheda toccata nell'elenco. Se si può eseguire parte subito
+/// l'allenamento: con più sedute l'atleta sceglie prima quale, e da lì può
+/// anche vedere tutta la scheda. Una scheda archiviata, del collegamento
+/// chiuso o senza sedute si apre in sola lettura ([DettaglioScheda]).
+Future<void> apriScheda(
+  BuildContext context,
+  NucleoAtleta nucleo,
+  SchedaRicevuta scheda,
+) async {
+  final coach = nucleo.collegamenti.cerca(scheda.coachId);
+  final eseguibile = coach?.stato == StatoCollegamento.attivo &&
+      !scheda.archiviata &&
+      scheda.sedute.isNotEmpty;
+  Future<void> riepilogo() => Navigator.of(context).push(
+    MaterialPageRoute<void>(
+      builder: (_) => DettaglioScheda(
+        nucleo: nucleo,
+        coachId: scheda.coachId,
+        schedaId: scheda.id,
+      ),
+    ),
+  );
+  if (!eseguibile) return riepilogo();
+  final seduta = scheda.sedute.length == 1
+      ? scheda.sedute.single
+      : await _scegliSeduta(context, scheda, riepilogo);
+  if (seduta == null || !context.mounted) return;
+  // L'atleta sta aprendo l'ultima revisione: l'avviso sparisce (§10.2).
+  if (scheda.daVedere) nucleo.schede.segnaVista(scheda.coachId, scheda.id);
+  await iniziaSeduta(context, nucleo, scheda, seduta);
+}
+
+/// La seduta da fare oggi; null se l'atleta rinuncia o apre tutta la scheda.
+Future<Seduta?> _scegliSeduta(
+  BuildContext context,
+  SchedaRicevuta scheda,
+  Future<void> Function() riepilogo,
+) async {
+  final testi = Testi.of(context);
+  final scelta = await showModalBottomSheet<Object>(
+    context: context,
+    showDragHandle: true,
+    isScrollControlled: true,
+    builder: (context) => SafeArea(
+      child: ListView(
+        shrinkWrap: true,
+        children: [
+          ListTile(
+            title: Text(
+              scheda.titolo,
+              style: Theme.of(context).textTheme.titleMedium,
+            ),
+            subtitle: Text(testi.qualeSeduta),
+          ),
+          for (final seduta in scheda.sedute)
+            ListTile(
+              leading: const Icon(Icons.play_arrow),
+              title: Text(seduta.nome),
+              subtitle: Text(
+                seduta.esercizi.map((e) => e.nome).join(', '),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+              onTap: () => Navigator.of(context).pop(seduta),
+            ),
+          const Divider(),
+          ListTile(
+            leading: const Icon(Icons.description_outlined),
+            title: Text(testi.vediTuttaLaScheda),
+            onTap: () => Navigator.of(context).pop(riepilogo),
+          ),
+        ],
+      ),
+    ),
+  );
+  if (scelta is Future<void> Function()) {
+    if (context.mounted) await scelta();
+    return null;
+  }
+  return scelta as Seduta?;
+}
+
+/// Avvia l'allenamento di una seduta della scheda (§10.2).
+Future<void> iniziaSeduta(
+  BuildContext context,
+  NucleoAtleta nucleo,
+  SchedaRicevuta scheda,
+  Seduta seduta,
+) async {
+  final testi = Testi.of(context);
+  final messaggi = ScaffoldMessenger.of(context);
+  final salvato = await Navigator.of(context).push<bool>(
+    MaterialPageRoute(
+      builder: (_) => SchermataAllenamento(
+        nucleo: nucleo,
+        allenamento: AllenamentoInCorso.daSeduta(
+          scheda,
+          seduta.id,
+          inizio: nucleo.contesto.orologio.adesso(),
+        ),
+        titolo: seduta.nome,
+        seduta: seduta,
+        noteScheda: scheda.note,
+      ),
+    ),
+  );
+  if (salvato == true) messaggi.avvisa(testi.allenamentoSalvato);
+}
+
 /// Una scheda (§8.1, §10.2): validità, note, sedute ed esercizi con la
 /// prescrizione. Aprendola l'atleta vede l'ultima revisione, e l'avviso di
 /// revisione nuova sparisce. Da una seduta parte l'allenamento, salvo che la
@@ -66,27 +175,8 @@ class _DettaglioSchedaState extends State<DettaglioScheda> {
     }
   }
 
-  Future<void> _inizia(SchedaRicevuta scheda, Seduta seduta) async {
-    final testi = Testi.of(context);
-    final messaggi = ScaffoldMessenger.of(context);
-    final salvato = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => SchermataAllenamento(
-          nucleo: widget.nucleo,
-          allenamento: AllenamentoInCorso.daSeduta(
-            scheda,
-            seduta.id,
-            inizio: widget.nucleo.contesto.orologio.adesso(),
-          ),
-          titolo: seduta.nome,
-          seduta: seduta,
-        ),
-      ),
-    );
-    if (salvato == true) {
-      messaggi.avvisa(testi.allenamentoSalvato);
-    }
-  }
+  Future<void> _inizia(SchedaRicevuta scheda, Seduta seduta) =>
+      iniziaSeduta(context, widget.nucleo, scheda, seduta);
 
   @override
   Widget build(BuildContext context) {

@@ -12,6 +12,8 @@
          a mano, quindi l'app si installa anche sui telefoni che non ce
          l'hanno. -->
     <uses-permission android:name="android.permission.CAMERA"/>
+    <!-- La vibrazione a fine recupero (§10.2). -->
+    <uses-permission android:name="android.permission.VIBRATE"/>
     <uses-feature
         android:name="android.hardware.camera.any"
         android:required="false"

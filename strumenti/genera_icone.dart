@@ -1,8 +1,8 @@
 // Genera tutte le icone di Open Coach dallo stesso logo: un cerchio verde acqua con un anello
 // bianco. Programma del coach (finestra, area di notifica, installer), app dell'atleta (Android e
-// iOS) e pagina dei download. L'app del coach per il telefono ha i colori invertiti e un punto al
-// centro, per non confonderla con l'app dell'atleta sullo stesso telefono. Senza dipendenze, per
-// non portare strumenti grafici nel progetto.
+// iOS) e pagina dei download. Nell'app del coach per il telefono l'anello è aperto a destra, a
+// forma di C, per non confonderla con l'app dell'atleta sullo stesso telefono. Senza dipendenze,
+// per non portare strumenti grafici nel progetto.
 //
 // Dalla cartella principale della repo:
 //
@@ -24,8 +24,9 @@ const _cerchio = 0.47;
 const _anelloFuori = 0.30;
 const _anelloDentro = 0.19;
 
-/// Raggio del punto al centro dell'icona dell'app del coach.
-const _punto = 0.08;
+/// Metà dell'altezza dell'apertura a destra nell'anello dell'app del coach: l'apertura è alta
+/// quanto l'anello è spesso.
+const _apertura = 0.06;
 
 void main() {
   final repo = File.fromUri(Platform.script).parent.parent.path;
@@ -46,7 +47,7 @@ void main() {
     );
   });
 
-  // App del coach su Android: bianca, con anello e punto verde acqua.
+  // App del coach su Android: l'anello aperto a forma di C.
   densita.forEach((nome, lato) {
     _scrivi(
       percorso('coach/mobile/android/app/src/main/res/mipmap-$nome/ic_launcher.png'),
@@ -77,7 +78,7 @@ void _scrivi(String percorso, List<int> byte) => File(percorso).writeAsBytesSync
 
 /// Pixel RGBA di un'icona di lato [lato], con antialiasing 4×4. Con [pieno] il verde riempie tutto
 /// il quadrato e l'anello si allarga in proporzione, come se il cerchio fosse grande quanto il lato.
-/// Con [coach] il cerchio è bianco e anello e punto al centro verde acqua.
+/// Con [coach] l'anello è aperto a destra, a forma di C.
 Uint8List _disegna(int lato, {bool pieno = false, bool coach = false}) {
   final pixel = Uint8List(lato * lato * 4);
   final centro = lato / 2;
@@ -85,14 +86,11 @@ Uint8List _disegna(int lato, {bool pieno = false, bool coach = false}) {
   final ingrandimento = pieno ? 0.5 / _cerchio : 1.0;
   final anelloFuori = lato * _anelloFuori * ingrandimento;
   final anelloDentro = lato * _anelloDentro * ingrandimento;
-  final punto = coach ? lato * _punto * ingrandimento : 0.0;
-  const bianco = [0xff, 0xff, 0xff];
-  final fondo = coach ? bianco : _fondo;
-  final segno = coach ? _fondo : bianco;
+  final apertura = coach ? lato * _apertura * ingrandimento : -1.0;
   for (var y = 0; y < lato; y++) {
     for (var x = 0; x < lato; x++) {
       var coperto = 0;
-      var segnati = 0;
+      var bianchi = 0;
       for (var sy = 0; sy < 4; sy++) {
         for (var sx = 0; sx < 4; sx++) {
           final dx = x + (sx + 0.5) / 4 - centro;
@@ -100,18 +98,18 @@ Uint8List _disegna(int lato, {bool pieno = false, bool coach = false}) {
           final d2 = dx * dx + dy * dy;
           if (pieno || d2 <= esterno * esterno) {
             coperto++;
-            if ((d2 <= anelloFuori * anelloFuori && d2 >= anelloDentro * anelloDentro) ||
-                d2 <= punto * punto) {
-              segnati++;
+            final nellApertura = dx > 0 && dy.abs() < apertura;
+            if (d2 <= anelloFuori * anelloFuori && d2 >= anelloDentro * anelloDentro && !nellApertura) {
+              bianchi++;
             }
           }
         }
       }
       final i = (y * lato + x) * 4;
       if (coperto == 0) continue;
-      final quota = segnati / coperto;
+      final quotaBianca = bianchi / coperto;
       for (var c = 0; c < 3; c++) {
-        pixel[i + c] = (fondo[c] + (segno[c] - fondo[c]) * quota).round();
+        pixel[i + c] = (_fondo[c] + (255 - _fondo[c]) * quotaBianca).round();
       }
       pixel[i + 3] = (255 * coperto / 16).round();
     }

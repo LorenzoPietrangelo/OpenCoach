@@ -1,7 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- L'icona dell'app del coach ha i colori del logo invertiti, per non confonderla con l'app
-         dell'atleta sullo stesso telefono: fondo bianco, anello e punto verde acqua
-         (strumenti/genera_icone.dart). -->
-    <color name="ic_launcher_background">#FFFFFF</color>
+    <!-- Verde acqua del logo di Open Coach (strumenti/genera_icone.dart). -->
+    <color name="ic_launcher_background">#00897B</color>
 </resources>

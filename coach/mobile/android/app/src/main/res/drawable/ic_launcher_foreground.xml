@@ -1,18 +1,14 @@
-<!-- Il logo dell'app del coach, primo piano dell'icona adattiva: l'anello di Open Coach con un
-     punto al centro, verde acqua su bianco. Il punto la distingue dall'app dell'atleta anche nelle
-     icone a tinta unita di Android 13. Su 108 dp ne restano visibili circa 72: le proporzioni sono
-     quelle di strumenti/genera_icone.dart rispetto a un cerchio di 72 dp (anello da 14,5 a 23 dp di
-     raggio, punto di 6,1). -->
+<!-- Il logo dell'app del coach, primo piano dell'icona adattiva: l'anello bianco di Open Coach
+     aperto a destra, a forma di C, per distinguerla dall'app dell'atleta anche nelle icone a tinta
+     unita di Android 13. Su 108 dp ne restano visibili circa 72: le proporzioni sono quelle di
+     strumenti/genera_icone.dart rispetto a un cerchio di 72 dp (anello da 14,5 a 23 dp di raggio,
+     apertura alta 9,2 dp). -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
     <path
-        android:strokeColor="#FF00897B"
-        android:strokeWidth="8.43"
-        android:pathData="M54,35.23a18.77,18.77 0,1 1,0 37.54a18.77,18.77 0,1 1,0 -37.54" />
-    <path
-        android:fillColor="#FF00897B"
-        android:pathData="M54,47.87a6.13,6.13 0,1 1,0 12.26a6.13,6.13 0,1 1,0 -12.26z" />
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M76.535,49.4A23,23 0,1 0,76.535 58.6L67.751,58.6A14.5,14.5 0,1 1,67.751 49.4Z" />
 </vector>

@@ -1,17 +1,16 @@
-<!-- Il logo dell'app del coach, per la schermata d'avvio fino ad Android 11 (da Android 12 la
-     schermata la disegna il sistema con l'icona dell'app): anello e punto verde acqua sul fondo
-     bianco della schermata. Proporzioni di strumenti/genera_icone.dart su un lato di 96: anello da
-     18,2 a 28,8, punto di 7,7. -->
+<!-- Il logo dell'app del coach intero, per la schermata d'avvio fino ad Android 11 (da Android 12
+     la schermata la disegna il sistema con l'icona dell'app). Proporzioni di
+     strumenti/genera_icone.dart su un lato di 96: cerchio di raggio 45,1, anello da 18,2 a 28,8
+     aperto a destra per un'altezza di 11,5. -->
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
     android:width="96dp"
     android:height="96dp"
     android:viewportWidth="96"
     android:viewportHeight="96">
     <path
-        android:strokeColor="#FF00897B"
-        android:strokeWidth="10.56"
-        android:pathData="M48,24.48a23.52,23.52 0,1 1,0 47.04a23.52,23.52 0,1 1,0 -47.04" />
-    <path
         android:fillColor="#FF00897B"
-        android:pathData="M48,40.32a7.68,7.68 0,1 1,0 15.36a7.68,7.68 0,1 1,0 -15.36z" />
+        android:pathData="M48,2.88a45.12,45.12 0,1 1,0 90.24a45.12,45.12 0,1 1,0 -90.24z" />
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M76.218,42.24A28.8,28.8 0,1 0,76.218 53.76L65.307,53.76A18.24,18.24 0,1 1,65.307 42.24Z" />
 </vector>

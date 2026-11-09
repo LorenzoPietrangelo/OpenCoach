@@ -13,7 +13,7 @@ import 'piattaforma/sync_in_background.dart';
 import 'piattaforma/tor_non_integrato.dart';
 
 /// Versione inviata al coach (§6.3): la stessa del pubspec.
-const versioneApp = '1.6.0';
+const versioneApp = '1.6.1';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();

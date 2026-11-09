@@ -173,15 +173,20 @@
   .comunita p { max-width: 38em; margin: 0 auto; font-size: 1.15rem; color: rgba(255, 255, 255, 0.88); }
 
   /* Download */
-  .download { display: grid; grid-template-columns: repeat(3, 1fr); gap: 24px; }
+  .download { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; }
   .scheda {
     background: var(--carta); border: 1px solid var(--bordo); border-radius: 24px;
     padding: 34px 30px; box-shadow: var(--ombra); display: flex; flex-direction: column;
   }
   .scheda h3 { margin: 0 0 6px; font-size: 1.45rem; }
-  /* Tre righe anche quando ne basta meno: i pulsanti delle tre schede restano allineati. */
+  /* Tre righe anche quando ne basta meno: i pulsanti delle due schede restano allineati. */
   .scheda .requisiti { color: var(--tenue); margin: 0 0 24px; min-height: 4.8em; }
   .scheda .pulsante { justify-content: center; }
+  /* Il secondo download del coach, l'app per il telefono: facoltativo, quindi meno in vista. */
+  .scheda .pulsante.contorno {
+    margin-top: 18px; border: 2px solid var(--primario); color: var(--primario);
+  }
+  .scheda .pulsante.contorno:hover { background: var(--sfondo); }
   .scheda .file { margin: 10px 0 0; text-align: center; color: var(--tenue); font-size: 0.88rem; }
   details {
     margin-top: 18px; border: 1px solid var(--bordo); border-radius: 14px; padding: 4px 18px;
@@ -389,13 +394,19 @@
 
       <div class="download">
         <article class="scheda" id="coach" aria-labelledby="titolo-coach">
-          <h3 id="titolo-coach">Programma del coach</h3>
-          <p class="requisiti">Windows 10 e 11 a 64 bit</p>
+          <h3 id="titolo-coach">Per il coach</h3>
+          <p class="requisiti">Il programma per Windows 10 e 11 a 64 bit. In più, se la vuoi, l'app
+            per il telefono Android 8.0 o successivo.</p>
           <a class="pulsante pieno" href="file/{{NOME_EXE}}" download>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
               stroke-linecap="round" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>
-            Scarica per Windows</a>
+            Scarica il programma per Windows</a>
           <p class="file">{{NOME_EXE}} · {{DIMENSIONE_EXE}}</p>
+          <a class="pulsante contorno" id="coach-telefono" href="file/{{NOME_APK_COACH}}" download>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
+              stroke-linecap="round" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>
+            Scarica l'app per Android</a>
+          <p class="file">{{NOME_APK_COACH}} · {{DIMENSIONE_APK_COACH}}</p>
 
           <details>
             <summary>Come si installa</summary>
@@ -432,6 +443,27 @@
             <p>Per aggiornare, esci dal programma (area di notifica → Esci) e installa la nuova
               versione sopra quella vecchia. Disinstallando, i tuoi dati restano in
               <code>%APPDATA%\OpenCoach</code>: si cancellano solo a mano.</p>
+          </details>
+          <details>
+            <summary>L'app per il telefono</summary>
+            <ul>
+              <li>Rispondi in chat ai tuoi atleti anche lontano dal PC.</li>
+              <li>Guardi allenamenti, peso, questionari con le foto e il diario del cibo.</li>
+              <li>Ti avvisa quando un atleta ti scrive, con notifiche senza testo.</li>
+            </ul>
+            <p>È un telecomando del PC: i dati restano lì e il telefono li legge attraverso Tor, finché
+              il PC è acceso con il programma aperto. Le schede si scrivono ancora sul PC. Può stare
+              sullo stesso telefono dell'app dell'atleta: la riconosci dall'icona bianca.</p>
+            <ol>
+              <li>Installala come l'app dell'atleta: apri il file dal telefono e, se Play Protect
+                avvisa, scegli <strong>Altri dettagli</strong> e poi <strong>Installa comunque</strong>.</li>
+              <li>Sul PC apri Impostazioni → Il mio telefono → <strong>Collega il mio telefono</strong> e
+                inquadra il QR con l'app.</li>
+              <li>L'app si apre con l'impronta o il blocco schermo del telefono.</li>
+            </ol>
+            <div class="avviso" role="note"><strong>Chi inquadra quel QR vede i dati di tutti i tuoi
+              atleti</strong>: non fotografarlo. Se perdi il telefono, scollegalo dalle impostazioni del
+              programma.</div>
           </details>
           <details>
             <summary>Il catalogo dei cibi</summary>
@@ -471,40 +503,6 @@
             <summary>Aggiornare</summary>
             <p>Scarica la nuova versione da questa pagina e installala sopra quella vecchia: schede,
               allenamenti e collegamenti con il coach restano.</p>
-          </details>
-        </article>
-
-        <article class="scheda" id="coach-telefono" aria-labelledby="titolo-coach-telefono">
-          <h3 id="titolo-coach-telefono">App del coach</h3>
-          <p class="requisiti">Android 8.0 o successivo · facoltativa, accanto al programma per Windows</p>
-          <a class="pulsante pieno" href="file/{{NOME_APK_COACH}}" download>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"
-              stroke-linecap="round" aria-hidden="true"><path d="M12 4v11M7 11l5 5 5-5M5 20h14"/></svg>
-            Scarica per Android</a>
-          <p class="file">{{NOME_APK_COACH}} · {{DIMENSIONE_APK_COACH}}</p>
-
-          <details>
-            <summary>A cosa serve</summary>
-            <ul>
-              <li>Rispondi in chat ai tuoi atleti anche lontano dal PC.</li>
-              <li>Guardi allenamenti, peso, questionari con le foto e il diario del cibo.</li>
-              <li>Ti avvisa quando un atleta ti scrive, con notifiche senza testo.</li>
-            </ul>
-            <p>È un telecomando del PC: i dati restano lì e il telefono li legge attraverso Tor, finché
-              il PC è acceso con il programma aperto. Le schede si scrivono ancora sul PC.</p>
-          </details>
-          <details>
-            <summary>Come si collega</summary>
-            <ol>
-              <li>Installala come l'app dell'atleta: apri il file dal telefono e, se Play Protect
-                avvisa, scegli <strong>Altri dettagli</strong> e poi <strong>Installa comunque</strong>.</li>
-              <li>Sul PC apri Impostazioni → Il mio telefono → <strong>Collega il mio telefono</strong> e
-                inquadra il QR con l'app.</li>
-              <li>L'app si apre con l'impronta o il blocco schermo del telefono.</li>
-            </ol>
-            <div class="avviso" role="note"><strong>Chi inquadra quel QR vede i dati di tutti i tuoi
-              atleti</strong>: non fotografarlo. Se perdi il telefono, scollegalo dalle impostazioni del
-              programma.</div>
           </details>
         </article>
       </div>

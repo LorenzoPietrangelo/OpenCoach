@@ -4,8 +4,11 @@ import 'dart:io';
 
 import 'package:atleta_app/l10n/testi.dart';
 import 'package:atleta_app/piattaforma/tor_non_integrato.dart';
+import 'package:atleta_app/schermate/allenamento.dart';
+import 'package:atleta_app/tema.dart';
 import 'package:atleta_nucleo/atleta_nucleo.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:protocollo/protocollo.dart';
 
 /// Orologio del telefono di prova: fermo finché il test non lo fa avanzare.
@@ -156,8 +159,29 @@ String linkInvito() => UriInvito(
 Widget conTesti(Widget schermata) => MaterialApp(
   localizationsDelegates: Testi.localizationsDelegates,
   supportedLocales: Testi.supportedLocales,
+  theme: temaAtleta(),
   home: schermata,
 );
+
+/// Salva l'allenamento aperto dal bottone in fondo alla seduta: in alto non
+/// c'è più, per non toccarlo per sbaglio.
+Future<void> salva(WidgetTester tester) async {
+  final bottone = find.text("Salva l'allenamento");
+  await tester.scrollUntilVisible(
+    bottone,
+    300,
+    scrollable: find
+        .descendant(of: find.byType(SchermataAllenamento), matching: find.byType(Scrollable))
+        .first,
+  );
+  // Lasciato il campo, può partire il timer di recupero: la sua barra prende
+  // il fondo dello schermo e il bottone va riportato in vista.
+  await tester.pumpAndSettle();
+  await tester.ensureVisible(bottone);
+  await tester.pumpAndSettle();
+  await tester.tap(bottone);
+  await tester.pumpAndSettle();
+}
 
 /// Scheda con due sedute. «Giorno A»: squat 4 × 6-8 al 75% 1RM con 2:30 di
 /// recupero, panca 2 × 8 con 60 kg e 1:30 di recupero, plank 3 × 30 s.

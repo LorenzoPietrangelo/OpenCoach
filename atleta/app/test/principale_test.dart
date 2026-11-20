@@ -118,8 +118,11 @@ void main() {
     expect(find.textContaining('Corsa'), findsOneWidget);
     expect(find.text('Vecchia'), findsNothing);
 
+    await tester.ensureVisible(find.text('Archivio (1)'));
+    await tester.pumpAndSettle();
     await tester.tap(find.text('Archivio (1)'));
     await tester.pumpAndSettle();
+    await tester.ensureVisible(find.text('Vecchia'));
     expect(find.text('Vecchia'), findsOneWidget);
 
     // Da un'altra sezione e ritorno restano aperti.

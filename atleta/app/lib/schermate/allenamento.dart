@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:math' as math;
 
 import 'package:atleta_nucleo/atleta_nucleo.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 
 import '../l10n/testi.dart';
+import '../tema.dart';
 import '../piattaforma/suono.dart';
 import '../piattaforma/video.dart';
 import 'avvisi.dart';
@@ -78,6 +81,70 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
     () => _aperti.remove(esercizio) || _aperti.add(esercizio),
   );
 
+  /// Gli esercizi previsti già conclusi: chiusi una volta, se l'atleta li
+  /// riapre restano aperti finché non li chiude lui.
+  final _conclusi = <EsercizioInCorso>{};
+
+  /// L'esercizio aperto dopo uno concluso: finita l'animazione, la lista lo
+  /// porta in vista.
+  EsercizioInCorso? _daMostrare;
+
+  final _chiavi = <EsercizioInCorso, GlobalKey>{};
+
+  GlobalKey _chiave(EsercizioInCorso esercizio) =>
+      _chiavi.putIfAbsent(esercizio, () => GlobalObjectKey(esercizio));
+
+  static bool _concluso(EsercizioInCorso esercizio) =>
+      esercizio.serie.isNotEmpty && esercizio.serie.every((s) => s.completata);
+
+  /// Lasciata una serie: se con lei l'esercizio previsto è concluso, si
+  /// chiude e si apre il prossimo non ancora concluso. Gli esercizi aggiunti
+  /// dall'atleta non hanno serie previste e restano aperti.
+  void _forseProssimo(SerieInCorso serie) {
+    final esercizio = _a.esercizi.where((e) => e.serie.contains(serie)).firstOrNull;
+    if (esercizio == null || !esercizio.previsto) return;
+    if (!_concluso(esercizio)) {
+      _conclusi.remove(esercizio);
+      return;
+    }
+    if (!_conclusi.add(esercizio)) return;
+    final dopo = _a.esercizi.skip(_a.esercizi.indexOf(esercizio) + 1);
+    final prossimo = dopo.where((e) => !_concluso(e)).firstOrNull;
+    setState(() {
+      _aperti.remove(esercizio);
+      if (prossimo != null) {
+        _aperti.add(prossimo);
+        _daMostrare = prossimo;
+      }
+    });
+  }
+
+  void _mostraSeServe(EsercizioInCorso esercizio) {
+    if (_daMostrare != esercizio) return;
+    _daMostrare = null;
+    final contesto = _chiave(esercizio).currentContext;
+    final oggetto = contesto?.findRenderObject();
+    if (contesto == null || oggetto == null) return;
+    final viewport = RenderAbstractViewport.maybeOf(oggetto);
+    final posizione = Scrollable.maybeOf(contesto)?.position;
+    if (viewport == null || posizione == null) return;
+    // Si scorre solo quanto basta: l'esercizio intero se ci sta, altrimenti
+    // il suo inizio in cima. Se si vede già tutto, la lista resta ferma.
+    final inCima = viewport.getOffsetToReveal(oggetto, 0).offset;
+    final inFondo = viewport.getOffsetToReveal(oggetto, 1).offset;
+    final meta = math
+        .min(math.max(posizione.pixels, inFondo), inCima)
+        .clamp(posizione.minScrollExtent, posizione.maxScrollExtent);
+    if ((meta - posizione.pixels).abs() < 1) return;
+    unawaited(
+      posizione.animateTo(
+        meta,
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic,
+      ),
+    );
+  }
+
   /// Campi con un valore non valido: finché ce ne sono non si salva.
   final _nonValidi = <(SerieInCorso, _Campo)>{};
 
@@ -109,6 +176,7 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
     // Un allenamento già registrato si apre per correggerlo: le serie si
     // vedono subito.
     if (widget.logId != null) _aperti.addAll(_a.esercizi);
+    _conclusi.addAll(_a.esercizi.where(_concluso));
   }
 
   /// Le serie fatte l'ultima volta con l'esercizio, per nome e id: se
@@ -254,8 +322,10 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
   /// tastiera: se l'ha compilata e il coach ha previsto un recupero, parte il
   /// timer.
   void _serieLasciata(SerieInCorso serie) {
+    if (!mounted) return;
+    _forseProssimo(serie);
     final recupero = serie.recupero;
-    if (!mounted || !serie.completata || recupero == null || recupero <= Duration.zero) return;
+    if (!serie.completata || recupero == null || recupero <= Duration.zero) return;
     if (_recuperate.add(serie)) _avviaRecupero(recupero);
   }
 
@@ -528,7 +598,6 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
               tooltip: testi.timerRecupero,
               onPressed: _scegliRecupero,
             ),
-            TextButton(onPressed: _preparoVideo ? null : _salva, child: Text(testi.salva)),
           ],
           bottom: _preparoVideo
               ? PreferredSize(
@@ -585,7 +654,8 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
                 padding: const EdgeInsets.all(12),
                 child: Text(testi.nessunEsercizio),
               ),
-            for (final esercizio in _a.esercizi) _esercizio(esercizio),
+            for (final (indice, esercizio) in _a.esercizi.indexed)
+              _esercizio(esercizio, indice),
             Align(
               alignment: Alignment.centerLeft,
               child: TextButton.icon(
@@ -631,7 +701,7 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
     );
   }
 
-  Widget _esercizio(EsercizioInCorso esercizio) {
+  Widget _esercizio(EsercizioInCorso esercizio, int indice) {
     final testi = Testi.of(context);
     final tema = Theme.of(context).textTheme;
     final previsto = widget.seduta?.esercizi
@@ -665,24 +735,48 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
         for (final riga in previsto.prescrizione)
           testoPrescrizione(testi, carico: riga.carico),
     ].where((t) => t.isNotEmpty);
+    final colori = Theme.of(context).colorScheme;
     return Card(
-      key: ObjectKey(esercizio),
-      margin: const EdgeInsets.symmetric(vertical: 6),
+      key: _chiave(esercizio),
+      margin: const EdgeInsets.symmetric(vertical: 5),
       clipBehavior: Clip.antiAlias,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(18),
+        side: aperto
+            ? BorderSide(color: colori.primary, width: 1.5)
+            : const BorderSide(color: ColoriAtleta.bordo),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           ListTile(
-            title: Text(esercizio.nome, style: tema.titleMedium),
+            contentPadding: const EdgeInsets.fromLTRB(14, 4, 12, 4),
+            leading: _NumeroEsercizio(
+              indice + 1,
+              concluso: _concluso(esercizio),
+              aperto: aperto,
+            ),
+            title: Text(
+              esercizio.nome,
+              style: aperto
+                  ? tema.titleMedium?.copyWith(fontWeight: FontWeight.w700)
+                  : tema.titleMedium,
+            ),
             subtitle: riepilogo.isEmpty ? null : Text(riepilogo),
             trailing: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   testi.serieFatte(fatte, esercizio.serie.length),
-                  style: tema.labelMedium,
+                  style: tema.labelLarge?.copyWith(
+                    color: fatte > 0 ? colori.primary : colori.onSurfaceVariant,
+                  ),
                 ),
-                Icon(aperto ? Icons.expand_less : Icons.expand_more),
+                const SizedBox(width: 4),
+                Icon(
+                  aperto ? Icons.expand_less : Icons.expand_more,
+                  color: colori.onSurfaceVariant,
+                ),
               ],
             ),
             onTap: () => _apriOChiudi(esercizio),
@@ -690,6 +784,7 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
           AnimatedSize(
             duration: const Duration(milliseconds: 200),
             alignment: Alignment.topCenter,
+            onEnd: () => _mostraSeServe(esercizio),
             // Chiuso, l'esercizio tiene vivi i suoi campi: un valore ancora da
             // correggere non si perde.
             child: Visibility(
@@ -729,7 +824,7 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
     final tema = Theme.of(context).textTheme;
     final precedenti = _ultimaVolta(esercizio);
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 0, 4, 4),
+      padding: const EdgeInsets.fromLTRB(8, 0, 4, 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -773,7 +868,10 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
               conDurata: conDurata,
             ),
           TextButton.icon(
-            onPressed: () => _cambia(esercizio.aggiungiSerie),
+            onPressed: () => _cambia(() {
+              esercizio.aggiungiSerie();
+              _conclusi.remove(esercizio);
+            }),
             icon: const Icon(Icons.add),
             label: Text(testi.aggiungiSerie),
           ),
@@ -852,7 +950,15 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
         if (!dentro) _serieLasciata(serie);
       },
       child: _colonne(
-        numero: Text('${indice + 1}'),
+        fatta: serie.completata,
+        numero: serie.completata
+            ? Icon(
+                Icons.check,
+                size: 20,
+                color: Theme.of(context).colorScheme.primary,
+                semanticLabel: '${indice + 1}',
+              )
+            : Text('${indice + 1}', style: Theme.of(context).textTheme.titleSmall),
         ripetizioni: conRipetizioni
             ? casella(
                 _Campo.ripetizioni,
@@ -893,6 +999,7 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
   /// Ogni colonna ha la sua chiave: se compare o sparisce la durata, i
   /// campi delle altre colonne restano quelli.
   Widget _colonne({
+    bool fatta = false,
     required Widget numero,
     Widget? ripetizioni,
     Widget? durata,
@@ -906,15 +1013,24 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
         child: Center(child: figlio),
       ),
     );
-    return Row(
-      children: [
-        SizedBox(width: 36, child: numero),
-        if (ripetizioni != null) colonna(_Campo.ripetizioni, ripetizioni),
-        if (durata != null) colonna(_Campo.durata, durata),
-        colonna(_Campo.carico, carico),
-        // Il video della serie, per il coach.
-        SizedBox(width: 40, child: Center(child: video)),
-      ],
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 150),
+      margin: const EdgeInsets.symmetric(vertical: 2),
+      padding: const EdgeInsets.symmetric(vertical: 1),
+      decoration: BoxDecoration(
+        color: fatta ? ColoriAtleta.serieFatta : null,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        children: [
+          SizedBox(width: 40, child: Center(child: numero)),
+          if (ripetizioni != null) colonna(_Campo.ripetizioni, ripetizioni),
+          if (durata != null) colonna(_Campo.durata, durata),
+          colonna(_Campo.carico, carico),
+          // Il video della serie, per il coach.
+          SizedBox(width: 44, child: Center(child: video)),
+        ],
+      ),
     );
   }
 
@@ -922,72 +1038,123 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
     if (_fineRecupero == null && !_recuperoFinito) return null;
     final testi = Testi.of(context);
     final tema = Theme.of(context);
+    const chiaro = Color(0xFF74E0CF);
     final compatto = TextButton.styleFrom(
-      padding: const EdgeInsets.symmetric(horizontal: 8),
-      minimumSize: const Size(48, 40),
+      foregroundColor: Colors.white,
+      backgroundColor: const Color(0xFF26403B),
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      minimumSize: const Size(56, 44),
+      shape: const StadiumBorder(),
+      textStyle: tema.textTheme.labelLarge,
     );
-    return Material(
-      color: _recuperoFinito
-          ? tema.colorScheme.tertiaryContainer
-          : tema.colorScheme.secondaryContainer,
-      child: SafeArea(
-        top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 4, 8, 4),
-          child: Row(
-            children: [
-              Icon(_recuperoFinito ? Icons.alarm : Icons.timer_outlined),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _recuperoFinito
-                    ? Text(
-                        testi.recuperoFinito,
-                        style: tema.textTheme.titleMedium,
-                      )
-                    : Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            testi.recupero,
-                            style: tema.textTheme.labelSmall,
+    final principale = compatto.copyWith(
+      foregroundColor: const WidgetStatePropertyAll(ColoriAtleta.suContenitore),
+      backgroundColor: const WidgetStatePropertyAll(chiaro),
+    );
+    return SafeArea(
+      top: false,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(8, 0, 8, 8),
+        padding: const EdgeInsets.fromLTRB(16, 10, 8, 10),
+        decoration: BoxDecoration(
+          color: _recuperoFinito ? ColoriAtleta.primario : ColoriAtleta.testo,
+          borderRadius: BorderRadius.circular(22),
+          boxShadow: const [
+            BoxShadow(color: Color(0x4710201D), blurRadius: 24, offset: Offset(0, 8)),
+          ],
+        ),
+        child: Row(
+          children: [
+            Icon(_recuperoFinito ? Icons.alarm : Icons.timer_outlined, color: chiaro),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _recuperoFinito
+                  ? Text(
+                      testi.recuperoFinito,
+                      style: tema.textTheme.titleMedium?.copyWith(color: Colors.white),
+                    )
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          testi.recupero,
+                          style: tema.textTheme.labelSmall?.copyWith(
+                            color: const Color(0xFFA8C9C3),
+                            letterSpacing: 0.6,
                           ),
-                          Text(
-                            durata(Duration(seconds: _secondiMostrati)),
-                            style: tema.textTheme.titleLarge,
-                          ),
-                        ],
-                      ),
-              ),
-              if (!_recuperoFinito) ...[
-                TextButton(
-                  style: compatto,
-                  onPressed: () =>
-                      _spostaRecupero(const Duration(seconds: -15)),
-                  child: Text(testi.menoQuindiciSecondi),
-                ),
-                TextButton(
-                  style: compatto,
-                  onPressed: () => _spostaRecupero(const Duration(seconds: 15)),
-                  child: Text(testi.piuQuindiciSecondi),
-                ),
-              ],
+                        ),
+                        Text(
+                          durata(Duration(seconds: _secondiMostrati)),
+                          style: tema.textTheme.headlineMedium?.copyWith(color: Colors.white),
+                        ),
+                      ],
+                    ),
+            ),
+            if (!_recuperoFinito) ...[
               TextButton(
                 style: compatto,
-                onPressed: _chiudiRecupero,
-                child: Text(_recuperoFinito ? testi.chiudi : testi.salta),
+                onPressed: () => _spostaRecupero(const Duration(seconds: -15)),
+                child: Text(testi.menoQuindiciSecondi),
               ),
+              const SizedBox(width: 6),
+              TextButton(
+                style: compatto,
+                onPressed: () => _spostaRecupero(const Duration(seconds: 15)),
+                child: Text(testi.piuQuindiciSecondi),
+              ),
+              const SizedBox(width: 6),
             ],
-          ),
+            TextButton(
+              style: principale,
+              onPressed: _chiudiRecupero,
+              child: Text(_recuperoFinito ? testi.chiudi : testi.salta),
+            ),
+          ],
         ),
       ),
     );
   }
 }
 
-/// Campo numerico di una serie. Il testo resta quello scritto dall'atleta;
-/// al genitore arrivano il valore letto o il fatto che il testo non è
-/// valido.
+/// Il numero dell'esercizio nella seduta, in un cerchio: pieno e con la
+/// spunta quando tutte le serie sono registrate.
+class _NumeroEsercizio extends StatelessWidget {
+  const _NumeroEsercizio(this.numero, {required this.concluso, required this.aperto});
+
+  final int numero;
+  final bool concluso;
+  final bool aperto;
+
+  @override
+  Widget build(BuildContext context) {
+    final colori = Theme.of(context).colorScheme;
+    return Container(
+      width: 30,
+      height: 30,
+      alignment: Alignment.center,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: concluso ? colori.primary : null,
+        border: concluso
+            ? null
+            : Border.all(
+                color: aperto ? colori.primary : colori.outline,
+                width: aperto ? 2 : 1.5,
+              ),
+      ),
+      child: concluso
+          ? Icon(Icons.check, size: 18, color: colori.onPrimary)
+          : Text(
+              '$numero',
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: aperto ? colori.primary : colori.onSurfaceVariant,
+              ),
+            ),
+    );
+  }
+}
+
 class _CampoNumero extends StatefulWidget {
   const _CampoNumero({
     required this.valore,

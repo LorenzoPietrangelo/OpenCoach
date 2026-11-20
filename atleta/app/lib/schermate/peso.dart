@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:protocollo/protocollo.dart';
 
 import '../l10n/testi.dart';
+import '../tema.dart';
 import 'avvisi.dart';
 import 'formati.dart';
 
@@ -132,7 +133,12 @@ class _SchermataPesoState extends State<SchermataPeso> {
                 children: [
                   Row(
                     children: [
-                      Expanded(child: Text(testi.pesoDi(etichettaGiorno), style: tema.titleMedium)),
+                      Expanded(
+                        child: Text(
+                          testi.pesoDi(etichettaGiorno),
+                          style: tema.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                        ),
+                      ),
                       TextButton.icon(
                         onPressed: _scegliGiorno,
                         icon: const Icon(Icons.calendar_today, size: 18),
@@ -148,18 +154,19 @@ class _SchermataPesoState extends State<SchermataPeso> {
                         child: TextField(
                           controller: _kg,
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          style: tema.headlineSmall?.copyWith(fontWeight: FontWeight.w600),
                           decoration: InputDecoration(
                             hintText: testi.esempioPeso,
                             suffixText: 'kg',
+                            suffixStyle: tema.titleMedium?.copyWith(color: ColoriAtleta.testoSecondario),
                             errorText: _errore,
-                            border: const OutlineInputBorder(),
                           ),
                           onSubmitted: (_) => _salva(),
                         ),
                       ),
-                      const SizedBox(width: 12),
-                      Padding(
-                        padding: const EdgeInsets.only(top: 6),
+                      const SizedBox(width: 10),
+                      SizedBox(
+                        height: 60,
                         child: FilledButton(onPressed: _salva, child: Text(testi.salva)),
                       ),
                     ],
@@ -169,70 +176,115 @@ class _SchermataPesoState extends State<SchermataPeso> {
             ),
           ),
           if (pesi.isNotEmpty) ...[
-            const SizedBox(height: 16),
-            Wrap(
-              spacing: 32,
-              runSpacing: 8,
+            const SizedBox(height: 6),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                _Dato(testi.ultimoPeso(giornoEMese(context, pesi.last.giorno)), '${numero(pesi.last.kg)} kg'),
-                if (media != null) _Dato(testi.mediaSettimana, '${media.toStringAsFixed(1).replaceAll('.', ',')} kg'),
+                Expanded(
+                  child: _Dato(
+                    testi.ultimoPeso(giornoEMese(context, pesi.last.giorno)),
+                    '${numero(pesi.last.kg)} kg',
+                  ),
+                ),
+                if (media != null) ...[
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _Dato(
+                      testi.mediaSettimana,
+                      '${media.toStringAsFixed(1).replaceAll('.', ',')} kg',
+                    ),
+                  ),
+                ],
               ],
             ),
           ],
-          if (pesi.length >= 2) ...[
-            const SizedBox(height: 16),
-            SizedBox(height: 220, child: GraficoPeso(pesi: pesi)),
-            const SizedBox(height: 4),
-            Text(testi.legendaGraficoPeso, style: tema.bodySmall),
-          ] else if (pesi.length == 1) ...[
-            const SizedBox(height: 16),
+          if (pesi.length >= 2)
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SizedBox(height: 200, child: GraficoPeso(pesi: pesi)),
+                    const SizedBox(height: 8),
+                    Text(testi.legendaGraficoPeso, style: tema.bodySmall),
+                  ],
+                ),
+              ),
+            )
+          else if (pesi.length == 1) ...[
+            const SizedBox(height: 8),
             Text(testi.graficoPesoDaDueGiorni, style: tema.bodySmall),
           ],
-          if (coach.isNotEmpty) ...[
-            const SizedBox(height: 24),
-            Text(testi.condividiPesoCon, style: tema.titleMedium),
-            const SizedBox(height: 4),
-            Text(testi.condividiPesoSpiegazione, style: tema.bodySmall),
-            for (final c in coach)
-              SwitchListTile(
-                contentPadding: EdgeInsets.zero,
-                title: Text(c.nomeCoach),
-                subtitle: Text(
-                  c.pesiSupportati == false
-                      ? testi.pesoNonSupportato
-                      : c.condividePesi
-                      ? testi.pesoCondiviso
-                      : testi.pesoNonCondiviso,
+          if (coach.isNotEmpty)
+            BloccoPrivacy(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Text(testi.condividiPesoCon, style: tema.titleSmall),
                 ),
-                value: c.condividePesi,
-                onChanged: (valore) => setState(() => _pesi.condividi(c.id, condividi: valore)),
-              ),
-          ],
-          const SizedBox(height: 24),
-          Text(testi.tuttiIPesi, style: tema.titleMedium),
-          if (pesi.isEmpty)
-            Padding(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Text(testi.nessunPesoRegistrato),
+                for (final c in coach)
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: Text(c.nomeCoach),
+                    subtitle: Text(
+                      c.pesiSupportati == false
+                          ? testi.pesoNonSupportato
+                          : c.condividePesi
+                          ? testi.pesoCondiviso
+                          : testi.pesoNonCondiviso,
+                    ),
+                    value: c.condividePesi,
+                    onChanged: (valore) => setState(() => _pesi.condividi(c.id, condividi: valore)),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: Text(testi.condividiPesoSpiegazione, style: tema.bodySmall),
+                ),
+              ],
             ),
-          for (final peso in pesi.reversed)
-            ListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(giornoEMese(context, peso.giorno)),
-              subtitle: peso.giorno.year == _oggi.year ? null : Text('${peso.giorno.year}'),
-              trailing: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text('${numero(peso.kg)} kg', style: tema.titleSmall),
-                  IconButton(
-                    tooltip: testi.elimina,
-                    icon: const Icon(Icons.delete_outline),
-                    onPressed: () => _elimina(peso),
+          const SizedBox(height: 12),
+          Card(
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 14, 16, 6),
+                  child: Text(
+                    testi.tuttiIPesi,
+                    style: tema.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ),
+                if (pesi.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                    child: Text(testi.nessunPesoRegistrato),
+                  ),
+                for (final peso in pesi.reversed) ...[
+                  const Divider(),
+                  ListTile(
+                    contentPadding: const EdgeInsets.only(left: 16, right: 4),
+                    title: Text(giornoEMese(context, peso.giorno)),
+                    subtitle: peso.giorno.year == _oggi.year ? null : Text('${peso.giorno.year}'),
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text('${numero(peso.kg)} kg', style: tema.titleSmall),
+                        IconButton(
+                          tooltip: testi.elimina,
+                          icon: const Icon(Icons.delete_outline),
+                          color: ColoriAtleta.testoSecondario,
+                          onPressed: () => _elimina(peso),
+                        ),
+                      ],
+                    ),
+                    onTap: () => setState(() => _mostra(peso.giorno)),
                   ),
                 ],
-              ),
-              onTap: () => setState(() => _mostra(peso.giorno)),
+              ],
             ),
+          ),
         ],
       ),
     );
@@ -259,12 +311,18 @@ class _Dato extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tema = Theme.of(context).textTheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(etichetta, style: tema.bodySmall),
-        Text(valore, style: tema.titleLarge),
-      ],
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 16, 14),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(etichetta, style: tema.bodySmall),
+            const SizedBox(height: 4),
+            Text(valore, style: tema.headlineSmall),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -281,7 +339,7 @@ class GraficoPeso extends StatelessWidget {
     return CustomPaint(
       painter: _Pittore(
         pesi: pesi,
-        punti: schema.primary.withValues(alpha: 0.45),
+        punti: const Color(0xFF7FBFB5),
         linea: schema.primary,
         griglia: schema.outlineVariant,
         testo: Theme.of(context).textTheme.bodySmall!,

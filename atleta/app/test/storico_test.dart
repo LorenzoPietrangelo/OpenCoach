@@ -91,8 +91,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Allenamento libero'), findsOneWidget);
     await tester.enterText(find.byType(TextField).first, '2700');
-    await tester.tap(find.text('Salva'));
-    await tester.pumpAndSettle();
+    await salva(tester);
     expect(find.text('Modifiche salvate'), findsOneWidget);
     expect(find.text('1. 45 min'), findsOneWidget);
     final modificato = telefono.nucleo.diario.cerca(coach, log.id)!;

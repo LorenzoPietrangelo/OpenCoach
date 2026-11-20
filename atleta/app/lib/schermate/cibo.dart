@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:protocollo/protocollo.dart';
 
 import '../l10n/testi.dart';
+import '../tema.dart';
 import 'avvisi.dart';
 import 'formati.dart';
 import 'scansione_codice.dart';
@@ -147,7 +148,7 @@ class _SezioneCiboState extends State<SezioneCibo> {
         ),
         Card(
           child: Padding(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.all(18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -155,31 +156,57 @@ class _SezioneCiboState extends State<SezioneCibo> {
                   crossAxisAlignment: CrossAxisAlignment.baseline,
                   textBaseline: TextBaseline.alphabetic,
                   children: [
-                    Text('${intero(totali.kcal)} kcal', style: tema.headlineSmall),
+                    Text(
+                      '${intero(totali.kcal)} kcal',
+                      style: tema.headlineMedium?.copyWith(letterSpacing: -0.6),
+                    ),
                     if (obiettivo != null) ...[
                       const SizedBox(width: 8),
-                      Text('/ ${intero(obiettivo.kcal)}', style: tema.titleMedium),
+                      Text(
+                        '/ ${intero(obiettivo.kcal)}',
+                        style: tema.titleMedium?.copyWith(color: ColoriAtleta.testoSecondario),
+                      ),
                     ],
                   ],
                 ),
                 if (obiettivo != null) ...[
-                  const SizedBox(height: 8),
-                  LinearProgressIndicator(
-                    value: (totali.kcal / obiettivo.kcal).clamp(0, 1).toDouble(),
-                    minHeight: 6,
-                    borderRadius: BorderRadius.circular(3),
-                  ),
+                  const SizedBox(height: 10),
+                  _Barra(totali.kcal / obiettivo.kcal, altezza: 10, colore: ColoriAtleta.primario),
                 ],
-                const SizedBox(height: 8),
-                Text(
-                  [
-                    _macro('P', totali.proteine, obiettivo?.proteineG),
-                    _macro('C', totali.carboidrati, obiettivo?.carboidratiG),
-                    _macro('G', totali.grassi, obiettivo?.grassiG),
-                  ].join(' · '),
+                const SizedBox(height: 16),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Expanded(
+                      child: _Macro(
+                        testi.proteine,
+                        totali.proteine,
+                        obiettivo?.proteineG,
+                        colore: const Color(0xFF2F6FB0),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: _Macro(
+                        testi.carboidrati,
+                        totali.carboidrati,
+                        obiettivo?.carboidratiG,
+                        colore: const Color(0xFFB0600F),
+                      ),
+                    ),
+                    const SizedBox(width: 14),
+                    Expanded(
+                      child: _Macro(
+                        testi.grassi,
+                        totali.grassi,
+                        obiettivo?.grassiG,
+                        colore: const Color(0xFF6B5BB0),
+                      ),
+                    ),
+                  ],
                 ),
                 if (obiettivo == null) ...[
-                  const SizedBox(height: 4),
+                  const SizedBox(height: 12),
                   Text(testi.senzaObiettivo, style: tema.bodySmall),
                 ],
               ],
@@ -193,34 +220,91 @@ class _SezioneCiboState extends State<SezioneCibo> {
             aggiungi: () => _aggiungi(pasto),
             modifica: _modifica,
           ),
-        if (coach.isNotEmpty) ...[
-          const SizedBox(height: 16),
-          Text(testi.condividiCiboCon, style: tema.titleMedium),
-          const SizedBox(height: 4),
-          Text(testi.condividiCiboSpiegazione, style: tema.bodySmall),
-          for (final c in coach)
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: Text(c.nomeCoach),
-              subtitle: Text(
-                c.ciboSupportato == false
-                    ? testi.ciboNonSupportato
-                    : c.condivideCibo
-                    ? testi.ciboCondiviso
-                    : testi.ciboNonCondiviso,
+        BloccoPrivacy(
+          children: [
+            if (coach.isNotEmpty) ...[
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: Text(testi.condividiCiboCon, style: tema.titleSmall),
               ),
-              value: c.condivideCibo,
-              onChanged: (valore) => setState(() => _cibo.condividi(c.id, condividi: valore)),
+              for (final c in coach)
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  title: Text(c.nomeCoach),
+                  subtitle: Text(
+                    c.ciboSupportato == false
+                        ? testi.ciboNonSupportato
+                        : c.condivideCibo
+                        ? testi.ciboCondiviso
+                        : testi.ciboNonCondiviso,
+                  ),
+                  value: c.condivideCibo,
+                  onChanged: (valore) => setState(() => _cibo.condividi(c.id, condividi: valore)),
+                ),
+              Padding(
+                padding: const EdgeInsets.only(right: 8, bottom: 8),
+                child: Text(testi.condividiCiboSpiegazione, style: tema.bodySmall),
+              ),
+            ],
+            Padding(
+              padding: const EdgeInsets.only(right: 8),
+              child: Text(testi.fonteDatiOff, style: tema.bodySmall),
             ),
-        ],
-        const SizedBox(height: 16),
-        Text(testi.fonteDatiOff, style: tema.bodySmall),
+          ],
+        ),
       ],
     );
   }
+}
 
-  static String _macro(String lettera, double? valore, int? obiettivo) =>
-      '$lettera ${intero(valore ?? 0)}${obiettivo == null ? '' : '/$obiettivo'} g';
+/// Una barra di avanzamento piena fino a `quota` (0–1).
+class _Barra extends StatelessWidget {
+  const _Barra(this.quota, {required this.altezza, required this.colore});
+
+  final double quota;
+  final double altezza;
+  final Color colore;
+
+  @override
+  Widget build(BuildContext context) => LinearProgressIndicator(
+    value: quota.isFinite ? quota.clamp(0, 1).toDouble() : 0,
+    minHeight: altezza,
+    color: colore,
+    backgroundColor: ColoriAtleta.superficieTenue,
+    borderRadius: BorderRadius.circular(altezza / 2),
+  );
+}
+
+/// Un macronutriente del giorno: grammi e, con l'obiettivo, quanto manca.
+class _Macro extends StatelessWidget {
+  const _Macro(this.nome, this.valore, this.obiettivo, {required this.colore});
+
+  final String nome;
+  final double? valore;
+  final int? obiettivo;
+  final Color colore;
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context).textTheme;
+    final obiettivo = this.obiettivo;
+    final grammi = valore ?? 0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(nome, style: tema.labelMedium?.copyWith(color: ColoriAtleta.testoSecondario)),
+        const SizedBox(height: 6),
+        if (obiettivo != null) ...[
+          _Barra(grammi / obiettivo, altezza: 6, colore: colore),
+          const SizedBox(height: 6),
+        ],
+        Text(
+          obiettivo == null ? '${intero(grammi)} g' : '${intero(grammi)} / $obiettivo g',
+          style: tema.titleSmall,
+        ),
+      ],
+    );
+  }
 }
 
 /// `1.850`: arrotondato, con il punto delle migliaia.
@@ -260,40 +344,48 @@ class _Pasto extends StatelessWidget {
     final kcal = voci.fold(0.0, (s, v) => s + v.valori.kcal);
     return Card(
       margin: const EdgeInsets.only(top: 12),
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 8, 4),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 4),
+            child: Row(
               children: [
-                Expanded(child: Text(nome, style: tema.titleMedium)),
-                if (voci.isNotEmpty) Text('${intero(kcal)} kcal', style: tema.bodyMedium),
-                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(nome, style: tema.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+                ),
+                if (voci.isNotEmpty)
+                  Text(
+                    '${intero(kcal)} kcal',
+                    style: tema.titleSmall?.copyWith(color: ColoriAtleta.testoSecondario),
+                  ),
               ],
             ),
-            for (final v in voci)
-              ListTile(
-                dense: true,
-                contentPadding: EdgeInsets.zero,
-                title: Text(v.nome),
-                subtitle: Text('${numero(v.grammi)} g'),
-                trailing: Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: Text('${intero(v.valori.kcal)} kcal'),
-                ),
-                onTap: () => modifica(v),
-              ),
-            Align(
-              alignment: Alignment.centerLeft,
+          ),
+          for (final (indice, v) in voci.indexed) ...[
+            if (indice > 0) const Divider(indent: 16, endIndent: 16),
+            ListTile(
+              contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+              title: Text(v.nome),
+              subtitle: Text('${numero(v.grammi)} g'),
+              trailing: Text('${intero(v.valori.kcal)} kcal', style: tema.bodyMedium),
+              onTap: () => modifica(v),
+            ),
+          ],
+          if (voci.isNotEmpty) const Divider(),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
               child: TextButton.icon(
                 onPressed: aggiungi,
                 icon: const Icon(Icons.add),
                 label: Text(testi.aggiungiCibo),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

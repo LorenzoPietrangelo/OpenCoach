@@ -7,6 +7,7 @@ import 'l10n/testi.dart';
 import 'piattaforma/inviti_in_arrivo.dart';
 import 'piattaforma/sync_in_background.dart';
 import 'schermate/principale.dart';
+import 'tema.dart';
 
 /// L'app dell'atleta sopra il nucleo: le sync automatiche seguono il primo
 /// piano e il background (§7.4).
@@ -70,7 +71,7 @@ class _AppAtletaState extends State<AppAtleta> {
     onGenerateTitle: (context) => Testi.of(context).nomeApp,
     localizationsDelegates: Testi.localizationsDelegates,
     supportedLocales: Testi.supportedLocales,
-    theme: ThemeData(colorSchemeSeed: Colors.teal),
+    theme: temaAtleta(),
     home: SchermataPrincipale(
       nucleo: widget.nucleo,
       background: widget.background,

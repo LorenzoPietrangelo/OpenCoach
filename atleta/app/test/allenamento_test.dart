@@ -93,8 +93,7 @@ void main() {
     await tester.pump(const Duration(seconds: 1));
     expect(find.text('Recupero finito'), findsOneWidget);
 
-    await tester.tap(find.text('Salva'));
-    await tester.pumpAndSettle();
+    await salva(tester);
     expect(find.text('Allenamento salvato'), findsOneWidget);
 
     final log = telefono.nucleo.diario.elenco(coach).single;
@@ -176,8 +175,7 @@ void main() {
     await tester.enterText(campi.at(1), '62,5');
     await tester.pump();
     expect([testo(0), testo(1)], ['8', '62,5']);
-    await tester.tap(find.text('Salva'));
-    await tester.pumpAndSettle();
+    await salva(tester);
 
     final log = telefono.nucleo.diario.elenco(coach).first;
     final panca = esercizi(log.contenuto!)[1]['serie']! as List<Object?>;
@@ -185,6 +183,52 @@ void main() {
       {'ripetizioni': 8, 'carico_kg': 62.5, 'completata': true},
       {'completata': false},
     ]);
+  });
+
+  testWidgets('in alto non c\'è «Salva»: si salva solo dal bottone in fondo', (tester) async {
+    final coach = telefono.aggiungiCoach('Marco Bianchi');
+    await iniziaGiornoA(tester, coach);
+    expect(
+      find.descendant(of: find.byType(AppBar), matching: find.text('Salva')),
+      findsNothing,
+    );
+    expect(find.byTooltip('Timer di recupero'), findsOneWidget);
+  });
+
+  testWidgets('concluso un esercizio si chiude e si apre il prossimo', (tester) async {
+    final coach = telefono.aggiungiCoach('Marco Bianchi');
+    await iniziaGiornoA(tester, coach);
+    final campi = find.descendant(of: find.byType(Card), matching: find.byType(TextField));
+    await tester.tap(find.text('Squat'));
+    await tester.pumpAndSettle();
+    expect(campi, findsNWidgets(8));
+
+    // Le prime tre serie: l'esercizio resta aperto.
+    for (var serie = 0; serie < 3; serie++) {
+      await tester.enterText(campi.at(serie * 2), '8');
+      await tester.testTextInput.receiveAction(TextInputAction.done);
+      await tester.pump();
+    }
+    expect(find.text('3/4'), findsOneWidget);
+    expect(campi, findsNWidgets(8));
+
+    // Lasciata la quarta, lo squat si chiude e si apre la panca (2 serie).
+    await tester.enterText(campi.at(6), '7');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(find.text('4/4'), findsOneWidget);
+    expect(campi, findsNWidgets(4));
+    expect(find.widgetWithText(TextField, '60 kg'), findsNWidgets(2));
+
+    // Riaperto a mano, lo squat concluso non si richiude da solo.
+    await tester.tap(find.text('Squat'));
+    await tester.pumpAndSettle();
+    await tester.enterText(campi.at(0), '6');
+    await tester.testTextInput.receiveAction(TextInputAction.done);
+    await tester.pumpAndSettle();
+    expect(find.widgetWithText(TextField, '6'), findsOneWidget);
+    await tester.tap(find.text('Salta'));
+    await tester.pump();
   });
 
   testWidgets('con un valore non valido non si salva', (tester) async {
@@ -201,8 +245,7 @@ void main() {
       find.descendant(of: find.byType(Card), matching: find.byType(TextField)),
       findsNothing,
     );
-    await tester.tap(find.text('Salva'));
-    await tester.pumpAndSettle();
+    await salva(tester);
     expect(find.text('Correggi i valori segnati in rosso.'), findsOneWidget);
     expect(find.widgetWithText(TextField, 'otto'), findsOneWidget);
     expect(telefono.nucleo.diario.elenco(coach), isEmpty);
@@ -210,8 +253,7 @@ void main() {
     // Corretto il valore, si salva. Le serie non chiedono l'RPE.
     await tester.enterText(find.byType(TextField).first, '8');
     expect(find.text('RPE'), findsNothing);
-    await tester.tap(find.text('Salva'));
-    await tester.pumpAndSettle();
+    await salva(tester);
     final squat =
         esercizi(
               telefono.nucleo.diario.elenco(coach).single.contenuto!,
@@ -264,8 +306,7 @@ void main() {
       find.widgetWithText(TextField, "Note sull'allenamento"),
       'Presa prona',
     );
-    await tester.tap(find.text('Salva'));
-    await tester.pumpAndSettle();
+    await salva(tester);
 
     // Si torna allo storico del coach, con l'allenamento in attesa di invio.
     expect(find.text('Allenamento salvato'), findsOneWidget);
@@ -371,8 +412,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(scelte, [OrigineVideo.fotocamera]);
 
-    await tester.tap(find.text('Salva'));
-    await tester.pumpAndSettle();
+    await salva(tester);
     final log = telefono.nucleo.diario.elenco(coach).single;
     final video = telefono.nucleo.chat.elenco(coach).single;
     expect(video.riferimento, {'log_id': log.id, 'esercizio': 'Squat', 'serie': 2});

@@ -99,7 +99,7 @@ void main() {
     ]);
     await apriCibo(tester);
     expect(find.text('/ 2.200'), findsOneWidget);
-    expect(find.textContaining('P 0/140 g'), findsOneWidget);
+    expect(find.textContaining('0 / 140 g'), findsOneWidget);
 
     await tester.scrollUntilVisible(find.byType(Switch), 300);
     expect(find.text('Vede quello che mangi'), findsOneWidget);

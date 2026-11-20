@@ -15,7 +15,7 @@ import 'servizi.dart';
 import 'tema.dart';
 
 /// Versione del programma, la stessa del pubspec.
-const versioneProgramma = '1.6.1';
+const versioneProgramma = '1.6.2';
 
 Future<void> main(List<String> argomenti) async {
   WidgetsFlutterBinding.ensureInitialized();

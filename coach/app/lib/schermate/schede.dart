@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../comuni.dart';
 import '../l10n/testi.dart';
+import '../tema.dart';
 import '../servizi.dart';
 import 'editor_scheda.dart';
 
@@ -92,13 +93,21 @@ class PannelloSchede extends StatelessWidget {
             for (final scheda in schede)
               Card(
                 child: ListTile(
-                  leading: Icon(switch (scheda.stato) {
-                    StatoScheda.bozza => Icons.edit_note,
-                    StatoScheda.pubblicata => Icons.assignment_turned_in_outlined,
-                    StatoScheda.archiviata => Icons.inventory_2_outlined,
-                  }),
-                  title: Text(scheda.titolo.isEmpty ? t.senzaTitolo : scheda.titolo),
-                  subtitle: Text(descriviScheda(t, scheda)),
+                  contentPadding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
+                  leading: _StatoScheda(scheda),
+                  title: Text(
+                    scheda.titolo.isEmpty ? t.senzaTitolo : scheda.titolo,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  subtitle: Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Text(
+                      descriviScheda(t, scheda),
+                      style: scheda.modificheNonPubblicate
+                          ? TextStyle(color: ColoriCoach.of(context).attesa, fontWeight: FontWeight.w500)
+                          : null,
+                    ),
+                  ),
                   onTap: () => _apri(context, scheda.id),
                   trailing: PopupMenuButton<String>(
                     tooltip: t.altreAzioni,
@@ -151,4 +160,37 @@ String descriviScheda(Testi t, Scheda scheda) {
     if (scheda.modificheNonPubblicate) t.modificheNonPubblicate,
   ];
   return parti.join(' · ');
+}
+
+/// Lo stato della scheda in un cerchio: teal se pubblicata, arancio se ha
+/// modifiche non pubblicate, grigio se bozza o archiviata.
+class _StatoScheda extends StatelessWidget {
+  const _StatoScheda(this.scheda);
+
+  final Scheda scheda;
+
+  @override
+  Widget build(BuildContext context) {
+    final schema = Theme.of(context).colorScheme;
+    final attesa = ColoriCoach.of(context);
+    final (colore, sfondo) = switch (scheda.stato) {
+      StatoScheda.pubblicata when scheda.modificheNonPubblicate => (attesa.attesa, attesa.attesaContenitore),
+      StatoScheda.pubblicata => (schema.primary, schema.primaryContainer),
+      _ => (schema.onSurfaceVariant, schema.surfaceContainer),
+    };
+    return Container(
+      width: 40,
+      height: 40,
+      decoration: BoxDecoration(color: sfondo, shape: BoxShape.circle),
+      child: Icon(
+        switch (scheda.stato) {
+          StatoScheda.bozza => Icons.edit_note,
+          StatoScheda.pubblicata => Icons.assignment_turned_in_outlined,
+          StatoScheda.archiviata => Icons.inventory_2_outlined,
+        },
+        size: 20,
+        color: colore,
+      ),
+    );
+  }
 }

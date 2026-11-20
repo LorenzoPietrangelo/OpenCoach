@@ -6,6 +6,7 @@ import 'piattaforma/desktop.dart';
 import 'schermate/benvenuto.dart';
 import 'schermate/principale.dart';
 import 'servizi.dart';
+import 'tema.dart';
 
 /// Ferma il programma, ripristina il backup e lo riavvia (§9.4).
 typedef Ripristino =
@@ -49,7 +50,7 @@ class _AppCoachState extends State<AppCoach> {
     localizationsDelegates: Testi.localizationsDelegates,
     supportedLocales: Testi.supportedLocales,
     locale: const Locale('it'),
-    theme: ThemeData(colorSchemeSeed: Colors.teal),
+    theme: temaCoach(),
     home: widget.coach.nucleo.nomeCoach.isEmpty
         ? Benvenuto(
             coach: widget.coach,

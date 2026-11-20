@@ -12,6 +12,7 @@ import 'piattaforma/percorsi.dart';
 import 'piattaforma/portachiavi_sistema.dart';
 import 'schermate/principale.dart';
 import 'servizi.dart';
+import 'tema.dart';
 
 /// Versione del programma, la stessa del pubspec.
 const versioneProgramma = '1.6.1';
@@ -114,7 +115,7 @@ class _Avvio {
         localizationsDelegates: Testi.localizationsDelegates,
         supportedLocales: Testi.supportedLocales,
         locale: const Locale('it'),
-        theme: ThemeData(colorSchemeSeed: Colors.teal),
+        theme: temaCoach(),
         home: _SchermataErrore(
           messaggio: messaggio,
           esci: desktop.esci,

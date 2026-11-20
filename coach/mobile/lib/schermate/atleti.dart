@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../dati/modelli.dart';
 import '../dati/stato_coach.dart';
 import '../l10n/testi.dart';
+import '../tema.dart';
 import '../piattaforma/background.dart';
 import 'atleta.dart';
 import 'comuni.dart';
@@ -66,11 +67,21 @@ class SchermataAtleti extends StatelessWidget {
                       ? ListaVuota(t.atletiVuoto)
                       : RefreshIndicator(
                           onRefresh: () async => stato.riprova(),
-                          child: ListView.separated(
-                            itemCount: atleti.length,
-                            separatorBuilder: (_, _) => const Divider(height: 1, indent: 72),
-                            itemBuilder: (context, i) =>
-                                _RigaAtleta(atleta: atleti[i], apri: () => _apri(context, atleti[i])),
+                          child: ListView(
+                            padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+                            children: [
+                              Card(
+                                clipBehavior: Clip.antiAlias,
+                                child: Column(
+                                  children: [
+                                    for (final (i, atleta) in atleti.indexed) ...[
+                                      if (i > 0) const Divider(),
+                                      _RigaAtleta(atleta: atleta, apri: () => _apri(context, atleta)),
+                                    ],
+                                  ],
+                                ),
+                              ),
+                            ],
                           ),
                         ),
                 ),
@@ -123,22 +134,42 @@ class _RigaAtleta extends StatelessWidget {
     final tema = Theme.of(context);
     final nuovi = atleta.nonLetti + atleta.risposteNuove;
     final quando = atleta.ultimoMessaggio?.inviatoIl;
+    final senzaTelefono = atleta.ultimoMessaggio == null && !atleta.telefonoCollegato;
     return ListTile(
       onTap: apri,
-      leading: CircleAvatar(child: Text(atleta.nome.isEmpty ? '?' : atleta.nome.characters.first.toUpperCase())),
+      shape: const RoundedRectangleBorder(),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      leading: InizialeAtleta(atleta.nome, piena: nuovi > 0, diametro: 44),
       title: Text(
         atleta.nome,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
-        style: nuovi > 0 ? const TextStyle(fontWeight: FontWeight.w600) : null,
+        style: tema.textTheme.titleMedium?.copyWith(
+          fontWeight: nuovi > 0 ? FontWeight.w700 : FontWeight.w500,
+        ),
       ),
-      subtitle: Text(_sottotitolo(t), maxLines: 1, overflow: TextOverflow.ellipsis),
+      subtitle: Text(
+        _sottotitolo(t),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: senzaTelefono
+            ? TextStyle(color: ColoriCoach.of(context).attesa, fontWeight: FontWeight.w500)
+            : nuovi > 0
+            ? TextStyle(color: tema.colorScheme.onSurface)
+            : null,
+      ),
       trailing: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          if (quando != null) Text(quandoBreve(quando), style: tema.textTheme.labelSmall),
-          if (nuovi > 0) ...[const SizedBox(height: 4), Badge(label: Text('$nuovi'))],
+          if (quando != null)
+            Text(
+              quandoBreve(quando),
+              style: tema.textTheme.labelSmall?.copyWith(
+                color: nuovi > 0 ? tema.colorScheme.primary : tema.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          if (nuovi > 0) ...[const SizedBox(height: 4), Contatore(nuovi)],
         ],
       ),
     );
@@ -155,18 +186,18 @@ class RiquadroProblema extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final t = Testi.of(context);
-    final tema = Theme.of(context);
     final testo = stato.inCollegamento ? t.problemaInCollegamento : testoProblema(t, stato.problema);
     if (testo == null) return const SizedBox.shrink();
-    return Material(
-      color: tema.colorScheme.secondaryContainer,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),
-        child: Row(
-          children: [
-            Expanded(child: Text(testo, style: TextStyle(color: tema.colorScheme.onSecondaryContainer))),
-            TextButton(onPressed: stato.riprova, child: Text(t.riprova)),
-          ],
+    final colori = ColoriCoach.of(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 8),
+      child: FasciaAvviso(
+        icona: Icons.schedule,
+        testo: testo,
+        azione: TextButton(
+          style: TextButton.styleFrom(foregroundColor: colori.attesa),
+          onPressed: stato.riprova,
+          child: Text(t.riprova),
         ),
       ),
     );

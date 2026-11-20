@@ -10,6 +10,7 @@ import 'piattaforma/qr_di_prova.dart';
 import 'schermate/atleti.dart';
 import 'schermate/blocco.dart';
 import 'schermate/collega.dart';
+import 'tema.dart';
 
 /// L'app del coach: chiusa dal blocco, poi il collegamento al PC o gli atleti.
 class AppCoachMobile extends StatefulWidget {
@@ -63,8 +64,8 @@ class _AppCoachMobileState extends State<AppCoachMobile> {
     onGenerateTitle: (context) => Testi.of(context).nomeApp,
     localizationsDelegates: Testi.localizationsDelegates,
     supportedLocales: Testi.supportedLocales,
-    theme: ThemeData(colorSchemeSeed: Colors.teal),
-    darkTheme: ThemeData(colorSchemeSeed: Colors.teal, brightness: Brightness.dark),
+    theme: temaCoach(),
+    darkTheme: temaCoach(luminosita: Brightness.dark),
     // Sopra il navigatore: il blocco copre anche le pagine aperte.
     builder: (context, navigatore) => CancelloBlocco(blocco: widget.blocco, child: navigatore!),
     home: ListenableBuilder(

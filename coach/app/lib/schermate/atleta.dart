@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../comuni.dart';
 import '../l10n/testi.dart';
+import '../tema.dart';
 import '../piattaforma/desktop.dart';
 import '../servizi.dart';
 import 'chat.dart';
@@ -50,14 +51,19 @@ class DettaglioAtleta extends StatelessWidget {
         _nucleo.questionari.inviati(atletaId).isEmpty &&
         _nucleo.messaggi.conversazione(atletaId).isEmpty;
     final intestazione = Padding(
-      padding: const EdgeInsets.fromLTRB(24, 16, 16, 0),
+      padding: const EdgeInsets.fromLTRB(24, 20, 16, 4),
       child: Row(
         children: [
+          InizialeAtleta(atleta.nome, piena: true, diametro: 52),
+          const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(atleta.nome, style: Theme.of(context).textTheme.headlineSmall),
+                Text(
+                  atleta.nome,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(letterSpacing: -0.4),
+                ),
                 if (atleta.note.isNotEmpty)
                   Text(
                     atleta.note,
@@ -90,20 +96,23 @@ class DettaglioAtleta extends StatelessWidget {
           intestazione,
           if (senzaTelefono)
             Padding(
-              padding: const EdgeInsets.fromLTRB(24, 8, 24, 8),
-              child: Row(
-                children: [
-                  Expanded(child: Text(t.nessunTelefonoSpiegazione)),
-                  const SizedBox(width: 16),
-                  FilledButton.tonalIcon(
-                    onPressed: () => nuovoInvito(context, atleta, coach, aggiornamenti),
-                    icon: const Icon(Icons.add_link),
-                    label: Text(t.nuovoInvito),
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 8),
+              child: FasciaAvviso(
+                icona: Icons.smartphone_outlined,
+                testo: t.nessunTelefonoSpiegazione,
+                azione: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: ColoriCoach.of(context).attesa,
+                    foregroundColor: Theme.of(context).colorScheme.surface,
                   ),
-                ],
+                  onPressed: () => nuovoInvito(context, atleta, coach, aggiornamenti),
+                  icon: const Icon(Icons.add_link),
+                  label: Text(t.nuovoInvito),
+                ),
               ),
             ),
           TabBar(
+            padding: const EdgeInsets.symmetric(horizontal: 12),
             isScrollable: true,
             tabAlignment: TabAlignment.start,
             tabs: [

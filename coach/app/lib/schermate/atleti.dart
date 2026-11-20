@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../comuni.dart';
 import '../l10n/testi.dart';
+import '../tema.dart';
 import '../piattaforma/desktop.dart';
 import '../servizi.dart';
 import 'atleta.dart';
@@ -59,13 +60,13 @@ class _SchermataAtletiState extends State<SchermataAtleti> {
               child: Column(
                 children: [
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 16, 8, 8),
+                    padding: const EdgeInsets.fromLTRB(20, 20, 12, 12),
                     child: Row(
                       children: [
                         Expanded(
                           child: Text(
                             _archiviati ? t.atletiArchiviati : t.sezioneAtleti,
-                            style: Theme.of(context).textTheme.titleLarge,
+                            style: Theme.of(context).textTheme.headlineSmall,
                           ),
                         ),
                         IconButton(
@@ -88,20 +89,19 @@ class _SchermataAtletiState extends State<SchermataAtleti> {
                             child: Text(_archiviati ? t.nessunAtletaArchiviato : t.nessunAtleta),
                           )
                         : ListView(
+                            padding: const EdgeInsets.fromLTRB(8, 0, 8, 16),
                             children: [
                               for (final r in elenco)
-                                ListTile(
-                                  selected: r.atleta.id == _scelto,
-                                  leading: Badge(
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 2),
+                                  child: _RigaAtleta(
+                                    riepilogo: r,
+                                    riassunto: _riassunto(t, r),
+                                    scelto: r.atleta.id == _scelto,
                                     // Messaggi della chat non ancora letti.
-                                    isLabelVisible: _nucleo.messaggi.nonLetti(r.atleta.id) > 0,
-                                    child: CircleAvatar(
-                                      child: Text(r.atleta.nome.characters.first.toUpperCase()),
-                                    ),
+                                    nonLetti: _nucleo.messaggi.nonLetti(r.atleta.id),
+                                    tocca: () => setState(() => _scelto = r.atleta.id),
                                   ),
-                                  title: Text(r.atleta.nome),
-                                  subtitle: Text(_riassunto(t, r)),
-                                  onTap: () => setState(() => _scelto = r.atleta.id),
                                 ),
                             ],
                           ),
@@ -137,5 +137,46 @@ class _SchermataAtletiState extends State<SchermataAtleti> {
     }
     if (r.invito != null) return t.invitoInCorso;
     return t.nessunTelefono;
+  }
+}
+
+/// Un atleta nell'elenco: iniziale, nome, telefono e messaggi da leggere.
+class _RigaAtleta extends StatelessWidget {
+  const _RigaAtleta({
+    required this.riepilogo,
+    required this.riassunto,
+    required this.scelto,
+    required this.nonLetti,
+    required this.tocca,
+  });
+
+  final RiepilogoAtleta riepilogo;
+  final String riassunto;
+  final bool scelto;
+  final int nonLetti;
+  final VoidCallback tocca;
+
+  @override
+  Widget build(BuildContext context) {
+    final tema = Theme.of(context).textTheme;
+    final senzaTelefono = riepilogo.dispositivo == null;
+    final inAttesa = senzaTelefono && riepilogo.invito != null;
+    return ListTile(
+      selected: scelto,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+      leading: InizialeAtleta(riepilogo.atleta.nome, piena: scelto),
+      title: Text(
+        riepilogo.atleta.nome,
+        style: tema.titleSmall?.copyWith(
+          fontWeight: scelto || nonLetti > 0 ? FontWeight.w700 : FontWeight.w600,
+        ),
+      ),
+      subtitle: Text(
+        riassunto,
+        style: inAttesa ? TextStyle(color: ColoriCoach.of(context).attesa) : null,
+      ),
+      trailing: nonLetti > 0 ? Contatore(nonLetti) : null,
+      onTap: tocca,
+    );
   }
 }

@@ -4,6 +4,7 @@ import '../dati/fonte_dati.dart';
 import '../dati/modelli.dart';
 import '../dati/stato_coach.dart';
 import '../l10n/testi.dart';
+import '../tema.dart';
 import 'comuni.dart';
 
 /// Gli allenamenti ricevuti dall'atleta, dal più recente (§8.2).
@@ -70,13 +71,19 @@ class _ElencoState extends State<_Elenco> {
     final tutti = [...widget.prima.elementi, ..._precedenti];
     if (tutti.isEmpty) return ListaVuota(t.allenamentiVuoto);
     final altri = _altri ?? widget.prima.altri;
-    return ListView.separated(
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 4, 16, 24),
       itemCount: tutti.length + (altri ? 1 : 0),
-      separatorBuilder: (_, _) => const Divider(height: 1),
       itemBuilder: (context, i) {
         if (i == tutti.length) {
           return Center(
-            child: TextButton(onPressed: _carico ? null : _altriAllenamenti, child: Text(t.allenamentiAltri)),
+            child: Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: OutlinedButton(
+                onPressed: _carico ? null : _altriAllenamenti,
+                child: Text(t.allenamentiAltri),
+              ),
+            ),
           );
         }
         return _RigaAllenamento(tutti[i]);
@@ -97,8 +104,15 @@ class _RigaAllenamento extends StatelessWidget {
     final quando = allenamento.eseguitoIl;
     final durata = allenamento.durataMin;
     final rpe = allenamento.rpe;
-    return ExpansionTile(
-      title: Text(quando == null ? t.sconosciuto : dataOra(quando)),
+    final tema = Theme.of(context);
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      margin: const EdgeInsets.symmetric(vertical: 5),
+      child: ExpansionTile(
+      title: Text(
+        quando == null ? t.sconosciuto : dataOra(quando),
+        style: tema.textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w700),
+      ),
       subtitle: Text(
         [
           t.allenamentoSerie(fatte, totali),
@@ -109,9 +123,24 @@ class _RigaAllenamento extends StatelessWidget {
       childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       expandedCrossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (allenamento.note.isNotEmpty) ...[Text(allenamento.note), const SizedBox(height: 8)],
-        for (final esercizio in allenamento.esercizi) _Esercizio(esercizio),
+        if (allenamento.note.isNotEmpty) ...[
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            decoration: BoxDecoration(
+              color: tema.colorScheme.surfaceContainer,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Text(allenamento.note),
+          ),
+          const SizedBox(height: 12),
+        ],
+        for (final (i, esercizio) in allenamento.esercizi.indexed) ...[
+          if (i > 0) const Padding(padding: EdgeInsets.only(bottom: 10), child: Divider()),
+          _Esercizio(esercizio),
+        ],
       ],
+      ),
     );
   }
 }
@@ -148,12 +177,28 @@ class _Esercizio extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(esercizio.nome, style: tema.textTheme.titleSmall),
+          Text(esercizio.nome, style: tema.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700)),
           if (esercizio.note.isNotEmpty) Text(esercizio.note, style: tema.textTheme.bodySmall),
+          const SizedBox(height: 4),
           for (final (i, serie) in esercizio.serie.indexed)
-            Text(
-              '${t.serieNumero(i + 1)}: ${_serie(t, serie)}',
-              style: serie.completata ? null : TextStyle(color: tema.colorScheme.onSurfaceVariant),
+            Padding(
+              padding: const EdgeInsets.only(bottom: 2),
+              child: Text.rich(
+                TextSpan(
+                  children: [
+                    TextSpan(
+                      text: '${t.serieNumero(i + 1)}: ',
+                      style: TextStyle(color: tema.colorScheme.onSurfaceVariant),
+                    ),
+                    TextSpan(
+                      text: _serie(t, serie),
+                      style: serie.completata
+                          ? null
+                          : TextStyle(color: ColoriCoach.of(context).attesa, fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                ),
+              ),
             ),
         ],
       ),

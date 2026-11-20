@@ -110,17 +110,20 @@ class _PannelloStoricoState extends State<PannelloStorico> {
         if (ultimo == null)
           Text(t.storicoSchedaVuota)
         else ...[
-        Wrap(
-          spacing: 40,
-          runSpacing: 12,
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _Dato(etichetta: t.storicoTotale, valore: '${storico.totale}'),
-            _Dato(etichetta: t.storicoSettimana, valore: '${settimane.last.allenamenti}'),
-            _Dato(etichetta: t.storicoUltimo, valore: soloData(ultimo)),
+            Expanded(child: _Dato(etichetta: t.storicoTotale, valore: '${storico.totale}')),
+            const SizedBox(width: 16),
+            Expanded(child: _Dato(etichetta: t.storicoSettimana, valore: '${settimane.last.allenamenti}')),
+            const SizedBox(width: 16),
+            Expanded(child: _Dato(etichetta: t.storicoUltimo, valore: soloData(ultimo))),
           ],
         ),
-        const SizedBox(height: 32),
-        Text(t.storicoAllenamenti, style: tema.titleMedium),
+        const SizedBox(height: 10),
+        _Riquadro(
+          children: [
+        Text(t.storicoAllenamenti, style: tema.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
         const SizedBox(height: 12),
         SizedBox(
           height: 200,
@@ -138,11 +141,16 @@ class _PannelloStoricoState extends State<PannelloStorico> {
             ],
           ),
         ),
-        if (esercizio != null) ...[
-          const SizedBox(height: 32),
+          ],
+        ),
+        if (esercizio != null)
+          _Riquadro(
+            children: [
           Row(
             children: [
-              Expanded(child: Text(t.storicoProgressi, style: tema.titleMedium)),
+              Expanded(
+                child: Text(t.storicoProgressi, style: tema.titleMedium?.copyWith(fontWeight: FontWeight.w700)),
+              ),
               DropdownButton<String>(
                 value: esercizio.nome,
                 underline: const SizedBox.shrink(),
@@ -169,7 +177,8 @@ class _PannelloStoricoState extends State<PannelloStorico> {
               punti: _puntiEsercizio(esercizio),
             ),
           ),
-        ],
+            ],
+          ),
         ],
       ],
     );
@@ -213,14 +222,35 @@ class _Dato extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tema = Theme.of(context).textTheme;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(etichetta, style: tema.bodySmall),
-        Text(valore, style: tema.headlineSmall),
-      ],
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 16, 20, 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(etichetta, style: tema.bodySmall),
+            const SizedBox(height: 4),
+            Text(valore, style: tema.headlineMedium?.copyWith(letterSpacing: -0.5)),
+          ],
+        ),
+      ),
     );
   }
+}
+
+/// Una card con un grafico e il suo titolo.
+class _Riquadro extends StatelessWidget {
+  const _Riquadro({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    child: Padding(
+      padding: const EdgeInsets.all(20),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: children),
+    ),
+  );
 }
 
 class _Punto {

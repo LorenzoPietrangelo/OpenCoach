@@ -32,14 +32,23 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Chat con Marco Bianchi'), findsOneWidget);
     expect(find.text('Domani carichi pesanti'), findsOneWidget);
-    expect(find.text('Panca, serie 3 · video di 11 s'), findsOneWidget);
+    expect(find.text('Panca, serie 3'), findsOneWidget);
+    expect(find.text('video di 11 s'), findsOneWidget);
     expect(telefono.nucleo.chat.nonLetti(coach), 0);
 
+    // Con il campo vuoto Invia è spento; si accende appena c'è del testo.
+    final invia = find.widgetWithIcon(IconButton, Icons.send_rounded);
+    expect(tester.widget<IconButton>(invia).onPressed, isNull);
     await tester.enterText(find.byType(TextField), 'Ok, a domani');
+    await tester.pump();
+    expect(tester.widget<IconButton>(invia).onPressed, isNotNull);
     await tester.tap(find.byTooltip('Invia'));
     await tester.pumpAndSettle();
     expect(find.text('Ok, a domani'), findsOneWidget);
-    expect(find.byType(TextField).evaluate().single.widget, isA<TextField>().having((t) => t.controller!.text, 'testo', ''));
+    expect(
+      find.byType(TextField).evaluate().single.widget,
+      isA<TextField>().having((t) => t.controller!.text, 'testo', ''),
+    );
     final scritto = telefono.nucleo.chat.elenco(coach).last;
     expect(scritto.testo, 'Ok, a domani');
     expect(scritto.stato, StatoMessaggio.inInvio);

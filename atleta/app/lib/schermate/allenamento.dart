@@ -429,47 +429,6 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
     _cambia(() => _aperti.add(_a.aggiungiEsercizio(nome)));
   }
 
-  Future<void> _rinomina(EsercizioInCorso esercizio) async {
-    final testi = Testi.of(context);
-    final nome = await _chiediTesto(
-      titolo: testi.rinomina,
-      etichetta: testi.nomeEsercizio,
-      conferma: testi.salva,
-      iniziale: esercizio.nome,
-      massimo: 200,
-    );
-    if (nome == null || nome.isEmpty) return;
-    _cambia(() => esercizio.nome = nome);
-  }
-
-  Future<void> _noteEsercizio(EsercizioInCorso esercizio) async {
-    final testi = Testi.of(context);
-    final note = await _chiediTesto(
-      titolo: esercizio.nome,
-      etichetta: testi.leTueNote,
-      conferma: testi.salva,
-      iniziale: esercizio.note,
-      massimo: 2000,
-      righeMultiple: true,
-    );
-    if (note == null) return;
-    _cambia(() => esercizio.note = note);
-  }
-
-  void _togliUltimaSerie(EsercizioInCorso esercizio) => _cambia(() {
-    final tolta = esercizio.serie.removeLast();
-    _nonValidi.removeWhere((campo) => identical(campo.$1, tolta));
-  });
-
-  void _togliEsercizio(EsercizioInCorso esercizio) => _cambia(() {
-    _a.esercizi.remove(esercizio);
-    _aTempo.remove(esercizio);
-    _aperti.remove(esercizio);
-    _nonValidi.removeWhere(
-      (campo) => esercizio.serie.any((serie) => identical(serie, campo.$1)),
-    );
-  });
-
   Future<String?> _chiediTesto({
     required String titolo,
     required String etichetta,
@@ -828,18 +787,7 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [for (final dettaglio in dettagli) Text(dettaglio)],
-                ),
-              ),
-              _menu(esercizio, aTempo),
-            ],
-          ),
+          for (final dettaglio in dettagli) Text(dettaglio),
           if (noteCoach.isNotEmpty)
             Text(
               noteCoach,
@@ -877,42 +825,6 @@ class _SchermataAllenamentoState extends State<SchermataAllenamento> {
           ),
         ],
       ),
-    );
-  }
-
-  Widget _menu(EsercizioInCorso esercizio, bool aTempo) {
-    final testi = Testi.of(context);
-    return PopupMenuButton<VoidCallback>(
-      onSelected: (azione) => azione(),
-      itemBuilder: (context) => [
-        PopupMenuItem(
-          value: () => unawaited(_noteEsercizio(esercizio)),
-          child: Text(testi.leTueNote),
-        ),
-        PopupMenuItem(
-          value: () => _cambia(
-            () => aTempo ? _aTempo.remove(esercizio) : _aTempo.add(esercizio),
-          ),
-          child: Text(aTempo ? testi.misuraARipetizioni : testi.misuraATempo),
-        ),
-        if (esercizio.serie.length > 1)
-          PopupMenuItem(
-            value: () => _togliUltimaSerie(esercizio),
-            child: Text(testi.togliUltimaSerie),
-          ),
-        // Gli esercizi della scheda restano: le serie non fatte dicono al
-        // coach che l'esercizio è stato saltato.
-        if (!esercizio.previsto) ...[
-          PopupMenuItem(
-            value: () => unawaited(_rinomina(esercizio)),
-            child: Text(testi.rinomina),
-          ),
-          PopupMenuItem(
-            value: () => _togliEsercizio(esercizio),
-            child: Text(testi.togliEsercizio),
-          ),
-        ],
-      ],
     );
   }
 

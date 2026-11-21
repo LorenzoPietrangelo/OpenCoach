@@ -102,7 +102,8 @@ void main() {
     expect(find.textContaining('0 / 140 g'), findsOneWidget);
 
     await tester.scrollUntilVisible(find.byType(Switch), 300);
-    expect(find.text('Vede quello che mangi'), findsOneWidget);
+    expect(find.text('Condividi il cibo con Marco Bianchi'), findsOneWidget);
+    expect(find.textContaining('Open Food Facts'), findsNothing);
     await tester.tap(find.byType(Switch));
     await tester.pumpAndSettle();
     expect(telefono.nucleo.collegamenti.cerca(coach)!.condivideCibo, isFalse);

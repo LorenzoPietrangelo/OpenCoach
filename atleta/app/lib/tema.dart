@@ -192,27 +192,39 @@ class IconaInCerchio extends StatelessWidget {
   );
 }
 
-/// Il blocco in fondo a Cibo e Peso: con chi si condivide e perché.
-class BloccoPrivacy extends StatelessWidget {
-  const BloccoPrivacy({super.key, required this.children});
+/// La riga in fondo a Cibo e Peso: condividere o no con il coach.
+class RigaCondivisione extends StatelessWidget {
+  const RigaCondivisione({
+    super.key,
+    required this.titolo,
+    required this.valore,
+    required this.cambia,
+    this.nonSupportata,
+  });
 
-  final List<Widget> children;
+  final String titolo;
+  final bool valore;
+  final ValueChanged<bool> cambia;
+
+  /// Il motivo, se il programma del coach è troppo vecchio per riceverli.
+  final String? nonSupportata;
 
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.only(top: 12),
-    // Material e non un Container colorato: gli interruttori dentro
-    // disegnano lì il loro effetto al tocco.
+    // Material e non un Container colorato: l'interruttore disegna lì il suo
+    // effetto al tocco.
     child: Material(
       color: ColoriAtleta.superficieTenue,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       clipBehavior: Clip.antiAlias,
-      child: Padding(
-        padding: const EdgeInsets.fromLTRB(16, 14, 8, 14),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: children,
-        ),
+      child: SwitchListTile(
+        dense: nonSupportata == null,
+        contentPadding: const EdgeInsets.fromLTRB(16, 0, 8, 0),
+        title: Text(titolo, style: Theme.of(context).textTheme.titleSmall),
+        subtitle: nonSupportata == null ? null : Text(nonSupportata!),
+        value: valore,
+        onChanged: cambia,
       ),
     ),
   );

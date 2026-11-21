@@ -38,11 +38,13 @@ void main() {
     expect(find.text('72,4 kg'), findsWidgets);
 
     // Il coach lo vede finché l'atleta non spegne la condivisione.
-    expect(find.text('Vede il tuo peso'), findsOneWidget);
+    // Una sola riga: «Condividi il peso con» e il nome del coach.
+    expect(find.text('Condividi il peso con Marco Bianchi'), findsOneWidget);
+    expect(tester.widget<Switch>(find.byType(Switch)).value, isTrue);
     await tester.ensureVisible(find.byType(Switch));
     await tester.tap(find.byType(Switch));
     await tester.pumpAndSettle();
-    expect(find.text('Non vede il tuo peso'), findsOneWidget);
+    expect(tester.widget<Switch>(find.byType(Switch)).value, isFalse);
     expect(telefono.nucleo.collegamenti.cerca(coach)!.condividePesi, isFalse);
   });
 

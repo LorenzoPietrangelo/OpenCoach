@@ -220,38 +220,13 @@ class _SezioneCiboState extends State<SezioneCibo> {
             aggiungi: () => _aggiungi(pasto),
             modifica: _modifica,
           ),
-        BloccoPrivacy(
-          children: [
-            if (coach.isNotEmpty) ...[
-              Padding(
-                padding: const EdgeInsets.only(right: 8),
-                child: Text(testi.condividiCiboCon, style: tema.titleSmall),
-              ),
-              for (final c in coach)
-                SwitchListTile(
-                  contentPadding: EdgeInsets.zero,
-                  title: Text(c.nomeCoach),
-                  subtitle: Text(
-                    c.ciboSupportato == false
-                        ? testi.ciboNonSupportato
-                        : c.condivideCibo
-                        ? testi.ciboCondiviso
-                        : testi.ciboNonCondiviso,
-                  ),
-                  value: c.condivideCibo,
-                  onChanged: (valore) => setState(() => _cibo.condividi(c.id, condividi: valore)),
-                ),
-              Padding(
-                padding: const EdgeInsets.only(right: 8, bottom: 8),
-                child: Text(testi.condividiCiboSpiegazione, style: tema.bodySmall),
-              ),
-            ],
-            Padding(
-              padding: const EdgeInsets.only(right: 8),
-              child: Text(testi.fonteDatiOff, style: tema.bodySmall),
-            ),
-          ],
-        ),
+        for (final c in coach)
+          RigaCondivisione(
+            titolo: '${testi.condividiCiboCon} ${c.nomeCoach}',
+            nonSupportata: c.ciboSupportato == false ? testi.ciboNonSupportato : null,
+            valore: c.condivideCibo,
+            cambia: (valore) => setState(() => _cibo.condividi(c.id, condividi: valore)),
+          ),
       ],
     );
   }
@@ -674,6 +649,11 @@ class _SchermataAggiungiCiboState extends State<SchermataAggiungiCibo> {
                       label: Text(testi.scriviAlimento),
                     ),
                   ),
+                ),
+                // I prodotti sono di Open Food Facts: la licenza ODbL chiede di dirlo.
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                  child: Text(testi.fonteDatiOff, style: Theme.of(context).textTheme.bodySmall),
                 ),
               ],
             ),

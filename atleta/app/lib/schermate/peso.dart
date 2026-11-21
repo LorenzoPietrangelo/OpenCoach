@@ -216,32 +216,12 @@ class _SchermataPesoState extends State<SchermataPeso> {
             const SizedBox(height: 8),
             Text(testi.graficoPesoDaDueGiorni, style: tema.bodySmall),
           ],
-          if (coach.isNotEmpty)
-            BloccoPrivacy(
-              children: [
-                Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: Text(testi.condividiPesoCon, style: tema.titleSmall),
-                ),
-                for (final c in coach)
-                  SwitchListTile(
-                    contentPadding: EdgeInsets.zero,
-                    title: Text(c.nomeCoach),
-                    subtitle: Text(
-                      c.pesiSupportati == false
-                          ? testi.pesoNonSupportato
-                          : c.condividePesi
-                          ? testi.pesoCondiviso
-                          : testi.pesoNonCondiviso,
-                    ),
-                    value: c.condividePesi,
-                    onChanged: (valore) => setState(() => _pesi.condividi(c.id, condividi: valore)),
-                  ),
-                Padding(
-                  padding: const EdgeInsets.only(right: 8),
-                  child: Text(testi.condividiPesoSpiegazione, style: tema.bodySmall),
-                ),
-              ],
+          for (final c in coach)
+            RigaCondivisione(
+              titolo: '${testi.condividiPesoCon} ${c.nomeCoach}',
+              nonSupportata: c.pesiSupportati == false ? testi.pesoNonSupportato : null,
+              valore: c.condividePesi,
+              cambia: (valore) => setState(() => _pesi.condividi(c.id, condividi: valore)),
             ),
           const SizedBox(height: 12),
           Card(

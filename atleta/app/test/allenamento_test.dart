@@ -202,6 +202,8 @@ void main() {
     await tester.tap(find.text('Squat'));
     await tester.pumpAndSettle();
     expect(campi, findsNWidgets(8));
+    // L'esercizio aperto non ha più il menu ⋮.
+    expect(find.byType(PopupMenuButton<VoidCallback>), findsNothing);
 
     // Le prime tre serie: l'esercizio resta aperto.
     for (var serie = 0; serie < 3; serie++) {

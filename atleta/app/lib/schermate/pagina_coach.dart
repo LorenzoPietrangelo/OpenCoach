@@ -307,34 +307,32 @@ class _StatoSync extends StatelessWidget {
     final sincronizza = this.sincronizza;
     final righe = righeStatoSync(context, coach);
     final testo = problema ? colori.onErrorContainer : null;
+    // «Nessun allenamento in attesa» non serve dirlo: le altre righe compaiono
+    // solo quando c'è qualcosa da sapere.
+    final altre = righe.skip(1).where((r) => r != Testi.of(context).logInAttesa(0));
     return Material(
       color: problema ? colori.errorContainer : colori.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         side: problema ? BorderSide.none : const BorderSide(color: ColoriAtleta.bordo),
       ),
       child: Padding(
-        padding: const EdgeInsets.fromLTRB(12, 10, 6, 10),
+        padding: const EdgeInsets.fromLTRB(14, 4, 4, 4),
         child: Row(
           children: [
-            problema
-                ? IconaInCerchio(
-                    Icons.error_outline,
-                    colore: colori.onErrorContainer,
-                    sfondo: colori.surface.withValues(alpha: 0.6),
-                  )
-                : const IconaInCerchio(
-                    Icons.cloud_done_outlined,
-                    colore: ColoriAtleta.primario,
-                    sfondo: ColoriAtleta.contenitore,
-                  ),
-            const SizedBox(width: 12),
+            Icon(
+              problema ? Icons.error_outline : Icons.cloud_done_outlined,
+              size: 20,
+              color: problema ? colori.onErrorContainer : ColoriAtleta.primario,
+            ),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(righe.first, style: tema.titleSmall?.copyWith(color: testo)),
-                  for (final riga in righe.skip(1))
+                  Text(righe.first, style: tema.bodyMedium?.copyWith(color: testo)),
+                  for (final riga in altre)
                     Text(
                       riga,
                       style: tema.bodySmall?.copyWith(color: testo ?? colori.onSurfaceVariant),
@@ -344,17 +342,17 @@ class _StatoSync extends StatelessWidget {
             ),
             if (sincronizza != null && inCorso)
               const Padding(
-                padding: EdgeInsets.all(12),
+                padding: EdgeInsets.all(14),
                 child: SizedBox.square(
-                  dimension: 24,
-                  child: CircularProgressIndicator(strokeWidth: 3),
+                  dimension: 20,
+                  child: CircularProgressIndicator(strokeWidth: 2.5),
                 ),
               )
             else if (sincronizza != null)
-              TextButton.icon(
+              IconButton(
                 onPressed: sincronizza,
-                icon: const Icon(Icons.sync, size: 18),
-                label: Text(Testi.of(context).sincronizzaOra),
+                tooltip: Testi.of(context).sincronizzaOra,
+                icon: Icon(Icons.sync, color: colori.primary),
               ),
           ],
         ),

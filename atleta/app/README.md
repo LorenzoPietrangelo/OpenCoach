@@ -15,8 +15,11 @@ App Flutter per Android e iOS sopra il nucleo in `../nucleo`, che contiene tutta
 - Cassaforte di chiavi e token su Keystore e Keychain (`lib/piattaforma/cassaforte_sicura.dart`). I backup di Android sono disattivati.
 - Testi in `lib/l10n/app_it.arb`, generati con `flutter gen-l10n`.
 - Tor su Android: `MainActivity.kt` avvia TorService di [tor-android](https://github.com/guardianproject/tor-android) e `lib/piattaforma/avviatore_android.dart` passa la sua porta di controllo a `TrasportoTorControllato` del nucleo. Il proxy SOCKS ascolta su un socket Unix nella cartella di Tor, così lo usa solo l'app. Provato su un telefono contro `coach_dev` sulla rete Tor vera.
-- Tor su iOS non c'è ancora: `lib/piattaforma/tor_non_integrato.dart` è un segnaposto, e ogni sync si ferma con «Tor non parte».
-- Su iOS mancano anche la sync in background e una prova di compilazione: serve un Mac. Anche l'apertura dei link (`CFBundleURLTypes` nell'Info.plist, la gestione dei link di Flutter) non è stata provata.
+- iOS (16 o successivo), scritto senza un Mac e mai provato su un iPhone. Il job `ios` della CI lo compila senza firma su macOS; per installarlo servono un Mac con Xcode e un account Apple Developer.
+  - Tor: `ios/Runner/AppDelegate.swift` avvia [Tor.framework](https://github.com/iCepa/Tor.framework), il pod `Tor` nel `ios/Podfile` (409.15, l'ultima versione su CocoaPods), e `lib/piattaforma/avviatore_ios.dart` ne passa la porta di controllo a `TrasportoTorControllato`. La porta di controllo è sul loopback con il cookie, e anche il proxy SOCKS: Dart non garantisce i socket Unix su iOS. Tor gira solo con l'app aperta, perché iOS la sospende in background.
+  - Video delle serie e suono di fine recupero: gli stessi canali di Android, in `AppDelegate.swift` (AVAssetExportSession a 640×480 senza audio; il suono d'avviso del sistema, che vibra).
+  - Link d'invito: `CFBundleURLTypes` e `FlutterDeepLinkingEnabled` nell'Info.plist; Flutter passa il link come rotta a `InvitiInArrivo`.
+  - Niente sync in background: su iOS avviene ad app aperta (§7.4).
 
 ## Comandi
 

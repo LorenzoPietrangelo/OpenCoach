@@ -7,6 +7,7 @@ import 'package:protocollo/protocollo.dart';
 
 import 'app.dart';
 import 'piattaforma/avviatore_android.dart';
+import 'piattaforma/avviatore_ios.dart';
 import 'piattaforma/cassaforte_sicura.dart';
 import 'piattaforma/inviti_in_arrivo.dart';
 import 'piattaforma/sync_in_background.dart';
@@ -20,7 +21,8 @@ Future<void> main() async {
   // Prima di ogni await: il link che apre l'app arriva subito.
   final inviti = InvitiInArrivo();
   final nucleo = await creaNucleo();
-  // Su iOS la sync in background (BGAppRefreshTask) non è ancora integrata.
+  // Su iOS la sync avviene ad app aperta (§7.4): il sistema non garantisce
+  // se e quando eseguirebbe un BGAppRefreshTask.
   final background = Platform.isAndroid ? SyncInBackground(nucleo) : null;
   await background?.collega();
   runApp(AppAtleta(nucleo: nucleo, background: background, inviti: inviti));
@@ -53,14 +55,12 @@ Future<NucleoAtleta> creaNucleo() async {
   // predefinita è già CompleteUntilFirstUserAuthentication.
   final cartella = await getApplicationSupportDirectory();
   return NucleoAtleta(
-    archivio: ArchivioAtleta.apri(
-      '${cartella.path}${Platform.pathSeparator}atleta.db',
-    ),
+    archivio: ArchivioAtleta.apri('${cartella.path}${Platform.pathSeparator}atleta.db'),
     cassaforte: CassaforteSicura(),
-    // Su iOS Tor.framework non è ancora integrato.
-    tor: Platform.isAndroid
+    // tor-android su Android, Tor.framework su iOS (§10.1).
+    tor: Platform.isAndroid || Platform.isIOS
         ? TrasportoTorControllato(
-            const AvviatoreTorAndroid(),
+            Platform.isAndroid ? const AvviatoreTorAndroid() : const AvviatoreTorIos(),
             registra: debugPrint,
           )
         : const TorNonIntegrato(),

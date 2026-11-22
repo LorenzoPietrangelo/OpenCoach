@@ -42,7 +42,11 @@
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
 	<key>NSCameraUsageDescription</key>
-	<string>Open Coach usa la fotocamera solo per leggere il QR d'invito del tuo coach.</string>
+	<string>Open Coach usa la fotocamera per leggere il QR d'invito del tuo coach e il codice a barre dei cibi, e per registrare il video di una serie da mandargli.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>iOS lo chiede per registrare un video. Open Coach toglie l'audio prima di mandare il video al coach.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Open Coach apre la galleria solo per scegliere il video di una serie da mandare al coach.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

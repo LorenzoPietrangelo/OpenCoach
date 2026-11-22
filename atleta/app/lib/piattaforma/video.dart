@@ -36,8 +36,8 @@ typedef PreparaVideo = Future<VideoPreparato?> Function(OrigineVideo origine);
 const _canale = MethodChannel('org.opencoach.atleta/video');
 
 /// Il video registrato resta nella cache dell'app, non nella galleria. Lo
-/// comprime il codice Android (H.264, 480p, 30 fotogrammi al secondo, senza
-/// audio); i metadati, compresa la posizione, li toglie il nucleo quando il
+/// comprime il codice nativo dell'app (H.264, 480p, senza audio: su Android
+/// `CompressioneVideo.kt`, su iOS `AppDelegate.swift`); i metadati, compresa la posizione, li toglie il nucleo quando il
 /// video si allega al messaggio.
 Future<VideoPreparato?> preparaVideoDalTelefono(OrigineVideo origine) async {
   final scelto = await ImagePicker().pickVideo(

@@ -15,7 +15,7 @@ App Flutter per Android e iOS sopra il nucleo in `../nucleo`, che contiene tutta
 - Cassaforte di chiavi e token su Keystore e Keychain (`lib/piattaforma/cassaforte_sicura.dart`). I backup di Android sono disattivati.
 - Testi in `lib/l10n/app_it.arb`, generati con `flutter gen-l10n`.
 - Tor su Android: `MainActivity.kt` avvia TorService di [tor-android](https://github.com/guardianproject/tor-android) e `lib/piattaforma/avviatore_android.dart` passa la sua porta di controllo a `TrasportoTorControllato` del nucleo. Il proxy SOCKS ascolta su un socket Unix nella cartella di Tor, così lo usa solo l'app. Provato su un telefono contro `coach_dev` sulla rete Tor vera.
-- iOS (16 o successivo), scritto senza un Mac e mai provato su un iPhone. Il job `ios` della CI lo compila senza firma su macOS; per installarlo servono un Mac con Xcode e un account Apple Developer.
+- iOS (16 o successivo), scritto senza un Mac e mai provato su un iPhone. Il job `ios` della CI lo compila senza firma su macOS; per installarlo serve un Mac con Xcode (vedi «Compilare per iOS su un Mac»).
   - Tor: `ios/Runner/AppDelegate.swift` avvia [Tor.framework](https://github.com/iCepa/Tor.framework), il pod `Tor` nel `ios/Podfile` (409.15, l'ultima versione su CocoaPods), e `lib/piattaforma/avviatore_ios.dart` ne passa la porta di controllo a `TrasportoTorControllato`. La porta di controllo è sul loopback con il cookie, e anche il proxy SOCKS: Dart non garantisce i socket Unix su iOS. Tor gira solo con l'app aperta, perché iOS la sospende in background.
   - Video delle serie e suono di fine recupero: gli stessi canali di Android, in `AppDelegate.swift` (AVAssetExportSession a 640×480 senza audio; il suono d'avviso del sistema, che vibra).
   - Link d'invito: `CFBundleURLTypes` e `FlutterDeepLinkingEnabled` nell'Info.plist; Flutter passa il link come rotta a `InvitiInArrivo`.
@@ -38,3 +38,22 @@ Dopo aver cambiato i testi in `lib/l10n/app_it.arb` va rigenerata la classe `Tes
 ```
 flutter gen-l10n
 ```
+
+## Compilare per iOS su un Mac
+
+Servono Xcode (con la piattaforma iOS installata), Flutter stable 3.41 o successivo e CocoaPods (`brew install cocoapods`). Va clonato tutto il repository: l'app usa `../nucleo` e `../../pacchetti/protocollo`.
+
+```
+cd atleta/app
+flutter pub get
+flutter run
+```
+
+Con il simulatore iPhone aperto, `flutter run` installa i pod (Tor.framework scarica la sua build già compilata: la prima volta ci mette un po') e avvia l'app. Non serve nessuna firma.
+
+Per un iPhone vero:
+
+1. Collegare l'iPhone e attivare la modalità sviluppatore (Impostazioni → Privacy e sicurezza).
+2. Aprire `ios/Runner.xcworkspace` in Xcode (il `.xcworkspace`, non il `.xcodeproj`).
+3. In Runner → Signing & Capabilities scegliere il proprio team. Basta un Apple ID gratuito, ma l'app installata così smette di aprirsi dopo 7 giorni; con un account Apple Developer dura un anno. Se Xcode dice che il bundle id `org.opencoach.atletaApp` è già usato, cambiarlo con uno proprio.
+4. `flutter run --release` con l'iPhone selezionato, oppure Run da Xcode.

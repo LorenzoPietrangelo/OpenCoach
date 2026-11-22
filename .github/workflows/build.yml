@@ -118,7 +118,8 @@ jobs:
   ios:
     name: App dell'atleta per iOS
     runs-on: macos-latest
-    needs: test
+    # Non aspetta i test: la prova che l'app compila serve anche quando un
+    # test fallisce.
     steps:
       - uses: actions/checkout@v4
 
